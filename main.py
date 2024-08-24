@@ -14,13 +14,15 @@ class Solver:
     def create_variables(self, x0: tuple) -> list:
         n = len(x0)
         var_list = []
-        var = TemporalVar(lambda t, y: y[self.dim])
-        var.set_init(x0[-1])
+        y_idx = self.dim
+        var = TemporalVar(lambda t, y: y[y_idx])
+        var.set_init(x0[0])
         var_list.append(var)
         for i in range(n):
             if i != n - 1:
-                var = FeedVar(lambda t, y: y[self.dim + i + 1])
-                var.set_init(x0[-2 - i])
+                y_idx = self.dim + i + 1
+                var = FeedVar(lambda t, y: y[y_idx])
+                var.set_init(x0[1+i])
             else:
                 var = FeedVar()
             var_list.append(var)
@@ -28,7 +30,7 @@ class Solver:
         return var_list
 
     def solve(self, t_end: float):
-        x0=[x.content[0] for x in self.initialized_vars]
+        x0 = [x.content[0] for x in self.initialized_vars]
         res = solve_ivp(self._dy, (0, t_end), x0)
         return res
 
@@ -110,20 +112,21 @@ def mass_spring_damper(t, y):
 t_final = 50
 m = 5
 k = 1
-c = 0.5
-v0 = 0
-x0 = 1
+c = 1
+v0 = 2
+x0 = 5
 # Comparison
 res_normal = solve_ivp(mass_spring_damper, [0, t_final], (x0, v0))
-print(res_normal)
-
-
+# print(res_normal)
 
 pos, vit, acc = solver.create_variables((x0, v0))
 acc.set_value(1 / m * (-c * vit - k * pos))
-res_awesome=solver.solve(t_final)
-print(res_awesome)
+# acc.set_value(1/m)
 
+res_awesome = solver.solve(t_final)
+print(acc.function(0,(x0,v0)))
+print(mass_spring_damper(0,(x0,v0)))
 
-plt.plot(res_normal.t, res_normal.y[0])
+plt.plot(res_normal.t, res_normal.y[1])
+plt.plot(res_awesome.t, res_awesome.y[1])
 plt.show()
