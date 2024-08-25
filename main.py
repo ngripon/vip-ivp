@@ -34,7 +34,12 @@ class Solver:
     def solve(self, t_end: float):
         x0 = [x.init for x in self.initialized_vars]
         start = time.time()
-        res = solve_ivp(self._dy, (0, t_end), x0)
+        try:
+            res = solve_ivp(self._dy, (0, t_end), x0)
+        except RecursionError:
+            raise RecursionError("An algebraic loop has been detected in the system. "
+                                 "Please check in the set_value() methods if a variable use itself for computing "
+                                 "its value.")
         print(f"Performance = {time.time() - start}")
         self.t = res.t
         self.y = res.y
@@ -149,7 +154,7 @@ print(time.time() - start)
 # print(res_normal)
 
 pos, vit, acc = solver.create_variables((x0, v0))
-acc.set_value(1 / m * (-c * vit - k * pos))
+acc.set_value(1 / m * (-c * vit - k * pos + acc))
 my_test = 2 * acc
 
 res_awesome = solver.solve(t_final)
