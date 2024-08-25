@@ -54,6 +54,9 @@ class Solver:
         self.solved = True
         return res
 
+    def explore(self,f:Callable):
+        ...
+
     def _dy(self, t, y):
         result = []
         for var in self.feed_vars:
@@ -65,6 +68,8 @@ class Solver:
         if uninitialized_vars:
             raise ValueError(f"The following variables have not been set a value: {uninitialized_vars}. "
                              f"Call the set_value() method of each of these variables.")
+
+
 
 
 class TemporalVar:
