@@ -12,16 +12,22 @@ def test_algebraic_loop():
     with pytest.raises(RecursionError):
         solver.solve(10)
 
-    y,dy,ddy=solver.create_variables((0,0))
-    ddy.set_value(y+ddy)
+    y, dy, ddy = solver.create_variables((0, 0))
+    ddy.set_value(y + ddy)
     with pytest.raises(RecursionError):
         solver.solve(10)
 
 
 def test_uninitialized_feed():
-    x,dx=solver.create_variables(0)
+    x, dx = solver.create_variables(0)
+    print(solver.vars)
     with pytest.raises(ValueError) as e:
         solver.solve(10)
     print(e)
 
 
+def test_create_variables():
+    with pytest.raises(ValueError):
+        x, dx = solver.create_variables((0, 0))
+    with pytest.raises(ValueError):
+        x, dx, ddx = solver.create_variables(0)
