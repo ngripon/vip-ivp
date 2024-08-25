@@ -131,7 +131,9 @@ class TemporalVar:
     def __repr__(self):
         if self.solver.solved:
             return f"{self.values}"
-        return "TODO"
+        for key, value in globals().items():
+            if value is self:
+                return str(key)
 
 
 class FeedVar(TemporalVar):
