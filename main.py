@@ -16,7 +16,11 @@ class Solver:
         self.solved = False
 
     def create_variables(self, x0: tuple) -> list:
-        n = len(x0)
+        try:
+            n = len(x0)
+        except TypeError:
+            n = 1
+            x0=(x0,)
         var_list = []
         var = TemporalVar(lambda t, y, idx=self.dim: y[idx])
         var.set_init(x0[0])
@@ -55,7 +59,7 @@ class Solver:
         return result
 
     def _check_feed_init(self):
-        uninitialized_vars=[var for var in self.feed_vars if var.function is None]
+        uninitialized_vars = [var for var in self.feed_vars if var.function is None]
         if uninitialized_vars:
             raise Exception(f"The following variables have not been set a value: {uninitialized_vars}. "
                             f"Call the set_value() method of each of these variables.")
@@ -134,6 +138,8 @@ class TemporalVar:
         for key, value in globals().items():
             if value is self:
                 return str(key)
+        else:
+            return "There must be a bug somewhere else..."
 
 
 class FeedVar(TemporalVar):
@@ -143,35 +149,40 @@ class FeedVar(TemporalVar):
 
     def set_value(self, value):
         if isinstance(value, TemporalVar):
-            self.function = value.function
+            if value.function is not None:
+                self.function = value.function
+            else:
+                raise RecursionError("There is an algebraic loop with this variable.")
         else:
             self.function = lambda t, y: value
 
 
-def mass_spring_damper(t, y):
-    ddy = 1 / m * (-c * y[1] - k * y[0])
-    return y[1], ddy
+if __name__ == '__main__':
+    def mass_spring_damper(t, y):
+        ddy = 1 / m * (-c * y[1] - k * y[0])
+        return y[1], ddy
 
 
-t_final = 50
-m = 5
-k = 2
-c = 0.5
-v0 = 2
-x0 = 5
-# Comparison
-start = time.time()
-res_normal = solve_ivp(mass_spring_damper, [0, t_final], (x0, v0))
-print(time.time() - start)
-# print(res_normal)
+    t_final = 50
+    m = 5
+    k = 2
+    c = 0.5
+    v0 = 2
+    x0 = 5
+    # Comparison
+    # start = time.time()
+    # res_normal = solve_ivp(mass_spring_damper, [0, t_final], (x0, v0))
+    # print(time.time() - start)
+    # print(res_normal)
 
-pos, vit, acc = solver.create_variables((x0, v0))
-# acc.set_value(1 / m * (-c * vit - k * pos + acc))
-my_test = 2 * acc
+    # pos, vit, acc = solver.create_variables((x0, v0))
+    # acc.set_value(1 / m * (-c * vit - k * pos + acc))
+    x, dx, ddx=solver.create_variables((0,0))
+    ddx.set_value(ddx)
 
-res_awesome = solver.solve(t_final)
+    res_awesome = solver.solve(t_final)
 
-# plt.plot(res_normal.t, res_normal.y[1])
-plt.plot(acc.t, acc.values)
-plt.plot(my_test.t, my_test.values)
-plt.show()
+    # plt.plot(res_normal.t, res_normal.y[1])
+    # plt.plot(acc.t, acc.values)
+    # plt.plot(my_test.t, my_test.values)
+    # plt.show()
