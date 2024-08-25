@@ -39,6 +39,8 @@ class Solver:
         # Apply checks before attempting to solve
         self._check_feed_init()
         x0 = [x.init for x in self.initialized_vars]
+        # Reinit values
+        [var.reset() for var in self.vars]
         start = time.time()
         try:
             res = solve_ivp(self._dy, (0, t_end), x0)
@@ -93,6 +95,9 @@ class TemporalVar:
             raise Exception("The differential system has not been solved. "
                             "Call the solve() method before inquiring the time variable.")
         return self.solver.t
+
+    def reset(self):
+        self._values = None
 
     def set_init(self, x0: float):
         self.init = x0
@@ -169,18 +174,18 @@ if __name__ == '__main__':
     c = 0.5
     v0 = 2
     x0 = 5
+    pos, vit, acc = solver.create_variables((x0, v0))
+    acc.set_value(1 / m * (-c * vit - k * pos + acc))
+
+    res_awesome = solver.solve(t_final)
+
     # Comparison
     # start = time.time()
     # res_normal = solve_ivp(mass_spring_damper, [0, t_final], (x0, v0))
     # print(time.time() - start)
     # print(res_normal)
 
-    # pos, vit, acc = solver.create_variables((x0, v0))
-    # acc.set_value(1 / m * (-c * vit - k * pos + acc))
-    x, dx, ddx=solver.create_variables((0,0))
-    ddx.set_value(ddx)
 
-    res_awesome = solver.solve(t_final)
 
     # plt.plot(res_normal.t, res_normal.y[1])
     # plt.plot(acc.t, acc.values)
