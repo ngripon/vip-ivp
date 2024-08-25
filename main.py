@@ -61,7 +61,7 @@ class Solver:
     def _check_feed_init(self):
         uninitialized_vars = [var for var in self.feed_vars if var.function is None]
         if uninitialized_vars:
-            raise Exception(f"The following variables have not been set a value: {uninitialized_vars}. "
+            raise ValueError(f"The following variables have not been set a value: {uninitialized_vars}. "
                             f"Call the set_value() method of each of these variables.")
 
 
