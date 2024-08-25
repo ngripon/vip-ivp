@@ -1,3 +1,4 @@
+import time
 from typing import Callable
 
 import matplotlib.pyplot as plt
@@ -25,12 +26,13 @@ class Solver:
                 var = FeedVar()
             var_list.append(var)
         self.dim += n
-        print(f"{self.dim=}")
         return var_list
 
     def solve(self, t_end: float):
         x0 = [x.content[0] for x in self.initialized_vars]
+        start=time.time()
         res = solve_ivp(self._dy, (0, t_end), x0)
+        print(f"Performance = {time.time()-start}")
         return res
 
     def _dy(self, t, y):
@@ -118,7 +120,9 @@ c = 0.5
 v0 = 2
 x0 = 5
 # Comparison
+start=time.time()
 res_normal = solve_ivp(mass_spring_damper, [0, t_final], (x0, v0))
+print(time.time()-start)
 # print(res_normal)
 
 pos, vit, acc = solver.create_variables((x0, v0))
@@ -128,6 +132,6 @@ acc.set_value(1 / m * (-c * vit - k * pos))
 res_awesome = solver.solve(t_final)
 
 
-plt.plot(res_normal.t, res_normal.y[1])
-plt.plot(res_awesome.t, res_awesome.y[1])
-plt.show()
+# plt.plot(res_normal.t, res_normal.y[1])
+# plt.plot(res_awesome.t, res_awesome.y[1])
+# plt.show()
