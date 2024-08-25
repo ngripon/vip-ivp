@@ -32,6 +32,8 @@ class Solver:
         return var_list
 
     def solve(self, t_end: float):
+        # Apply checks before attempting to solve
+        self._check_feed_init()
         x0 = [x.init for x in self.initialized_vars]
         start = time.time()
         try:
@@ -51,6 +53,12 @@ class Solver:
         for var in self.feed_vars:
             result.append(var.function(t, y))
         return result
+
+    def _check_feed_init(self):
+        uninitialized_vars=[var for var in self.feed_vars if var.function is None]
+        if uninitialized_vars:
+            raise Exception(f"The following variables have not been set a value: {uninitialized_vars}. "
+                            f"Call the set_value() method of each of these variables.")
 
 
 solver = Solver()
@@ -121,7 +129,9 @@ class TemporalVar:
         return TemporalVar(lambda t, y: - self.function(t, y))
 
     def __repr__(self):
-        return f"{self.values}"
+        if self.solver.solved:
+            return f"{self.values}"
+        return "TODO"
 
 
 class FeedVar(TemporalVar):
@@ -154,7 +164,7 @@ print(time.time() - start)
 # print(res_normal)
 
 pos, vit, acc = solver.create_variables((x0, v0))
-acc.set_value(1 / m * (-c * vit - k * pos + acc))
+# acc.set_value(1 / m * (-c * vit - k * pos + acc))
 my_test = 2 * acc
 
 res_awesome = solver.solve(t_final)
