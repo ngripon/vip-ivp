@@ -6,15 +6,13 @@ import numpy as np
 
 from matplotlib.widgets import Button, Slider
 
-from main import Solver
 
-def explore(f):
-    params=signature(f).parameters
-    init_params=[param.default if param.default is not inspect.Parameter.empty else 1 for param in params.values()]
+def explore(f, params):
+    init_params = [param.default if param.default is not inspect.Parameter.empty else 1 for param in params.values()]
     print(init_params)
     # Create the figure and the line that we will manipulate
     fig, ax = plt.subplots()
-    t,y=f(*init_params)
+    t, y = f(*init_params)
     line, = ax.plot(t, y, lw=2)
     ax.set_xlabel('Time [s]')
 
@@ -22,9 +20,9 @@ def explore(f):
     fig.subplots_adjust(left=0.25, bottom=0.25)
 
     # Make a horizontal slider to control the frequency.
-    sliders=[]
-    for i,param in enumerate(params.keys()):
-        slider_ax = fig.add_axes([0.25, 0.05+0.05*i, 0.65, 0.03])
+    sliders = []
+    for i, param in enumerate(params.keys()):
+        slider_ax = fig.add_axes([0.25, 0.05 + 0.05 * i, 0.65, 0.03])
         slider = Slider(
             ax=slider_ax,
             label=param,
@@ -34,12 +32,10 @@ def explore(f):
         )
         sliders.append(slider)
 
-
-
     # The function to be called anytime a slider's value changes
     def update(val):
-        t,y=f(*(slider.val for slider in sliders))
-        line.set_data(t,y)
+        t, y = f(*(slider.val for slider in sliders))
+        line.set_data(t, y)
         fig.canvas.draw_idle()
         ax.relim()
         ax.autoscale_view(True, True, True)
@@ -47,19 +43,21 @@ def explore(f):
     # register the update function with each slider
     [slider.on_changed(update) for slider in sliders]
 
-
     # Create a `matplotlib.widgets.Button` to reset the sliders to initial values.
     resetax = fig.add_axes([0.8, 0.0, 0.1, 0.04])
     button = Button(resetax, 'Reset', hovercolor='0.975')
 
-
     def reset(event):
         [slider.reset() for slider in sliders]
+
     button.on_clicked(reset)
 
     plt.show()
 
+
 if __name__ == '__main__':
+    from main import Solver
+
     # The parametrized function to be plotted
     solver = Solver()
     v0 = 2
@@ -72,5 +70,6 @@ if __name__ == '__main__':
         acc.set_value(1 / m * (-c * vit - k * pos))
         solver.solve(t_final)
         return pos.t, pos.values
+
 
     explore(f)

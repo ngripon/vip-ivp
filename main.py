@@ -1,8 +1,11 @@
 import time
+from inspect import signature
 from typing import Callable
 
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
+
+from variable_exploration import explore
 
 
 class Solver:
@@ -27,7 +30,7 @@ class Solver:
         var_list.append(var)
         for i in range(n):
             if i != n - 1:
-                var = FeedVar(self,lambda t, y, idx=self.dim + i + 1: y[idx])
+                var = FeedVar(self, lambda t, y, idx=self.dim + i + 1: y[idx])
                 var.set_init(x0[1 + i])
             else:
                 var = FeedVar(self)
@@ -54,8 +57,15 @@ class Solver:
         self.solved = True
         return res
 
-    def explore(self,f:Callable):
-        ...
+    def explore(self, f: Callable, t_end: float):
+        params = signature(f).parameters
+
+        def wrapper(*args, **kwargs):
+            var = f(*args, **kwargs)
+            self.solve(t_end)
+            return var.t, var.values
+
+        explore(wrapper, params)
 
     def _dy(self, t, y):
         result = []
@@ -68,8 +78,6 @@ class Solver:
         if uninitialized_vars:
             raise ValueError(f"The following variables have not been set a value: {uninitialized_vars}. "
                              f"Call the set_value() method of each of these variables.")
-
-
 
 
 class TemporalVar:
@@ -165,22 +173,32 @@ class FeedVar(TemporalVar):
 
 
 if __name__ == '__main__':
-    def mass_spring_damper(t, y):
-        ddy = 1 / m * (-c * y[1] - k * y[0])
-        return y[1], ddy
+    # def mass_spring_damper(t, y):
+    #     ddy = 1 / m * (-c * y[1] - k * y[0])
+    #     return y[1], ddy
 
+    solver = Solver()
+
+    def f(k=2, c=3, m=5):
+        v0 = 2
+        x0 = 5
+        pos, vit, acc = solver.create_variables((x0, v0))
+        acc.set_value(1 / m * (-c * vit - k * pos))
+        return vit
 
     t_final = 50
-    m = 5
-    k = 2
-    c = 0.5
-    v0 = 2
-    x0 = 5
-    solver = Solver()
-    pos, vit, acc = solver.create_variables((x0, v0))
-    acc.set_value(1 / m * (-c * vit - k * pos))
-
-    res_awesome = solver.solve(t_final)
+    solver.explore(f, t_final)
+    # t_final = 50
+    # m = 5
+    # k = 2
+    # c = 0.5
+    # v0 = 2
+    # x0 = 5
+    # solver = Solver()
+    # pos, vit, acc = solver.create_variables((x0, v0))
+    # acc.set_value(1 / m * (-c * vit - k * pos))
+    #
+    # res_awesome = solver.solve(t_final)
 
     # Comparison
     # start = time.time()
