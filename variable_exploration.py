@@ -3,10 +3,11 @@ import numpy as np
 
 from matplotlib.widgets import Button, Slider
 
-from main import solver
+from main import Solver
 
 
 # The parametrized function to be plotted
+solver=Solver()
 v0 = 2
 x0 = 5
 pos, vit, acc = solver.create_variables((x0, v0))

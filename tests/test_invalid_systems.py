@@ -3,7 +3,12 @@ import pytest
 from main import *
 
 
-def test_algebraic_loop():
+@pytest.fixture
+def solver():
+    return Solver()
+
+
+def test_algebraic_loop(solver):
     x, dx = solver.create_variables(0)
     with pytest.raises(RecursionError):
         dx.set_value(dx)
@@ -18,15 +23,14 @@ def test_algebraic_loop():
         solver.solve(10)
 
 
-def test_uninitialized_feed():
+def test_uninitialized_feed(solver):
     x, dx = solver.create_variables(0)
-    print(solver.vars)
     with pytest.raises(ValueError) as e:
         solver.solve(10)
     print(e)
 
 
-def test_create_variables():
+def test_create_variables(solver):
     with pytest.raises(ValueError):
         x, dx = solver.create_variables((0, 0))
     with pytest.raises(ValueError):
