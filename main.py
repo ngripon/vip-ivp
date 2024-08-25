@@ -70,8 +70,15 @@ class TemporalVar:
             self._values = self.function(self.solver.t, self.solver.y)
         return self._values
 
+    @property
+    def t(self):
+        if not self.solver.solved:
+            raise Exception("The differential system has not been solved. "
+                            "Call the solve() method before inquiring the time variable.")
+        return self.solver.t
+
     def set_init(self, x0: float):
-        self.init=x0
+        self.init = x0
         self.initialized = True
         self.solver.initialized_vars.append(self)
 
@@ -143,11 +150,11 @@ print(time.time() - start)
 
 pos, vit, acc = solver.create_variables((x0, v0))
 acc.set_value(1 / m * (-c * vit - k * pos))
-my_test=2*acc
+my_test = 2 * acc
 
 res_awesome = solver.solve(t_final)
 
 # plt.plot(res_normal.t, res_normal.y[1])
-plt.plot(solver.t, acc.values)
-plt.plot(solver.t, my_test.values)
+plt.plot(acc.t, acc.values)
+plt.plot(my_test.t, my_test.values)
 plt.show()
