@@ -57,15 +57,22 @@ class Solver:
         self.solved = True
         return res
 
-    def explore(self, f: Callable, t_end: float):
+    def explore(self, f: Callable, t_end: float, bounds=()):
         params = signature(f).parameters
 
         def wrapper(*args, **kwargs):
+            self.clear()
             var = f(*args, **kwargs)
             self.solve(t_end)
             return var.t, var.values
 
-        explore(wrapper, params)
+        explore(wrapper, params, bounds)
+
+    def clear(self):
+        """
+        Clear stored information.
+        """
+        self.__init__()
 
     def _dy(self, t, y):
         result = []
@@ -173,40 +180,28 @@ class FeedVar(TemporalVar):
 
 
 if __name__ == '__main__':
-    # def mass_spring_damper(t, y):
-    #     ddy = 1 / m * (-c * y[1] - k * y[0])
-    #     return y[1], ddy
-
     solver = Solver()
 
-    def f(k=2, c=3, m=5):
-        v0 = 2
-        x0 = 5
-        pos, vit, acc = solver.create_variables((x0, v0))
-        acc.set_value(1 / m * (-c * vit - k * pos))
-        return vit
 
-    t_final = 50
-    solver.explore(f, t_final)
-    # t_final = 50
-    # m = 5
-    # k = 2
-    # c = 0.5
+    # m = 1
+    # k = 1
+    # c = 1
     # v0 = 2
     # x0 = 5
-    # solver = Solver()
     # pos, vit, acc = solver.create_variables((x0, v0))
     # acc.set_value(1 / m * (-c * vit - k * pos))
-    #
-    # res_awesome = solver.solve(t_final)
-
-    # Comparison
-    # start = time.time()
-    # res_normal = solve_ivp(mass_spring_damper, [0, t_final], (x0, v0))
-    # print(time.time() - start)
-    # print(res_normal)
-
-    # plt.plot(res_normal.t, res_normal.y[1])
-    # plt.plot(acc.t, acc.values)
-    # plt.plot(my_test.t, my_test.values)
+    # u=5*pos
+    # solver.solve(50)
+    # #
+    # plt.plot(pos.t, pos.values)
+    # plt.plot(u.t, u.values)
     # plt.show()
+
+    def f(k=2, c=3, m=5, x0=1, v0=1):
+        pos, vit, acc = solver.create_variables((x0, v0))
+        acc.set_value(1 / m * (-c * vit - k * pos))
+        return pos
+
+
+    t_final = 50
+    solver.explore(f, t_final, bounds=((-10, 10), (-10, 10), (-10, 10)))
