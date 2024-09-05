@@ -6,8 +6,11 @@ import numpy as np
 
 from matplotlib.widgets import Button, Slider
 
+SLIDER_HEIGHT = 0.05
+BOTTOM_PADDING = (0.03, 0.1)
 
-def explore(f, params):
+
+def explore(f, params, params_bounds=(), show=True):
     init_params = [param.default if param.default is not inspect.Parameter.empty else 1 for param in params.values()]
     print(init_params)
     # Create the figure and the line that we will manipulate
@@ -15,44 +18,53 @@ def explore(f, params):
     t, y = f(*init_params)
     line, = ax.plot(t, y, lw=2)
     ax.set_xlabel('Time [s]')
+    ax.grid()
 
     # adjust the main plot to make room for the sliders
-    fig.subplots_adjust(left=0.25, bottom=0.25)
+    fig.subplots_adjust(bottom=sum(BOTTOM_PADDING) + len(params) * SLIDER_HEIGHT)
 
     # Make a horizontal slider to control the frequency.
     sliders = []
     for i, param in enumerate(params.keys()):
-        slider_ax = fig.add_axes([0.25, 0.05 + 0.05 * i, 0.65, 0.03])
+        slider_ax = fig.add_axes([0.1, BOTTOM_PADDING[0] + SLIDER_HEIGHT * (len(params) - 1 - i), 0.6, 0.03])
+        if i < len(params_bounds):
+            val_min, val_max = params_bounds[i]
+        else:
+            val_min, val_max = 0, 20
         slider = Slider(
             ax=slider_ax,
             label=param,
-            valmin=0.1,
-            valmax=30,
+            valmin=val_min,
+            valmax=val_max,
             valinit=init_params[i],
         )
         sliders.append(slider)
 
     # The function to be called anytime a slider's value changes
     def update(val):
-        t, y = f(*(slider.val for slider in sliders))
-        line.set_data(t, y)
-        fig.canvas.draw_idle()
-        ax.relim()
-        ax.autoscale_view(True, True, True)
+        try:
+            t, y = f(*(slider.val for slider in sliders))
+            line.set_data(t, y)
+            fig.canvas.draw_idle()
+            ax.relim()
+            ax.autoscale_view(True, True, True)
+        except ZeroDivisionError:
+            pass
 
     # register the update function with each slider
     [slider.on_changed(update) for slider in sliders]
 
     # Create a `matplotlib.widgets.Button` to reset the sliders to initial values.
-    resetax = fig.add_axes([0.8, 0.0, 0.1, 0.04])
+    resetax = fig.add_axes([0.8, BOTTOM_PADDING[0] + (len(params) - 1) * SLIDER_HEIGHT, 0.1, 0.04])
     button = Button(resetax, 'Reset', hovercolor='0.975')
 
     def reset(event):
         [slider.reset() for slider in sliders]
 
     button.on_clicked(reset)
-
-    plt.show()
+    if show:
+        plt.show()
+    return fig, ax
 
 
 if __name__ == '__main__':
