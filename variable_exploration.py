@@ -44,12 +44,12 @@ def explore(f, params, params_bounds=(), show=True):
     def update(val):
         try:
             t, y = f(*(slider.val for slider in sliders))
-            line.set_data(t, y)
-            fig.canvas.draw_idle()
-            ax.relim()
-            ax.autoscale_view(True, True, True)
         except ZeroDivisionError:
-            pass
+            t, y = [], []
+        line.set_data(t, y)
+        fig.canvas.draw_idle()
+        ax.relim()
+        ax.autoscale_view(True, True, True)
 
     # register the update function with each slider
     [slider.on_changed(update) for slider in sliders]
