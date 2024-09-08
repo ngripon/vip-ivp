@@ -1,11 +1,11 @@
+import functools
+import math
 import time
-from inspect import signature
 from typing import Callable
 
 import matplotlib.pyplot as plt
 from scipy.integrate import solve_ivp
-
-from variable_exploration import explore
+from sliderplot import sliderplot
 
 
 class Solver:
@@ -57,8 +57,15 @@ class Solver:
         self.solved = True
         return res
 
-    def explore(self, f: Callable, t_end: float, bounds=()):
-        params = signature(f).parameters
+    def explore(self, f: Callable, t_end: float, bounds=(), show=True):
+        """
+        Turn the function f into an interactive plot.
+        :param f:
+        :param t_end:
+        :param bounds:
+        :param show:
+        :return:
+        """
 
         def wrapper(*args, **kwargs):
             self.clear()
@@ -66,7 +73,9 @@ class Solver:
             self.solve(t_end)
             return var.t, var.values
 
-        explore(wrapper, params, bounds)
+        functools.update_wrapper(wrapper, f)  # This is necessary to copy the signature of f into wrapper.
+        fig, axs = sliderplot(wrapper, bounds, show)
+        return fig, axs
 
     def clear(self):
         """
@@ -244,7 +253,7 @@ if __name__ == '__main__':
     # x0 = 5
     # pos, vit, acc = solver.create_variables((x0, v0))
     # acc.set_value(1 / m * (-c * vit - k * pos))
-    # u=5*pos
+    # u = math.sin(pos)
     # solver.solve(50)
     # #
     # plt.plot(pos.t, pos.values)
