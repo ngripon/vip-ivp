@@ -30,8 +30,8 @@ class Solver:
         else:
             raise Exception("Input value must be a TemporalVar instance created from the solver class. "
                             "Please check the documentation.")
-        
-    def loop_node(self, input_value)->"LoopNode":
+
+    def loop_node(self, input_value) -> "LoopNode":
         return LoopNode(self, input_value)
 
     # def create_derivatives(self, x0: Sequence[Number]) -> list:
@@ -117,7 +117,7 @@ class TemporalVar:
         self._values = None
 
         self.solver.vars.append(self)
-        if x0:
+        if x0 is not None:
             self._set_init(x0)
 
     @property
@@ -269,9 +269,13 @@ class LoopNode(TemporalVar):
             self.function = input_value.function
         else:
             self.function = lambda t, y: input_value
+        self._additional_signals = []
 
-    def loop_into(self, added_signal: TemporalVar):
-        self.function = lambda t, y: self(t, y) + added_signal(t, y)
+    def loop_into(self, added_value: TemporalVar):
+        self._additional_signals.append(added_value)
+
+    def __call__(self, t, y):
+        return self.function(t, y) + sum(fun(t, y) if callable(fun) else fun for fun in self._additional_signals)
 
 
 # class FeedVar(TemporalVar):
@@ -298,12 +302,14 @@ if __name__ == '__main__':
     v0 = 0
     x0 = 5
     x = 1
-
+    # acc=solver.create_source(lambda t:5)
     acc = solver.loop_node(1 / m * x)
     vit = solver.integrate(acc, v0)
     pos = solver.integrate(vit, x0)
-    # acc.loop_into(1 / m * (-c * vit - k * pos + x))
+    acc.loop_into(1 / m * (-c * vit - k * pos))
+    acc.loop_into(5)
     solver.solve(50)
+    # print(solver.y)
 
     plt.plot(pos.t, pos.values)
     plt.show()
