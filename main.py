@@ -2,7 +2,7 @@ import time
 from collections.abc import Sequence
 from inspect import signature
 from numbers import Number
-from typing import Callable
+from typing import Callable, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -33,26 +33,6 @@ class Solver:
 
     def loop_node(self, input_value) -> "LoopNode":
         return LoopNode(self, input_value)
-
-    # def create_derivatives(self, x0: Sequence[Number]) -> list:
-    #     try:
-    #         n = len(x0)
-    #     except TypeError:
-    #         n = 1
-    #         x0 = (x0,)
-    #     var_list = []
-    #     var = TemporalVar(self, lambda t, y, idx=self.dim: y[idx])
-    #     var._set_init(x0[0])
-    #     var_list.append(var)
-    #     for i in range(n):
-    #         if i != n - 1:
-    #             var = FeedVar(self, lambda t, y, idx=self.dim + i + 1: y[idx])
-    #             var._set_init(x0[1 + i])
-    #         else:
-    #             var = FeedVar(self)
-    #         var_list.append(var)
-    #     self.dim += n
-    #     return var_list
 
     def create_source(self, fun: Callable) -> "TemporalVar":
         """
@@ -271,26 +251,11 @@ class LoopNode(TemporalVar):
             self.function = lambda t, y: input_value
         self._additional_signals = []
 
-    def loop_into(self, added_value: TemporalVar):
+    def loop_into(self, added_value: Union[TemporalVar, Number]):
         self._additional_signals.append(added_value)
 
     def __call__(self, t, y):
         return self.function(t, y) + sum(fun(t, y) if callable(fun) else fun for fun in self._additional_signals)
-
-
-# class FeedVar(TemporalVar):
-#     def __init__(self, solver: Solver, fun: Callable = None):
-#         super().__init__(solver, fun)
-#         self.solver.feed_vars.append(self)
-#
-#     def set_value(self, value):
-#         if isinstance(value, TemporalVar):
-#             if value.function is not None:
-#                 self.function = value.function
-#             else:
-#                 raise RecursionError("There is an algebraic loop with this variable.")
-#         else:
-#             self.function = lambda t, y: value
 
 
 if __name__ == '__main__':
