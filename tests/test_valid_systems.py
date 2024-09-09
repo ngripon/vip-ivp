@@ -25,12 +25,41 @@ def test_pendulum(solver):
     # plt.plot(th.t, th.values)
     # plt.show()
 
+
 def test_source(solver):
-    u=solver.create_source(lambda t:5*np.sin(5*t))
+    u = solver.create_source(lambda t: 5 * np.sin(5 * t))
     th, d_th, dd_th = solver.create_derivatives((0, np.pi / 2))
-    dd_th.set_value(-9.81 / 1 * np.sin(th)+u)
+    dd_th.set_value(-9.81 / 1 * np.sin(th) + u)
     solver.solve(10)
     print(u.values)
     plt.plot(u.t, u.values)
     plt.plot(th.t, th.values)
     plt.show()
+
+
+def plant_controller(solver):
+    def controller(error):
+        ki = 1
+        kp = 1
+        i_err = solver.integrate(ki*error,x0=0)
+        return i_err + kp * error
+
+    def plant(x):
+        m = 1
+        k = 1
+        c = 1
+        v0 = 0
+        x0 = 5
+        acc=solver.loop_node(1/m*x)
+        vit=solver.integrate(acc,v0)
+        pos=solver.integrate(vit,x0)
+        acc.loop_into(1 / m * (-c * vit - k * pos + x))
+        return pos
+
+    target = 1
+    error = solver.loop_node(target)
+    x = controller(error)
+    y = plant(x)
+    error.loop_into(-y)
+
+    solver.solve(50)

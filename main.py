@@ -271,13 +271,11 @@ if __name__ == '__main__':
     c = 1
     v0 = 2
     x0 = 5
-    source=solver.create_source(lambda t:np.sin(t))
     pos, vit, acc = solver.create_derivatives((x0, v0))
     acc.set_value(1 / m * (-c * vit - k * pos))
     u=5*pos
     solver.solve(50)
     #
-    print(source.values)
     plt.plot(pos.t, pos.values)
     plt.plot(u.t, u.values)
     plt.show()
