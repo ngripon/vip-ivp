@@ -21,6 +21,12 @@ class Solver:
         self.y = None
         self.solved = False
 
+    def integrate(self, input_value: "TemporalVar", x0: Number) -> "TemporalVar":
+        self.feed_vars.append(input_value)
+        integrated_variable = TemporalVar(self, lambda t, y, idx=self.dim: y[idx], x0)
+        self.dim += 1
+        return integrated_variable
+
     def create_derivatives(self, x0: Sequence[Number]) -> list:
         try:
             n = len(x0)
@@ -96,7 +102,7 @@ class Solver:
 
 
 class TemporalVar:
-    def __init__(self, solver: Solver, fun: Callable = None):
+    def __init__(self, solver: Solver, fun: Callable = None, x0=None):
         self.solver = solver
         self.init = None
         self.function = fun
@@ -104,6 +110,8 @@ class TemporalVar:
         self._values = None
 
         self.solver.vars.append(self)
+        if x0:
+            self._set_init(x0)
 
     @property
     def values(self):
@@ -265,7 +273,6 @@ class FeedVar(TemporalVar):
 if __name__ == '__main__':
     solver = Solver()
 
-
     m = 1
     k = 1
     c = 1
@@ -273,7 +280,7 @@ if __name__ == '__main__':
     x0 = 5
     pos, vit, acc = solver.create_derivatives((x0, v0))
     acc.set_value(1 / m * (-c * vit - k * pos))
-    u=5*pos
+    u = 5 * pos
     solver.solve(50)
     #
     plt.plot(pos.t, pos.values)
