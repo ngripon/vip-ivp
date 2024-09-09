@@ -20,5 +20,5 @@ def test_pendulum(solver):
     th, d_th, dd_th = solver.create_variables((0, np.pi / 2))
     dd_th.set_value(-9.81 / 1 * np.sin(th))
     solver.solve(10)
-    plt.plot(th.t, th.values)
-    plt.show()
+    # plt.plot(th.t, th.values)
+    # plt.show()

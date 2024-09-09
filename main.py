@@ -1,5 +1,6 @@
 import time
 from inspect import signature
+from numbers import Number
 from typing import Callable
 
 import matplotlib.pyplot as plt
@@ -18,7 +19,7 @@ class Solver:
         self.y = None
         self.solved = False
 
-    def create_variables(self, x0: tuple[float]) -> list:
+    def create_variables(self, x0: tuple[Number]) -> list:
         try:
             n = len(x0)
         except TypeError:
@@ -38,7 +39,7 @@ class Solver:
         self.dim += n
         return var_list
 
-    def solve(self, t_end: float):
+    def solve(self, t_end: Number):
         # Apply checks before attempting to solve
         self._check_feed_init()
         x0 = [x.init for x in self.initialized_vars]
@@ -57,7 +58,7 @@ class Solver:
         self.solved = True
         return res
 
-    def explore(self, f: Callable, t_end: float, bounds=()):
+    def explore(self, f: Callable, t_end: Number, bounds=()):
         params = signature(f).parameters
 
         def wrapper(*args, **kwargs):
@@ -116,7 +117,7 @@ class TemporalVar:
     def reset(self):
         self._values = None
 
-    def set_init(self, x0: float):
+    def set_init(self, x0: Number):
         self.init = x0
         self.initialized = True
         self.solver.initialized_vars.append(self)
@@ -214,14 +215,14 @@ class TemporalVar:
     def __abs__(self) -> "TemporalVar":
         return TemporalVar(self.solver, lambda t, y: abs(self(t, y)))
 
-    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs) -> "TemporalVar":
-        print(inputs)
+    def __array_ufunc__(self, ufunc, method, *inputs) -> "TemporalVar":
         if method == "__call__":
             if len(inputs) == 1:
-                return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0](t, y), **kwargs))
+                return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0](t, y)))
+            elif len(inputs) == 2:
+                return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0](t, y), inputs[1]))
             else:
-                return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0](t, y), inputs[1:], **kwargs))
-
+                return NotImplemented
         else:
             return NotImplemented
 
