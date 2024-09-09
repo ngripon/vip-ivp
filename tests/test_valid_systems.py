@@ -36,6 +36,17 @@ def test_source(solver):
     plt.plot(th.t, th.values)
     plt.show()
 
+def test_loop(solver):
+    acc = solver.loop_node(0.1)
+    vit = solver.integrate(acc, 0)
+    pos = solver.integrate(vit, 5)
+    acc.loop_into(1 / 10 * (-1 * vit - 1 * pos))
+    acc.loop_into(5)
+    solver.solve(50)
+
+def test_integrate_scalar(solver):
+    x=solver.integrate(5,1)
+    solver.solve(10)
 
 def plant_controller(solver):
     def controller(error):

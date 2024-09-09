@@ -22,14 +22,10 @@ class Solver:
         self.solved = False
 
     def integrate(self, input_value: "TemporalVar", x0: Number) -> "TemporalVar":
-        if isinstance(input_value, TemporalVar):
-            self.feed_vars.append(input_value)
-            integrated_variable = TemporalVar(self, lambda t, y, idx=self.dim: y[idx], x0)
-            self.dim += 1
-            return integrated_variable
-        else:
-            raise Exception("Input value must be a TemporalVar instance created from the solver class. "
-                            "Please check the documentation.")
+        self.feed_vars.append(input_value)
+        integrated_variable = TemporalVar(self, lambda t, y, idx=self.dim: y[idx], x0)
+        self.dim += 1
+        return integrated_variable
 
     def loop_node(self, input_value) -> "LoopNode":
         return LoopNode(self, input_value)
@@ -79,10 +75,10 @@ class Solver:
         self.__init__()
 
     def _dy(self, t, y):
-        return [var(t, y) for var in self.feed_vars]
+        return [var(t, y) if callable(var) else var for var in self.feed_vars]
 
     def _check_feed_init(self):
-        uninitialized_vars = [var for var in self.feed_vars if var.function is None]
+        uninitialized_vars = [var for var in self.feed_vars if hasattr(var, "function") and var.function is None]
         if uninitialized_vars:
             raise ValueError(f"The following variables have not been set a value: {uninitialized_vars}. "
                              f"Call the set_value() method of each of these variables.")
