@@ -1,3 +1,4 @@
+import functools
 import time
 from collections.abc import Sequence
 from inspect import signature
@@ -7,8 +8,8 @@ from typing import Callable, Union
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.integrate import solve_ivp
-
-from variable_exploration import explore
+from sliderplot import sliderplot
+from varname import varname, ImproperUseError
 
 
 class Solver:
@@ -30,13 +31,16 @@ class Solver:
     def loop_node(self, input_value) -> "LoopNode":
         return LoopNode(self, input_value)
 
-    def create_source(self, fun: Callable) -> "TemporalVar":
+    def create_source(self, value: Union[Callable, Number]) -> "TemporalVar":
         """
         Create a source signal from a temporal function.
-        :param fun: function f(t)
+        :param value: function f(t) or scalar
         :return: Solver variable
         """
-        return TemporalVar(self, lambda t, y: fun(t))
+        if callable(value):
+            return TemporalVar(self, lambda t, y: value(t))
+        else:
+            return TemporalVar(self, lambda t, y: value)
 
     def solve(self, t_end: Number):
         # Apply checks before attempting to solve
@@ -56,16 +60,17 @@ class Solver:
         self.solved = True
         return res
 
-    def explore(self, f: Callable, t_end: Number, bounds=()):
-        params = signature(f).parameters
-
+    def explore(self, f: Callable, t_end: Number, bounds=(), show=True):
         def wrapper(*args, **kwargs):
             self._clear()
             var = f(*args, **kwargs)
             self.solve(t_end)
             return var.t, var.values
 
-        explore(wrapper, params, bounds)
+        functools.update_wrapper(wrapper, f)
+
+        fig, axs = sliderplot(wrapper, bounds, show)
+        return fig, axs
 
     def _clear(self):
         """
@@ -74,8 +79,8 @@ class Solver:
         self.__init__()
 
     def _dy(self, t, y):
+        # print(self.feed_vars)
         return [var(t, y) if callable(var) else var for var in self.feed_vars]
-
 
 
 class TemporalVar:
@@ -84,6 +89,10 @@ class TemporalVar:
         self.init = None
         self.function = fun
         self._values = None
+        try:
+            self._id = varname()
+        except ImproperUseError:
+            self._id = "Unknown"
 
         self.solver.vars.append(self)
         if x0 is not None:
@@ -208,9 +217,21 @@ class TemporalVar:
     def __array_ufunc__(self, ufunc, method, *inputs) -> "TemporalVar":
         if method == "__call__":
             if len(inputs) == 1:
-                return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0](t, y)))
+                if callable(inputs[0]):
+                    return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0](t, y)))
+                else:
+                    return TemporalVar(self.solver, lambda t,y:ufunc(inputs[0]))
             elif len(inputs) == 2:
-                return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0](t, y), inputs[1]))
+                # Bad coding...
+                if callable(inputs[0]) and callable(inputs[1]):
+                    return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0](t, y), inputs[1](t,y)))
+                elif callable(inputs[0]) and not callable(inputs[1]):
+                    return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0](t, y), inputs[1]))
+                elif not callable(inputs[0]) and callable(inputs[1]):
+                    return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0], inputs[1](t,y)))
+                else :
+                    return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0], inputs[1]))
+
             else:
                 return NotImplemented
         else:
@@ -219,11 +240,8 @@ class TemporalVar:
     def __repr__(self):
         if self.solver.solved:
             return f"{self.values}"
-        for key, value in globals().items():
-            if value is self:
-                return str(key)
         else:
-            return "Variable name has not been found in globals"
+            return self._id
 
 
 def compose(fun: Callable, var: TemporalVar) -> TemporalVar:
@@ -243,35 +261,51 @@ class LoopNode(TemporalVar):
         self._additional_signals.append(added_value)
 
     def __call__(self, t, y):
+        # print(f"{type(self._additional_signals[0])}")
         return self.function(t, y) + sum(fun(t, y) if callable(fun) else fun for fun in self._additional_signals)
 
 
 if __name__ == '__main__':
     solver = Solver()
 
-    m = 1
-    k = 1
-    c = 1
-    v0 = 0
-    x0 = 5
-    x = 1
-    # acc=solver.create_source(lambda t:5)
-    acc = solver.loop_node(1 / m * x)
-    vit = solver.integrate(acc, v0)
-    pos = solver.integrate(vit, x0)
-    acc.loop_into(1 / m * (-c * vit - k * pos))
-    acc.loop_into(5)
-    solver.solve(50)
-    # print(solver.y)
 
-    plt.plot(pos.t, pos.values)
-    plt.show()
+    #
+    # m = 1
+    # k = 1
+    # c = 1
+    # v0 = 0
+    # x0 = 5
+    # x = 1
+    # # acc=solver.create_source(lambda t:5)
+    # acc = solver.loop_node(1 / m * x)
+    # vit = solver.integrate(acc, v0)
+    # pos = solver.integrate(vit, x0)
+    # acc.loop_into(1 / m * (-c * vit - k * pos))
+    # acc.loop_into(5)
+    # solver.solve(50)
+    # # print(solver.y)
+    #
+    # plt.plot(pos.t, pos.values)
+    # plt.show()
 
-    # def f(k=2, c=3, m=5, x0=1, v0=1):
-    #     pos, vit, acc = solver.create_derivatives((x0, v0))
-    #     acc.set_value(1 / m * (-c * vit - k * pos))
-    #     return pos
-    #
-    #
-    # t_final = 50
-    # solver.explore(f, t_final, bounds=((-10, 10), (-10, 10), (0, 10)))
+    def f(k=2, c=3, m=5, x0=1, v0=1):
+        acc = solver.create_source(1 / m)
+        vit = solver.integrate(acc, v0)
+        pos = solver.integrate(vit, x0)
+        u = c * pos
+        # acc.loop_into(t)
+        # print(acc(0,np.array([0,0])))
+        # acc.loop_into(1 / m * (-c * vit - k * pos))
+        return u
+
+
+    # pos=f()
+    # solver.solve(50)
+    # print(pos.values)
+    # solver._clear()
+    # pos=f()
+    # solver.solve(50)
+    # print(pos.values)
+
+    t_final = 50
+    solver.explore(f, t_final, bounds=((-10, 10), (-10, 10), (0, 10)))
