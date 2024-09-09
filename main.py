@@ -2,7 +2,7 @@ import time
 from collections.abc import Sequence
 from inspect import signature
 from numbers import Number
-from typing import Callable
+from typing import Callable, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -21,25 +21,14 @@ class Solver:
         self.y = None
         self.solved = False
 
-    def create_derivatives(self, x0: Sequence[Number]) -> list:
-        try:
-            n = len(x0)
-        except TypeError:
-            n = 1
-            x0 = (x0,)
-        var_list = []
-        var = TemporalVar(self, lambda t, y, idx=self.dim: y[idx])
-        var._set_init(x0[0])
-        var_list.append(var)
-        for i in range(n):
-            if i != n - 1:
-                var = FeedVar(self, lambda t, y, idx=self.dim + i + 1: y[idx])
-                var._set_init(x0[1 + i])
-            else:
-                var = FeedVar(self)
-            var_list.append(var)
-        self.dim += n
-        return var_list
+    def integrate(self, input_value: "TemporalVar", x0: Number) -> "TemporalVar":
+        self.feed_vars.append(input_value)
+        integrated_variable = TemporalVar(self, lambda t, y, idx=self.dim: y[idx], x0)
+        self.dim += 1
+        return integrated_variable
+
+    def loop_node(self, input_value) -> "LoopNode":
+        return LoopNode(self, input_value)
 
     def create_source(self, fun: Callable) -> "TemporalVar":
         """
@@ -51,7 +40,6 @@ class Solver:
 
     def solve(self, t_end: Number):
         # Apply checks before attempting to solve
-        self._check_feed_init()
         x0 = [x.init for x in self.initialized_vars]
         # Reinit values
         [var._reset() for var in self.vars]
@@ -86,24 +74,20 @@ class Solver:
         self.__init__()
 
     def _dy(self, t, y):
-        return [var(t, y) for var in self.feed_vars]
+        return [var(t, y) if callable(var) else var for var in self.feed_vars]
 
-    def _check_feed_init(self):
-        uninitialized_vars = [var for var in self.feed_vars if var.function is None]
-        if uninitialized_vars:
-            raise ValueError(f"The following variables have not been set a value: {uninitialized_vars}. "
-                             f"Call the set_value() method of each of these variables.")
 
 
 class TemporalVar:
-    def __init__(self, solver: Solver, fun: Callable = None):
+    def __init__(self, solver: Solver, fun: Callable = None, x0=None):
         self.solver = solver
         self.init = None
         self.function = fun
-        self.initialized = False
         self._values = None
 
         self.solver.vars.append(self)
+        if x0 is not None:
+            self._set_init(x0)
 
     @property
     def values(self):
@@ -129,7 +113,6 @@ class TemporalVar:
 
     def _set_init(self, x0: Number):
         self.init = x0
-        self.initialized = True
         self.solver.initialized_vars.append(self)
 
     def __call__(self, t, y):
@@ -247,39 +230,41 @@ def compose(fun: Callable, var: TemporalVar) -> TemporalVar:
     return var.apply_function(fun)
 
 
-class FeedVar(TemporalVar):
-    def __init__(self, solver: Solver, fun: Callable = None):
-        super().__init__(solver, fun)
-        self.solver.feed_vars.append(self)
-
-    def set_value(self, value):
-        if isinstance(value, TemporalVar):
-            if value.function is not None:
-                self.function = value.function
-            else:
-                raise RecursionError("There is an algebraic loop with this variable.")
+class LoopNode(TemporalVar):
+    def __init__(self, solver: Solver, input_value):
+        super().__init__(solver)
+        if isinstance(input_value, TemporalVar):
+            self.function = input_value.function
         else:
-            self.function = lambda t, y: value
+            self.function = lambda t, y: input_value
+        self._additional_signals = []
+
+    def loop_into(self, added_value: Union[TemporalVar, Number]):
+        self._additional_signals.append(added_value)
+
+    def __call__(self, t, y):
+        return self.function(t, y) + sum(fun(t, y) if callable(fun) else fun for fun in self._additional_signals)
 
 
 if __name__ == '__main__':
     solver = Solver()
 
-
     m = 1
     k = 1
     c = 1
-    v0 = 2
+    v0 = 0
     x0 = 5
-    source=solver.create_source(lambda t:np.sin(t))
-    pos, vit, acc = solver.create_derivatives((x0, v0))
-    acc.set_value(1 / m * (-c * vit - k * pos))
-    u=5*pos
+    x = 1
+    # acc=solver.create_source(lambda t:5)
+    acc = solver.loop_node(1 / m * x)
+    vit = solver.integrate(acc, v0)
+    pos = solver.integrate(vit, x0)
+    acc.loop_into(1 / m * (-c * vit - k * pos))
+    acc.loop_into(5)
     solver.solve(50)
-    #
-    print(source.values)
+    # print(solver.y)
+
     plt.plot(pos.t, pos.values)
-    plt.plot(u.t, u.values)
     plt.show()
 
     # def f(k=2, c=3, m=5, x0=1, v0=1):
