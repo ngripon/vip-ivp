@@ -69,6 +69,7 @@ class Solver:
 
         def wrapper(*args, **kwargs):
             self.clear()
+            # TODO: Turn output leaves that are instance of temporal variables into (var.t, var.values) tuples
             var = f(*args, **kwargs)
             self.solve(t_end)
             return var.t, var.values
