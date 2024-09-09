@@ -1,5 +1,6 @@
 import time
 from inspect import signature
+from numbers import Number
 from typing import Callable
 
 import matplotlib.pyplot as plt
@@ -18,7 +19,7 @@ class Solver:
         self.y = None
         self.solved = False
 
-    def create_variables(self, x0: tuple) -> list:
+    def create_variables(self, x0: tuple[Number]) -> list:
         try:
             n = len(x0)
         except TypeError:
@@ -38,7 +39,7 @@ class Solver:
         self.dim += n
         return var_list
 
-    def solve(self, t_end: float):
+    def solve(self, t_end: Number):
         # Apply checks before attempting to solve
         self._check_feed_init()
         x0 = [x.init for x in self.initialized_vars]
@@ -57,7 +58,7 @@ class Solver:
         self.solved = True
         return res
 
-    def explore(self, f: Callable, t_end: float, bounds=()):
+    def explore(self, f: Callable, t_end: Number, bounds=()):
         params = signature(f).parameters
 
         def wrapper(*args, **kwargs):
@@ -116,97 +117,114 @@ class TemporalVar:
     def reset(self):
         self._values = None
 
-    def set_init(self, x0: float):
+    def set_init(self, x0: Number):
         self.init = x0
         self.initialized = True
         self.solver.initialized_vars.append(self)
 
-    def __add__(self, other):
-        if isinstance(other, TemporalVar):
-            return TemporalVar(self.solver, lambda t, y: self.function(t, y) + other.function(t, y))
-        else:
-            return TemporalVar(self.solver, lambda t, y: other + self.function(t, y))
+    def apply_function(self, f: Callable) -> "TemporalVar":
+        return TemporalVar(self.solver, lambda t, y: f(self(t, y)))
 
-    def __radd__(self, other):
+    def __call__(self, t, y):
+        return self.function(t, y)
+
+    def __add__(self, other) -> "TemporalVar":
+        if isinstance(other, TemporalVar):
+            return TemporalVar(self.solver, lambda t, y: self(t, y) + other(t, y))
+        else:
+            return TemporalVar(self.solver, lambda t, y: other + self(t, y))
+
+    def __radd__(self, other) -> "TemporalVar":
         return self.__add__(other)
 
-    def __sub__(self, other):
+    def __sub__(self, other) -> "TemporalVar":
         if isinstance(other, TemporalVar):
-            return TemporalVar(self.solver, lambda t, y: self.function(t, y) - other.function(t, y))
+            return TemporalVar(self.solver, lambda t, y: self(t, y) - other(t, y))
         else:
-            return TemporalVar(self.solver, lambda t, y: self.function(t, y) - other)
+            return TemporalVar(self.solver, lambda t, y: self(t, y) - other)
 
-    def __rsub__(self, other):
+    def __rsub__(self, other) -> "TemporalVar":
         if isinstance(other, TemporalVar):
-            return TemporalVar(self.solver, lambda t, y: other.function(t, y) - self.function(t, y))
+            return TemporalVar(self.solver, lambda t, y: other(t, y) - self(t, y))
         else:
-            return TemporalVar(self.solver, lambda t, y: other - self.function(t, y))
+            return TemporalVar(self.solver, lambda t, y: other - self(t, y))
 
-    def __mul__(self, other):
+    def __mul__(self, other) -> "TemporalVar":
         if isinstance(other, TemporalVar):
-            return TemporalVar(self.solver, lambda t, y: self.function(t, y) * other.function(t, y))
+            return TemporalVar(self.solver, lambda t, y: self(t, y) * other(t, y))
         else:
-            return TemporalVar(self.solver, lambda t, y: other * self.function(t, y))
+            return TemporalVar(self.solver, lambda t, y: other * self(t, y))
 
-    def __rmul__(self, other):
+    def __rmul__(self, other) -> "TemporalVar":
         return self.__mul__(other)
 
-    def __truediv__(self, other):
+    def __truediv__(self, other) -> "TemporalVar":
         if isinstance(other, TemporalVar):
-            return TemporalVar(self.solver, lambda t, y: self.function(t, y) / other.function(t, y))
+            return TemporalVar(self.solver, lambda t, y: self(t, y) / other(t, y))
         else:
-            return TemporalVar(self.solver, lambda t, y: self.function(t, y) / other)
+            return TemporalVar(self.solver, lambda t, y: self(t, y) / other)
 
-    def __rtruediv__(self, other):
+    def __rtruediv__(self, other) -> "TemporalVar":
         if isinstance(other, TemporalVar):
-            return TemporalVar(self.solver, lambda t, y: other.function(t, y) / self.function(t, y))
+            return TemporalVar(self.solver, lambda t, y: other(t, y) / self(t, y))
         else:
-            return TemporalVar(self.solver, lambda t, y: other / self.function(t, y))
+            return TemporalVar(self.solver, lambda t, y: other / self(t, y))
 
-    def __floordiv__(self, other):
+    def __floordiv__(self, other) -> "TemporalVar":
         if isinstance(other, TemporalVar):
-            return TemporalVar(self.solver, lambda t, y: self.function(t, y) // other.function(t, y))
+            return TemporalVar(self.solver, lambda t, y: self(t, y) // other(t, y))
         else:
-            return TemporalVar(self.solver, lambda t, y: self.function(t, y) // other)
+            return TemporalVar(self.solver, lambda t, y: self(t, y) // other)
 
-    def __rfloordiv__(self, other):
+    def __rfloordiv__(self, other) -> "TemporalVar":
         if isinstance(other, TemporalVar):
-            return TemporalVar(self.solver, lambda t, y: other.function(t, y) // self.function(t, y))
+            return TemporalVar(self.solver, lambda t, y: other(t, y) // self(t, y))
         else:
-            return TemporalVar(self.solver, lambda t, y: other // self.function(t, y))
+            return TemporalVar(self.solver, lambda t, y: other // self(t, y))
 
-    def __mod__(self, other):
+    def __mod__(self, other) -> "TemporalVar":
         if isinstance(other, TemporalVar):
-            return TemporalVar(self.solver, lambda t, y: self.function(t, y) % other.function(t, y))
+            return TemporalVar(self.solver, lambda t, y: self(t, y) % other(t, y))
         else:
-            return TemporalVar(self.solver, lambda t, y: self.function(t, y) % other)
+            return TemporalVar(self.solver, lambda t, y: self(t, y) % other)
 
-    def __rmod__(self, other):
+    def __rmod__(self, other) -> "TemporalVar":
         if isinstance(other, TemporalVar):
-            return TemporalVar(self.solver, lambda t, y: other.function(t, y) % self.function(t, y))
+            return TemporalVar(self.solver, lambda t, y: other(t, y) % self(t, y))
         else:
-            return TemporalVar(self.solver, lambda t, y: other % self.function(t, y))
+            return TemporalVar(self.solver, lambda t, y: other % self(t, y))
 
-    def __pow__(self, other):
+    def __pow__(self, other) -> "TemporalVar":
         if isinstance(other, TemporalVar):
-            return TemporalVar(self.solver, lambda t, y: self.function(t, y) ** other.function(t, y))
+            return TemporalVar(self.solver, lambda t, y: self(t, y) ** other(t, y))
         else:
-            return TemporalVar(self.solver, lambda t, y: self.function(t, y) ** other)
+            return TemporalVar(self.solver, lambda t, y: self(t, y) ** other)
 
-    def __rpow__(self, other):
+    def __rpow__(self, other) -> "TemporalVar":
         if isinstance(other, TemporalVar):
-            return TemporalVar(self.solver, lambda t, y: other.function(t, y) ** self.function(t, y))
+            return TemporalVar(self.solver, lambda t, y: other(t, y) ** self(t, y))
         else:
-            return TemporalVar(self.solver, lambda t, y: other ** self.function(t, y))
+            return TemporalVar(self.solver, lambda t, y: other ** self(t, y))
 
-    def __pos__(self):
+    def __pos__(self) -> "TemporalVar":
         return self
 
-    def __neg__(self):
-        return TemporalVar(self.solver, lambda t, y: - self.function(t, y))
+    def __neg__(self) -> "TemporalVar":
+        return TemporalVar(self.solver, lambda t, y: - self(t, y))
 
-    def __abs__(self):
-        return TemporalVar(self.solver, lambda t, y: abs(self.function(t, y)))
+    def __abs__(self) -> "TemporalVar":
+        return TemporalVar(self.solver, lambda t, y: abs(self(t, y)))
+
+    def __array_ufunc__(self, ufunc, method, *inputs) -> "TemporalVar":
+        if method == "__call__":
+            if len(inputs) == 1:
+                return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0](t, y)))
+            elif len(inputs) == 2:
+                return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0](t, y), inputs[1]))
+            else:
+                return NotImplemented
+        else:
+            return NotImplemented
 
     def __repr__(self):
         if self.solver.solved:
@@ -216,6 +234,10 @@ class TemporalVar:
                 return str(key)
         else:
             return "Variable name has not been found in globals"
+
+
+def compose(fun: Callable, var: TemporalVar) -> TemporalVar:
+    return var.apply_function(fun)
 
 
 class FeedVar(TemporalVar):
