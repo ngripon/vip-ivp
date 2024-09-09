@@ -22,30 +22,37 @@ class Solver:
         self.solved = False
 
     def integrate(self, input_value: "TemporalVar", x0: Number) -> "TemporalVar":
-        self.feed_vars.append(input_value)
-        integrated_variable = TemporalVar(self, lambda t, y, idx=self.dim: y[idx], x0)
-        self.dim += 1
-        return integrated_variable
+        if isinstance(input_value, TemporalVar):
+            self.feed_vars.append(input_value)
+            integrated_variable = TemporalVar(self, lambda t, y, idx=self.dim: y[idx], x0)
+            self.dim += 1
+            return integrated_variable
+        else:
+            raise Exception("Input value must be a TemporalVar instance created from the solver class. "
+                            "Please check the documentation.")
+        
+    def loop_node(self, input_value)->"LoopNode":
+        return LoopNode(self, input_value)
 
-    def create_derivatives(self, x0: Sequence[Number]) -> list:
-        try:
-            n = len(x0)
-        except TypeError:
-            n = 1
-            x0 = (x0,)
-        var_list = []
-        var = TemporalVar(self, lambda t, y, idx=self.dim: y[idx])
-        var._set_init(x0[0])
-        var_list.append(var)
-        for i in range(n):
-            if i != n - 1:
-                var = FeedVar(self, lambda t, y, idx=self.dim + i + 1: y[idx])
-                var._set_init(x0[1 + i])
-            else:
-                var = FeedVar(self)
-            var_list.append(var)
-        self.dim += n
-        return var_list
+    # def create_derivatives(self, x0: Sequence[Number]) -> list:
+    #     try:
+    #         n = len(x0)
+    #     except TypeError:
+    #         n = 1
+    #         x0 = (x0,)
+    #     var_list = []
+    #     var = TemporalVar(self, lambda t, y, idx=self.dim: y[idx])
+    #     var._set_init(x0[0])
+    #     var_list.append(var)
+    #     for i in range(n):
+    #         if i != n - 1:
+    #             var = FeedVar(self, lambda t, y, idx=self.dim + i + 1: y[idx])
+    #             var._set_init(x0[1 + i])
+    #         else:
+    #             var = FeedVar(self)
+    #         var_list.append(var)
+    #     self.dim += n
+    #     return var_list
 
     def create_source(self, fun: Callable) -> "TemporalVar":
         """
@@ -255,19 +262,31 @@ def compose(fun: Callable, var: TemporalVar) -> TemporalVar:
     return var.apply_function(fun)
 
 
-class FeedVar(TemporalVar):
-    def __init__(self, solver: Solver, fun: Callable = None):
-        super().__init__(solver, fun)
-        self.solver.feed_vars.append(self)
-
-    def set_value(self, value):
-        if isinstance(value, TemporalVar):
-            if value.function is not None:
-                self.function = value.function
-            else:
-                raise RecursionError("There is an algebraic loop with this variable.")
+class LoopNode(TemporalVar):
+    def __init__(self, solver: Solver, input_value):
+        super().__init__(solver)
+        if isinstance(input_value, TemporalVar):
+            self.function = input_value.function
         else:
-            self.function = lambda t, y: value
+            self.function = lambda t, y: input_value
+
+    def loop_into(self, added_signal: TemporalVar):
+        self.function = lambda t, y: self(t, y) + added_signal(t, y)
+
+
+# class FeedVar(TemporalVar):
+#     def __init__(self, solver: Solver, fun: Callable = None):
+#         super().__init__(solver, fun)
+#         self.solver.feed_vars.append(self)
+#
+#     def set_value(self, value):
+#         if isinstance(value, TemporalVar):
+#             if value.function is not None:
+#                 self.function = value.function
+#             else:
+#                 raise RecursionError("There is an algebraic loop with this variable.")
+#         else:
+#             self.function = lambda t, y: value
 
 
 if __name__ == '__main__':
@@ -276,15 +295,17 @@ if __name__ == '__main__':
     m = 1
     k = 1
     c = 1
-    v0 = 2
+    v0 = 0
     x0 = 5
-    pos, vit, acc = solver.create_derivatives((x0, v0))
-    acc.set_value(1 / m * (-c * vit - k * pos))
-    u = 5 * pos
+    x = 1
+
+    acc = solver.loop_node(1 / m * x)
+    vit = solver.integrate(acc, v0)
+    pos = solver.integrate(vit, x0)
+    # acc.loop_into(1 / m * (-c * vit - k * pos + x))
     solver.solve(50)
-    #
+
     plt.plot(pos.t, pos.values)
-    plt.plot(u.t, u.values)
     plt.show()
 
     # def f(k=2, c=3, m=5, x0=1, v0=1):
