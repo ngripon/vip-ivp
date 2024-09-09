@@ -1,5 +1,6 @@
 import functools
 import time
+from collections import deque
 from collections.abc import Sequence
 from inspect import signature
 from numbers import Number
@@ -72,15 +73,21 @@ class Solver:
         fig, axs = sliderplot(wrapper, bounds, show)
         return fig, axs
 
+    def _dy(self, t, y):
+        return [var(t, y) if callable(var) else var for var in self.feed_vars]
+
     def _clear(self):
         """
         Clear stored information.
         """
         self.__init__()
 
-    def _dy(self, t, y):
-        # print(self.feed_vars)
-        return [var(t, y) if callable(var) else var for var in self.feed_vars]
+    def unwrap_leaves(self, outputs):
+        """
+        Trnasform all TemporalVar in an iterable into (x.t, x.values) pairs
+        :param outputs:
+        :return:
+        """
 
 
 class TemporalVar:
@@ -261,7 +268,6 @@ class LoopNode(TemporalVar):
         self._additional_signals.append(added_value)
 
     def __call__(self, t, y):
-        # print(f"{type(self._additional_signals[0])}")
         return self.function(t, y) + sum(fun(t, y) if callable(fun) else fun for fun in self._additional_signals)
 
 
@@ -289,14 +295,11 @@ if __name__ == '__main__':
     # plt.show()
 
     def f(k=2, c=3, m=5, x0=1, v0=1):
-        acc = solver.create_source(1 / m)
+        acc = solver.loop_node(1 / m)
         vit = solver.integrate(acc, v0)
         pos = solver.integrate(vit, x0)
-        u = c * pos
-        # acc.loop_into(t)
-        # print(acc(0,np.array([0,0])))
-        # acc.loop_into(1 / m * (-c * vit - k * pos))
-        return u
+        acc.loop_into(1 / m * (-c * vit - k * pos))
+        return pos
 
 
     # pos=f()
