@@ -1,3 +1,5 @@
+import math
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
@@ -22,3 +24,13 @@ def test_pendulum(solver):
     solver.solve(10)
     # plt.plot(th.t, th.values)
     # plt.show()
+
+def test_source(solver):
+    u=solver.create_source(lambda t:5*np.sin(5*t))
+    th, d_th, dd_th = solver.create_derivatives((0, np.pi / 2))
+    dd_th.set_value(-9.81 / 1 * np.sin(th)+u)
+    solver.solve(10)
+    print(u.values)
+    plt.plot(u.t, u.values)
+    plt.plot(th.t, th.values)
+    plt.show()
