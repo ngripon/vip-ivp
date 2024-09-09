@@ -42,6 +42,11 @@ class Solver:
         return var_list
 
     def create_source(self, fun: Callable) -> "TemporalVar":
+        """
+        Create a source signal from a temporal function.
+        :param fun: function f(t)
+        :return: Solver variable
+        """
         return TemporalVar(self, lambda t, y: fun(t))
 
     def solve(self, t_end: Number):
