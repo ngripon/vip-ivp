@@ -40,7 +40,6 @@ class Solver:
 
     def solve(self, t_end: Number):
         # Apply checks before attempting to solve
-        self._check_feed_init()
         x0 = [x.init for x in self.initialized_vars]
         # Reinit values
         [var._reset() for var in self.vars]
@@ -77,11 +76,6 @@ class Solver:
     def _dy(self, t, y):
         return [var(t, y) if callable(var) else var for var in self.feed_vars]
 
-    def _check_feed_init(self):
-        uninitialized_vars = [var for var in self.feed_vars if hasattr(var, "function") and var.function is None]
-        if uninitialized_vars:
-            raise ValueError(f"The following variables have not been set a value: {uninitialized_vars}. "
-                             f"Call the set_value() method of each of these variables.")
 
 
 class TemporalVar:
@@ -89,7 +83,6 @@ class TemporalVar:
         self.solver = solver
         self.init = None
         self.function = fun
-        self.initialized = False
         self._values = None
 
         self.solver.vars.append(self)
@@ -120,7 +113,6 @@ class TemporalVar:
 
     def _set_init(self, x0: Number):
         self.init = x0
-        self.initialized = True
         self.solver.initialized_vars.append(self)
 
     def __call__(self, t, y):
