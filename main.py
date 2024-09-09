@@ -5,6 +5,7 @@ from numbers import Number
 from typing import Callable
 
 import matplotlib.pyplot as plt
+import numpy as np
 from scipy.integrate import solve_ivp
 
 from variable_exploration import explore
@@ -39,6 +40,9 @@ class Solver:
             var_list.append(var)
         self.dim += n
         return var_list
+
+    def create_source(self, fun: Callable) -> "TemporalVar":
+        return TemporalVar(self, lambda t, y: fun(t))
 
     def solve(self, t_end: Number):
         # Apply checks before attempting to solve
@@ -257,25 +261,27 @@ if __name__ == '__main__':
     solver = Solver()
 
 
-    # m = 1
-    # k = 1
-    # c = 1
-    # v0 = 2
-    # x0 = 5
-    # pos, vit, acc = solver.create_variables((x0, v0))
-    # acc.set_value(1 / m * (-c * vit - k * pos))
-    # u=5*pos
-    # solver.solve(50)
-    # #
-    # plt.plot(pos.t, pos.values)
-    # plt.plot(u.t, u.values)
-    # plt.show()
+    m = 1
+    k = 1
+    c = 1
+    v0 = 2
+    x0 = 5
+    source=solver.create_source(lambda t:np.sin(t))
+    pos, vit, acc = solver.create_derivatives((x0, v0))
+    acc.set_value(1 / m * (-c * vit - k * pos))
+    u=5*pos
+    solver.solve(50)
+    #
+    print(source.values)
+    plt.plot(pos.t, pos.values)
+    plt.plot(u.t, u.values)
+    plt.show()
 
-    def f(k=2, c=3, m=5, x0=1, v0=1):
-        pos, vit, acc = solver.create_derivatives((x0, v0))
-        acc.set_value(1 / m * (-c * vit - k * pos))
-        return pos
-
-
-    t_final = 50
-    solver.explore(f, t_final, bounds=((-10, 10), (-10, 10), (0, 10)))
+    # def f(k=2, c=3, m=5, x0=1, v0=1):
+    #     pos, vit, acc = solver.create_derivatives((x0, v0))
+    #     acc.set_value(1 / m * (-c * vit - k * pos))
+    #     return pos
+    #
+    #
+    # t_final = 50
+    # solver.explore(f, t_final, bounds=((-10, 10), (-10, 10), (0, 10)))
