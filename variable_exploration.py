@@ -74,7 +74,7 @@ if __name__ == '__main__':
     solver = Solver()
     v0 = 2
     x0 = 5
-    pos, vit, acc = solver.create_variables((x0, v0))
+    pos, vit, acc = solver.create_derivatives((x0, v0))
 
 
     def f(k=2, c=3, m=5):

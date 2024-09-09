@@ -1,4 +1,5 @@
 import time
+from collections.abc import Sequence
 from inspect import signature
 from numbers import Number
 from typing import Callable
@@ -19,7 +20,7 @@ class Solver:
         self.y = None
         self.solved = False
 
-    def create_variables(self, x0: tuple[Number]) -> list:
+    def create_derivatives(self, x0: Sequence[Number]) -> list:
         try:
             n = len(x0)
         except TypeError:
@@ -27,12 +28,12 @@ class Solver:
             x0 = (x0,)
         var_list = []
         var = TemporalVar(self, lambda t, y, idx=self.dim: y[idx])
-        var.set_init(x0[0])
+        var._set_init(x0[0])
         var_list.append(var)
         for i in range(n):
             if i != n - 1:
                 var = FeedVar(self, lambda t, y, idx=self.dim + i + 1: y[idx])
-                var.set_init(x0[1 + i])
+                var._set_init(x0[1 + i])
             else:
                 var = FeedVar(self)
             var_list.append(var)
@@ -44,7 +45,7 @@ class Solver:
         self._check_feed_init()
         x0 = [x.init for x in self.initialized_vars]
         # Reinit values
-        [var.reset() for var in self.vars]
+        [var._reset() for var in self.vars]
         start = time.time()
         try:
             res = solve_ivp(self._dy, (0, t_end), x0)
@@ -62,24 +63,21 @@ class Solver:
         params = signature(f).parameters
 
         def wrapper(*args, **kwargs):
-            self.clear()
+            self._clear()
             var = f(*args, **kwargs)
             self.solve(t_end)
             return var.t, var.values
 
         explore(wrapper, params, bounds)
 
-    def clear(self):
+    def _clear(self):
         """
         Clear stored information.
         """
         self.__init__()
 
     def _dy(self, t, y):
-        result = []
-        for var in self.feed_vars:
-            result.append(var.function(t, y))
-        return result
+        return [var(t, y) for var in self.feed_vars]
 
     def _check_feed_init(self):
         uninitialized_vars = [var for var in self.feed_vars if var.function is None]
@@ -114,16 +112,16 @@ class TemporalVar:
                             "Call the solve() method before inquiring the time variable.")
         return self.solver.t
 
-    def reset(self):
+    def apply_function(self, f: Callable) -> "TemporalVar":
+        return TemporalVar(self.solver, lambda t, y: f(self(t, y)))
+
+    def _reset(self):
         self._values = None
 
-    def set_init(self, x0: Number):
+    def _set_init(self, x0: Number):
         self.init = x0
         self.initialized = True
         self.solver.initialized_vars.append(self)
-
-    def apply_function(self, f: Callable) -> "TemporalVar":
-        return TemporalVar(self.solver, lambda t, y: f(self(t, y)))
 
     def __call__(self, t, y):
         return self.function(t, y)
@@ -274,7 +272,7 @@ if __name__ == '__main__':
     # plt.show()
 
     def f(k=2, c=3, m=5, x0=1, v0=1):
-        pos, vit, acc = solver.create_variables((x0, v0))
+        pos, vit, acc = solver.create_derivatives((x0, v0))
         acc.set_value(1 / m * (-c * vit - k * pos))
         return pos
 
