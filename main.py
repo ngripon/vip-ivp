@@ -2,7 +2,6 @@ import functools
 import time
 from collections import deque
 from collections.abc import Sequence
-from inspect import signature
 from numbers import Number
 from typing import Callable, Union
 
@@ -10,7 +9,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.integrate import solve_ivp
 from sliderplot import sliderplot
-from varname import varname, ImproperUseError
 
 
 class Solver:
@@ -84,7 +82,7 @@ class Solver:
 
     def unwrap_leaves(self, outputs):
         """
-        Trnasform all TemporalVar in an iterable into (x.t, x.values) pairs
+        Transform all TemporalVar in an iterable into (x.t, x.values) pairs
         :param outputs:
         :return:
         """
@@ -96,10 +94,6 @@ class TemporalVar:
         self.init = None
         self.function = fun
         self._values = None
-        try:
-            self._id = varname()
-        except ImproperUseError:
-            self._id = "Unknown"
 
         self.solver.vars.append(self)
         if x0 is not None:
@@ -248,7 +242,7 @@ class TemporalVar:
         if self.solver.solved:
             return f"{self.values}"
         else:
-            return self._id
+            return "Please call solve to get the values."
 
 
 def compose(fun: Callable, var: TemporalVar) -> TemporalVar:
