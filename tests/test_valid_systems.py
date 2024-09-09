@@ -48,7 +48,7 @@ def test_integrate_scalar(solver):
     x=solver.integrate(5,1)
     solver.solve(10)
 
-def plant_controller(solver):
+def test_plant_controller(solver):
     def controller(error):
         ki = 1
         kp = 1
@@ -74,3 +74,6 @@ def plant_controller(solver):
     error.loop_into(-y)
 
     solver.solve(50)
+
+    plt.plot(y.t, y.values)
+    plt.show()
