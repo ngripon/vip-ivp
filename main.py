@@ -1,14 +1,14 @@
+import functools
 import time
+from collections import deque
 from collections.abc import Sequence
-from inspect import signature
 from numbers import Number
 from typing import Callable, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy.integrate import solve_ivp
-
-from variable_exploration import explore
+from sliderplot import sliderplot
 
 
 class Solver:
@@ -30,13 +30,16 @@ class Solver:
     def loop_node(self, input_value) -> "LoopNode":
         return LoopNode(self, input_value)
 
-    def create_source(self, fun: Callable) -> "TemporalVar":
+    def create_source(self, value: Union[Callable, Number]) -> "TemporalVar":
         """
         Create a source signal from a temporal function.
-        :param fun: function f(t)
+        :param value: function f(t) or scalar
         :return: Solver variable
         """
-        return TemporalVar(self, lambda t, y: fun(t))
+        if callable(value):
+            return TemporalVar(self, lambda t, y: value(t))
+        else:
+            return TemporalVar(self, lambda t, y: value)
 
     def solve(self, t_end: Number):
         # Apply checks before attempting to solve
@@ -56,16 +59,21 @@ class Solver:
         self.solved = True
         return res
 
-    def explore(self, f: Callable, t_end: Number, bounds=()):
-        params = signature(f).parameters
-
+    def explore(self, f: Callable, t_end: Number, bounds=(), show=True):
         def wrapper(*args, **kwargs):
             self._clear()
-            var = f(*args, **kwargs)
+            outputs = f(*args, **kwargs)
             self.solve(t_end)
-            return var.t, var.values
+            transformed_outputs = self.unwrap_leaves(outputs)
+            return transformed_outputs
 
-        explore(wrapper, params, bounds)
+        functools.update_wrapper(wrapper, f)
+
+        fig, axs = sliderplot(wrapper, bounds, show)
+        return fig, axs
+
+    def _dy(self, t, y):
+        return [var(t, y) if callable(var) else var for var in self.feed_vars]
 
     def _clear(self):
         """
@@ -73,9 +81,16 @@ class Solver:
         """
         self.__init__()
 
-    def _dy(self, t, y):
-        return [var(t, y) if callable(var) else var for var in self.feed_vars]
-
+    def unwrap_leaves(self, outputs):
+        """
+        Transform all TemporalVar in an iterable into (x.t, x.values) pairs
+        :param outputs:
+        :return:
+        """
+        if isinstance(outputs, TemporalVar):
+            return outputs.t, outputs.values
+        else:
+            return list(map(self.unwrap_leaves, (el for el in outputs)))
 
 
 class TemporalVar:
@@ -95,7 +110,7 @@ class TemporalVar:
             raise Exception("The differential system has not been solved. "
                             "Call the solve() method before inquiring the variable values.")
         if self._values is None:
-            self._values = self.function(self.solver.t, self.solver.y)
+            self._values = self(self.solver.t, self.solver.y)
         return self._values
 
     @property
@@ -208,9 +223,21 @@ class TemporalVar:
     def __array_ufunc__(self, ufunc, method, *inputs) -> "TemporalVar":
         if method == "__call__":
             if len(inputs) == 1:
-                return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0](t, y)))
+                if callable(inputs[0]):
+                    return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0](t, y)))
+                else:
+                    return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0]))
             elif len(inputs) == 2:
-                return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0](t, y), inputs[1]))
+                # Bad coding...
+                if callable(inputs[0]) and callable(inputs[1]):
+                    return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0](t, y), inputs[1](t, y)))
+                elif callable(inputs[0]) and not callable(inputs[1]):
+                    return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0](t, y), inputs[1]))
+                elif not callable(inputs[0]) and callable(inputs[1]):
+                    return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0], inputs[1](t, y)))
+                else:
+                    return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0], inputs[1]))
+
             else:
                 return NotImplemented
         else:
@@ -219,11 +246,8 @@ class TemporalVar:
     def __repr__(self):
         if self.solver.solved:
             return f"{self.values}"
-        for key, value in globals().items():
-            if value is self:
-                return str(key)
         else:
-            return "Variable name has not been found in globals"
+            return "Please call solve to get the values."
 
 
 def compose(fun: Callable, var: TemporalVar) -> TemporalVar:
@@ -249,29 +273,30 @@ class LoopNode(TemporalVar):
 if __name__ == '__main__':
     solver = Solver()
 
-    m = 1
-    k = 1
-    c = 1
-    v0 = 0
-    x0 = 5
-    x = 1
-    # acc=solver.create_source(lambda t:5)
-    acc = solver.loop_node(1 / m * x)
-    vit = solver.integrate(acc, v0)
-    pos = solver.integrate(vit, x0)
-    acc.loop_into(1 / m * (-c * vit - k * pos))
-    acc.loop_into(5)
-    solver.solve(50)
-    # print(solver.y)
 
-    plt.plot(pos.t, pos.values)
-    plt.show()
+    #
+    # m = 1
+    # k = 1
+    # c = 1
+    # v0 = 0
+    # x0 = 5
+    # x = 1
+    # acc = solver.loop_node(1 / m * x)
+    # vit = solver.integrate(acc, v0)
+    # pos = solver.integrate(vit, x0)
+    # acc.loop_into(1 / m * (-c * vit - k * pos))
+    # acc.loop_into(5)
+    # solver.solve(50)
+    # plt.plot(acc.t, acc.values)
+    # plt.show()
 
-    # def f(k=2, c=3, m=5, x0=1, v0=1):
-    #     pos, vit, acc = solver.create_derivatives((x0, v0))
-    #     acc.set_value(1 / m * (-c * vit - k * pos))
-    #     return pos
-    #
-    #
-    # t_final = 50
-    # solver.explore(f, t_final, bounds=((-10, 10), (-10, 10), (0, 10)))
+    def f(k=2, c=3, m=5, x0=1, v0=1):
+        acc = solver.loop_node(1 / m)
+        vit = solver.integrate(acc, v0)
+        pos = solver.integrate(vit, x0)
+        acc.loop_into(1 / m * (-c * vit - k * pos))
+        return (pos, acc), (vit, acc)
+
+
+    t_final = 50
+    solver.explore(f, t_final, bounds=((-10, 10), (-10, 10), (0, 10)))
