@@ -1,4 +1,5 @@
 import pytest
+from matplotlib import pyplot as plt
 
 from main import Solver
 

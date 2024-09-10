@@ -41,14 +41,22 @@ class Solver:
         else:
             return TemporalVar(self, lambda t, y: value)
 
-    def solve(self, t_end: Number):
+    def solve(self, t_end: Number, method='RK45', t_eval=None, **options) -> None:
+        """
+        Solve the equations of the dynamical system through an integration scheme.
+        :param t_end: Time at which the integration stops
+        :param method: Integration method to use. For more information, check https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html.
+        :param t_eval: Times at which to store the computed solution, must be sorted and lie within t_span. If None (default), use points selected by the solver.
+        :param options: Please check https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html.
+        :return:
+        """
         # Apply checks before attempting to solve
         x0 = [x.init for x in self.initialized_vars]
         # Reinit values
         [var._reset() for var in self.vars]
         start = time.time()
         try:
-            res = solve_ivp(self._dy, (0, t_end), x0)
+            res = solve_ivp(self._dy, (0, t_end), x0, method=method, t_eval=t_eval, **options)
         except RecursionError:
             raise RecursionError("An algebraic loop has been detected in the system. "
                                  "Please check in the set_value() methods if a variable use itself for computing "
@@ -57,7 +65,6 @@ class Solver:
         self.t = res.t
         self.y = res.y
         self.solved = True
-        return res
 
     def explore(self, f: Callable, t_end: Number, bounds=(), show=True):
         def wrapper(*args, **kwargs):
@@ -275,28 +282,28 @@ if __name__ == '__main__':
 
 
     #
-    # m = 1
-    # k = 1
-    # c = 1
-    # v0 = 0
-    # x0 = 5
-    # x = 1
-    # acc = solver.loop_node(1 / m * x)
-    # vit = solver.integrate(acc, v0)
-    # pos = solver.integrate(vit, x0)
-    # acc.loop_into(1 / m * (-c * vit - k * pos))
-    # acc.loop_into(5)
-    # solver.solve(50)
-    # plt.plot(acc.t, acc.values)
-    # plt.show()
+    m = 1
+    k = 1
+    c = 1
+    v0 = 0
+    x0 = 5
+    x = 1
+    acc = solver.loop_node(1 / m * x)
+    vit = solver.integrate(acc, v0)
+    pos = solver.integrate(vit, x0)
+    acc.loop_into(1 / m * (-c * vit - k * pos))
+    acc.loop_into(5)
+    solver.solve(50, max_step=0.01)
+    plt.plot(acc.t, acc.values)
+    plt.show()
 
-    def f(k=2, c=3, m=5, x0=1, v0=1):
-        acc = solver.loop_node(1 / m)
-        vit = solver.integrate(acc, v0)
-        pos = solver.integrate(vit, x0)
-        acc.loop_into(1 / m * (-c * vit - k * pos))
-        return (pos, acc), (vit, acc)
-
-
-    t_final = 50
-    solver.explore(f, t_final, bounds=((-10, 10), (-10, 10), (0, 10)))
+    # def f(k=2, c=3, m=5, x0=1, v0=1):
+    #     acc = solver.loop_node(1 / m)
+    #     vit = solver.integrate(acc, v0)
+    #     pos = solver.integrate(vit, x0)
+    #     acc.loop_into(1 / m * (-c * vit - k * pos))
+    #     return (pos, acc), (vit, acc)
+    #
+    #
+    # t_final = 50
+    # solver.explore(f, t_final, bounds=((-10, 10), (-10, 10), (0, 10)))
