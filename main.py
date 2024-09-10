@@ -65,7 +65,6 @@ class Solver:
             outputs = f(*args, **kwargs)
             self.solve(t_end)
             transformed_outputs = self.unwrap_leaves(outputs)
-            print(transformed_outputs)
             return transformed_outputs
 
         functools.update_wrapper(wrapper, f)
