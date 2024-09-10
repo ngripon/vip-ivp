@@ -38,7 +38,7 @@ def test_multiple_plots(solver):
         vit = solver.integrate(acc, v0)
         pos = solver.integrate(vit, x0)
         acc.loop_into(1 / m * (-c * vit - k * pos))
-        return (pos, vit), (vit,)
+        return (pos, vit), (acc,)
 
     t_final = 50
     solver.explore(f, t_final, bounds=((-10, 10), (-10, 10), (0, 10)))
