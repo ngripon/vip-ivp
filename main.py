@@ -62,9 +62,9 @@ class Solver:
     def explore(self, f: Callable, t_end: Number, bounds=(), show=True):
         def wrapper(*args, **kwargs):
             self._clear()
-            var = f(*args, **kwargs)
+            outputs = f(*args, **kwargs)
             self.solve(t_end)
-            return var.t, var.values
+            return self.unwrap_leaves(outputs)
 
         functools.update_wrapper(wrapper, f)
 
@@ -86,6 +86,19 @@ class Solver:
         :param outputs:
         :return:
         """
+        if isinstance(outputs, TemporalVar):
+            return outputs.t, outputs.values
+        else:
+            outputs = [list(outputs)]
+            to_visit = deque(outputs)
+            while to_visit:
+                current = to_visit.pop()
+                for i, variable in enumerate(current):
+                    if isinstance(variable, TemporalVar):
+                        current[i] = (variable.t, variable.values)
+                    else:
+                        to_visit.append(list(variable))
+        return outputs[0]
 
 
 class TemporalVar:
@@ -221,16 +234,16 @@ class TemporalVar:
                 if callable(inputs[0]):
                     return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0](t, y)))
                 else:
-                    return TemporalVar(self.solver, lambda t,y:ufunc(inputs[0]))
+                    return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0]))
             elif len(inputs) == 2:
                 # Bad coding...
                 if callable(inputs[0]) and callable(inputs[1]):
-                    return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0](t, y), inputs[1](t,y)))
+                    return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0](t, y), inputs[1](t, y)))
                 elif callable(inputs[0]) and not callable(inputs[1]):
                     return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0](t, y), inputs[1]))
                 elif not callable(inputs[0]) and callable(inputs[1]):
-                    return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0], inputs[1](t,y)))
-                else :
+                    return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0], inputs[1](t, y)))
+                else:
                     return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0], inputs[1]))
 
             else:
@@ -288,21 +301,13 @@ if __name__ == '__main__':
     # plt.plot(pos.t, pos.values)
     # plt.show()
 
-    def f(k=2, c=3, m=5, x0=1, v0=1):
-        acc = solver.loop_node(1 / m)
-        vit = solver.integrate(acc, v0)
-        pos = solver.integrate(vit, x0)
-        acc.loop_into(1 / m * (-c * vit - k * pos))
-        return pos
-
-
-    # pos=f()
-    # solver.solve(50)
-    # print(pos.values)
-    # solver._clear()
-    # pos=f()
-    # solver.solve(50)
-    # print(pos.values)
-
-    t_final = 50
-    solver.explore(f, t_final, bounds=((-10, 10), (-10, 10), (0, 10)))
+    # def f(k=2, c=3, m=5, x0=1, v0=1):
+    #     acc = solver.loop_node(1 / m)
+    #     vit = solver.integrate(acc, v0)
+    #     pos = solver.integrate(vit, x0)
+    #     acc.loop_into(1 / m * (-c * vit - k * pos))
+    #     return pos, acc
+    #
+    #
+    # t_final = 50
+    # solver.explore(f, t_final, bounds=((-10, 10), (-10, 10), (0, 10)))
