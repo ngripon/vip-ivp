@@ -1,7 +1,7 @@
 import functools
 import time
-from collections import deque
-from collections.abc import Sequence
+
+
 from numbers import Number
 from typing import Callable, Union
 

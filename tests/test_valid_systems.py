@@ -80,5 +80,3 @@ def test_plant_controller(solver):
 
     solver.solve(50)
 
-    # plt.plot(y.t, y.values)
-    # plt.show()
