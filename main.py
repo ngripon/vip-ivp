@@ -118,7 +118,7 @@ class TemporalVar:
             raise Exception("The differential system has not been solved. "
                             "Call the solve() method before inquiring the variable values.")
         if self._values is None:
-            self._values = self.function(self.solver.t, self.solver.y)
+            self._values = self(self.solver.t, self.solver.y)
         return self._values
 
     @property
@@ -275,6 +275,8 @@ class LoopNode(TemporalVar):
         self._additional_signals.append(added_value)
 
     def __call__(self, t, y):
+        print(sum(fun(t, y) if callable(fun) else fun for fun in self._additional_signals))
+        print(self.function(t,y))
         return self.function(t, y) + sum(fun(t, y) if callable(fun) else fun for fun in self._additional_signals)
 
 
@@ -283,23 +285,22 @@ if __name__ == '__main__':
 
 
     #
-    # m = 1
-    # k = 1
-    # c = 1
-    # v0 = 0
-    # x0 = 5
-    # x = 1
-    # # acc=solver.create_source(lambda t:5)
-    # acc = solver.loop_node(1 / m * x)
-    # vit = solver.integrate(acc, v0)
-    # pos = solver.integrate(vit, x0)
-    # acc.loop_into(1 / m * (-c * vit - k * pos))
-    # acc.loop_into(5)
-    # solver.solve(50)
-    # # print(solver.y)
-    #
-    # plt.plot(pos.t, pos.values)
-    # plt.show()
+    m = 1
+    k = 1
+    c = 1
+    v0 = 0
+    x0 = 5
+    x = 1
+    acc = solver.loop_node(1 / m * x)
+    vit = solver.integrate(acc, v0)
+    pos = solver.integrate(vit, x0)
+    acc.loop_into(1 / m * (-c * vit - k * pos))
+    acc.loop_into(5)
+    solver.solve(50)
+    print(acc.t)
+    print(acc.values)
+    plt.plot(acc.t, acc.values)
+    plt.show()
 
     # def f(k=2, c=3, m=5, x0=1, v0=1):
     #     acc = solver.loop_node(1 / m)
