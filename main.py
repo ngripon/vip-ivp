@@ -66,7 +66,7 @@ class Solver:
         self.y = res.y
         self.solved = True
 
-    def explore(self, f: Callable, t_end: Number, bounds=(), show=True):
+    def explore(self, f: Callable, t_end: Number, bounds=()):
         def wrapper(*args, **kwargs):
             self._clear()
             outputs = f(*args, **kwargs)
@@ -75,9 +75,7 @@ class Solver:
             return transformed_outputs
 
         functools.update_wrapper(wrapper, f)
-
-        fig, axs = sliderplot(wrapper, bounds, show)
-        return fig, axs
+        sliderplot(wrapper, bounds)
 
     def _dy(self, t, y):
         return [var(t, y) if callable(var) else var for var in self.feed_vars]
