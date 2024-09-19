@@ -89,11 +89,11 @@ def test_mass_spring_bond_graph(solver):
             force1 = -force2
             return force1, force2
 
-        speed1 = solver.loop_node(0)
-        force1, force2 = spring(speed1, 0, k)
-        vit = inertia(force1, m)
-        speed1.loop_into(vit)
+        speed = solver.loop_node(0)
 
-        return speed1
+        force, _ = spring(speed, 0, k)
+        speed.loop_into(inertia(force, m))
+
+        return speed
 
     solver.explore(f, 50)
