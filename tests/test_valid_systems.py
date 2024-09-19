@@ -3,6 +3,7 @@ import math
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
+from numpy.random.mtrand import Sequence
 
 from main import *
 
@@ -80,3 +81,24 @@ def test_plant_controller(solver):
 
     solver.solve(50)
 
+
+def test_mass_spring_bond_graph(solver):
+    def inertia(forces: Sequence[TemporalVar], mass: float):
+        acc = np.sum(forces) / mass + 9.81
+        vit = solver.integrate(acc, 0)
+        return vit
+
+    def spring(speed1, speed2, stiffness: float):
+        x = solver.integrate(speed1 - speed2, 0)
+        force2 = k * x
+        force1 = -force2
+        return force1, force2
+
+    k = 1
+    mass = 1
+    speed1 = solver.loop_node(0)
+    force1, force2 = spring(speed1, 0, k)
+    vit = inertia((force1,), mass)
+    speed1.loop_into(vit)
+
+    solver.solve(50)
