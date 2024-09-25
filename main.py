@@ -29,7 +29,7 @@ class Solver:
         self.dim += 1
         return integrated_variable
 
-    def loop_node(self, input_value) -> "LoopNode":
+    def loop_node(self, input_value=0) -> "LoopNode":
         return LoopNode(self, input_value)
 
     def create_source(self, value: Union[Callable, Number]) -> "TemporalVar":
