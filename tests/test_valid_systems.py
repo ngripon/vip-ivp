@@ -30,7 +30,7 @@ def test_pendulum(solver):
     th = solver.integrate(d_th, np.pi / 2)
     dd_th.loop_into(-9.81 / 1 * np.sin(th))
 
-    solver.solve(10)
+    solver.solve(10, time_step=0.1, t_eval=[0,1])
     plt.plot(th.t, th.values)
     plt.show()
 
