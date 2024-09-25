@@ -1,10 +1,10 @@
 import math
 import operator
+from typing import Sequence
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pytest
-from numpy.random.mtrand import Sequence
 
 from main import *
 
@@ -31,8 +31,8 @@ def test_pendulum(solver):
     dd_th.loop_into(-9.81 / 1 * np.sin(th))
 
     solver.solve(10, time_step=0.1, t_eval=[0,1])
-    plt.plot(th.t, th.values)
-    plt.show()
+    # plt.plot(th.t, th.values)
+    # plt.show()
 
 
 def test_source(solver):
