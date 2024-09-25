@@ -75,7 +75,7 @@ class Solver:
 
     def explore(self, f: Callable, t_end: Number, bounds=()):
         def wrapper(*args, **kwargs):
-            self._clear()
+            self.reset()
             outputs = f(*args, **kwargs)
             self.solve(t_end)
             transformed_outputs = self.unwrap_leaves(outputs)
@@ -87,7 +87,7 @@ class Solver:
     def _dy(self, t, y):
         return [var(t, y) if callable(var) else var for var in self.feed_vars]
 
-    def _clear(self):
+    def reset(self):
         """
         Clear stored information.
         """

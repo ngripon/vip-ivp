@@ -18,7 +18,7 @@ def test_rc_circuit(solver):
             for C in C_values:
                 t=np.linspace(0,100,1001)
                 exact_solution=q0*np.exp(-t/(R*C))
-                solver._clear()
+                solver.reset()
                 dq=solver.loop_node(0)
                 q=solver.integrate(dq, q0)
                 dq.loop_into(-q/(R*C))
