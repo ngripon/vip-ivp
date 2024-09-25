@@ -1,6 +1,7 @@
 import functools
 import operator
 import time
+import warnings
 
 from numbers import Number
 from typing import Callable, Union
@@ -9,6 +10,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.integrate import solve_ivp
 from sliderplot import sliderplot
+
 
 
 class Solver:
@@ -41,7 +43,7 @@ class Solver:
         else:
             return TemporalVar(self, lambda t, y: value)
 
-    def solve(self, t_end: Number, method='RK45', t_eval=None, **options) -> None:
+    def solve(self, t_end: Number, method='RK45', time_step=None, t_eval=None, **options) -> None:
         """
         Solve the equations of the dynamical system through an integration scheme.
         :param t_end: Time at which the integration stops
@@ -55,6 +57,11 @@ class Solver:
         # Reinit values
         [var._reset() for var in self.vars]
         start = time.time()
+        # Set t_eval
+        if time_step is not None:
+            if t_eval is not None:
+                warnings.warn("The value of t_eval has been overridden because time_step parameter is not None.")
+            t_eval=np.arange(0, t_end, time_step)
         try:
             res = solve_ivp(self._dy, (0, t_end), x0, method=method, t_eval=t_eval, **options)
         except RecursionError:
@@ -302,7 +309,7 @@ if __name__ == '__main__':
     pos = solver.integrate(vit, x0)
     acc.loop_into(1 / m * (-c * vit - k * pos))
     acc.loop_into(5)
-    solver.solve(50, max_step=0.01)
+    solver.solve(50, time_step=0.01, t_eval=[0,1])
     plt.plot(acc.t, acc.values)
     plt.show()
 
