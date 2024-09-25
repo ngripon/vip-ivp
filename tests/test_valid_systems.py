@@ -1,4 +1,5 @@
 import math
+import operator
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,6 +19,8 @@ def test_operator_overloading(solver):
     vit = solver.integrate(acc, 0)
     pos = solver.integrate(vit, 0)
     acc.loop_into(-pos * vit - pos / vit % vit // pos + abs(pos ** vit))
+
+    acc(0,[1,1])
     solver.solve(10)
 
 
@@ -26,9 +29,10 @@ def test_pendulum(solver):
     d_th = solver.integrate(dd_th, 0)
     th = solver.integrate(d_th, np.pi / 2)
     dd_th.loop_into(-9.81 / 1 * np.sin(th))
+
     solver.solve(10)
-    # plt.plot(th.t, th.values)
-    # plt.show()
+    plt.plot(th.t, th.values)
+    plt.show()
 
 
 def test_source(solver):

@@ -1,6 +1,6 @@
 import functools
+import operator
 import time
-
 
 from numbers import Number
 from typing import Callable, Union
@@ -102,7 +102,10 @@ class TemporalVar:
     def __init__(self, solver: Solver, fun: Callable = None, x0=None):
         self.solver = solver
         self.init = None
-        self.function = fun
+        if isinstance(fun, Callable):
+            self.function = fun
+        else:
+            self.function = lambda t, y: fun
         self._values = None
 
         self.solver.vars.append(self)
@@ -261,23 +264,31 @@ def compose(fun: Callable, var: TemporalVar) -> TemporalVar:
 
 class LoopNode(TemporalVar):
     def __init__(self, solver: Solver, input_value):
-        super().__init__(solver)
-        if isinstance(input_value, TemporalVar):
-            self.function = input_value.function
-        else:
-            self.function = lambda t, y: input_value
-        self._additional_signals = []
+        self._nested_functions = []
+        super().__init__(solver, input_value)
 
-    def loop_into(self, added_value: Union[TemporalVar, Number]):
-        self._additional_signals.append(added_value)
+    def loop_into(self, added_value: Union[TemporalVar, Number], operator_fun: Callable = operator.add):
+        index = len(self._nested_functions) - 1
+        if isinstance(added_value, TemporalVar):
+            new_fun = lambda t, y, i=index: operator_fun(added_value(t, y), self._nested_functions[i](t, y))
+        else:
+            new_fun = lambda t, y, i=index: operator_fun(self._nested_functions[i](t, y), added_value)
+        self._nested_functions.append(new_fun)
+
+    @property
+    def function(self):
+        return self._nested_functions[-1]
+
+    @function.setter
+    def function(self, value):
+        self._nested_functions.append(value)
 
     def __call__(self, t, y):
-        return self.function(t, y) + sum(fun(t, y) if callable(fun) else fun for fun in self._additional_signals)
+        return self.function(t, y)
 
 
 if __name__ == '__main__':
     solver = Solver()
-
 
     #
     m = 1
