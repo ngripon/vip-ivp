@@ -1,4 +1,5 @@
 import functools
+import operator
 import time
 
 from numbers import Number
@@ -266,12 +267,12 @@ class LoopNode(TemporalVar):
         self._nested_functions = []
         super().__init__(solver, input_value)
 
-    def loop_into(self, added_value: Union[TemporalVar, Number]):
+    def loop_into(self, added_value: Union[TemporalVar, Number], operator_fun: Callable = operator.add):
         index = len(self._nested_functions) - 1
         if isinstance(added_value, TemporalVar):
-            new_fun = lambda t, y, i=index: added_value(t, y) + self._nested_functions[i](t, y)
+            new_fun = lambda t, y, i=index: operator_fun(added_value(t, y), self._nested_functions[i](t, y))
         else:
-            new_fun = lambda t, y, i=index: self._nested_functions[i](t, y) + added_value
+            new_fun = lambda t, y, i=index: operator_fun(self._nested_functions[i](t, y), added_value)
         self._nested_functions.append(new_fun)
 
     @property
