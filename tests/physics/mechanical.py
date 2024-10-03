@@ -73,7 +73,7 @@ class Mechanical1DBondEffort(Mechanical1DBond):
     @Mechanical1DBond.flow.setter
     def flow(self, value):
         self.speed = value
-        self.loop_node.loop_into(self.flow, operator.sub)
+        self.loop_node.loop_into(self.flow)
 
 
 def set_effort(bond: Union[Mechanical1DBond, float], effort: TemporalVar):
@@ -112,12 +112,13 @@ if __name__ == '__main__':
 
     mass_output = inertia(0, 1, 9.81, solver)
     spring_output = spring(mass_output, 1, solver)
-    # mass_2_output = inertia(spring_output, 5, 0, solver)
-    # spring2_output=spring(mass_2_output, 2, solver)
+    mass_2_output = inertia(spring_output, 5, 9.81, solver)
+    spring2_output=spring(mass_2_output, 2, solver)
 
-    solver.solve(10)
+    solver.solve(20, time_step=0.01)
 
-    plt.plot(spring_output.force.t, spring_output.effort.values)
+    plt.plot(spring_output.force.t, mass_output.flow.values)
+    # plt.plot(mass_output.force.t, position)
     plt.plot(mass_output.force.t, mass_output.effort.values)
     plt.show()
 
