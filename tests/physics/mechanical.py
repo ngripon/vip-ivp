@@ -86,12 +86,12 @@ def set_flow(bond: Union[Mechanical1DBond, float], flow: TemporalVar):
         bond.flow = flow
 
 
-def inertia(input_effort: Mechanical1DBondEffort, mass, gravity, solver) -> Mechanical1DBondFlow:
+def inertia(input_effort: Mechanical1DBondEffort, mass, gravity, solver, speed0:float=0) -> Mechanical1DBondFlow:
     bond, effort = Mechanical1DBondFlow.from_effort(input_effort, solver)
     acc = effort / mass
     if gravity:
         acc += 9.81
-    speed = solver.integrate(acc, 0)
+    speed = solver.integrate(acc, speed0)
     set_flow(bond, speed)
     set_flow(input_effort, speed)
     return bond
@@ -110,16 +110,24 @@ def spring(input_flow: Mechanical1DBondFlow, stiffness: float,
 if __name__ == '__main__':
     solver = Solver()
 
-    mass_output = inertia(0, 1, 9.81, solver)
-    spring_output = spring(mass_output, 1, solver)
-    mass_2_output = inertia(spring_output, 5, 9.81, solver)
-    spring2_output=spring(mass_2_output, 2, solver)
+    # # Double spring system
+    # mass_output = inertia(0, 1, 0, solver)
+    # spring_output = spring(mass_output, 1, solver, 1)
+    # mass_2_output = inertia(spring_output, 5, 0, solver)
+    # spring2_output=spring(mass_2_output, 1, solver)
 
-    solver.solve(20, time_step=0.01)
+    # # 100 spring system
+    mass_list=[]
+    current=0
+    for i in range(2):
+        mass_output=inertia(current,1,0, solver, 1 if i==0 else 0)
+        current=spring(mass_output,1, solver)
+        mass_list.append(mass_output)
 
-    plt.plot(spring_output.force.t, mass_output.flow.values)
-    # plt.plot(mass_output.force.t, position)
-    plt.plot(mass_output.force.t, mass_output.effort.values)
+    solver.solve(100, time_step=0.01)
+
+    for mass in mass_list:
+        plt.plot(solver.t, mass.flow.values)
     plt.show()
 
     # n = 100
