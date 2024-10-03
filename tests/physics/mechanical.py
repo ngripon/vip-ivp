@@ -31,6 +31,10 @@ class Mechanical1DBond:
     def flow(self, value: TemporalVar):
         self.speed = value
 
+    @property
+    def power(self):
+        return self.speed * self.force
+
 
 class Mechanical1DBondFlow(Mechanical1DBond):
     def __init__(self, value: float, loop_node, solver):
@@ -73,7 +77,7 @@ class Mechanical1DBondEffort(Mechanical1DBond):
     @Mechanical1DBond.flow.setter
     def flow(self, value):
         self.speed = value
-        self.loop_node.loop_into(self.flow)
+        self.loop_node.loop_into(-self.flow)
 
 
 def set_effort(bond: Union[Mechanical1DBond, float], effort: TemporalVar):
@@ -86,48 +90,54 @@ def set_flow(bond: Union[Mechanical1DBond, float], flow: TemporalVar):
         bond.flow = flow
 
 
-def inertia(input_effort: Mechanical1DBondEffort, mass, gravity, solver, speed0:float=0) -> Mechanical1DBondFlow:
-    bond, effort = Mechanical1DBondFlow.from_effort(input_effort, solver)
+def inertia(input_effort: Mechanical1DBondEffort, mass, gravity:bool, solver, speed0: float = 0) -> Mechanical1DBondFlow:
+    output_flow, effort = Mechanical1DBondFlow.from_effort(input_effort, solver)
     acc = effort / mass
     if gravity:
         acc += 9.81
     speed = solver.integrate(acc, speed0)
-    set_flow(bond, speed)
+    set_flow(output_flow, speed)
     set_flow(input_effort, speed)
-    return bond
+    return output_flow
 
 
 def spring(input_flow: Mechanical1DBondFlow, stiffness: float,
            solver: Solver, x0: float = 0) -> Mechanical1DBondEffort:
-    bond, flow = Mechanical1DBondEffort.from_flow(input_flow, solver)
+    output_effort, flow = Mechanical1DBondEffort.from_flow(input_flow, solver)
     x = solver.integrate(flow, x0)
     effort_value = stiffness * x
     set_effort(input_flow, -effort_value)
-    set_effort(bond, effort_value)
-    return bond
+    set_effort(output_effort, effort_value)
+    return output_effort
 
 
 if __name__ == '__main__':
     solver = Solver()
 
-    # # Double spring system
-    # mass_output = inertia(0, 1, 0, solver)
-    # spring_output = spring(mass_output, 1, solver, 1)
-    # mass_2_output = inertia(spring_output, 5, 0, solver)
+    # Double spring system
+    # mass_output = inertia(0, 1, 0, solver, 1)
+    # spring_output = spring(mass_output, 1, solver, 0)
+    # mass_2_output = inertia(spring_output, 1, 0, solver)
     # spring2_output=spring(mass_2_output, 1, solver)
 
     # # 100 spring system
-    mass_list=[]
-    current=0
-    for i in range(2):
-        mass_output=inertia(current,1,0, solver, 1 if i==0 else 0)
-        current=spring(mass_output,1, solver)
+    n_springs=100
+    mass_list = []
+    spring_list=[]
+    current = 0
+    for i in range(n_springs):
+        mass_output = inertia(current, 1, 0, solver, 1 if i == 0 else 0)
+        current = spring(mass_output, 1, solver)
         mass_list.append(mass_output)
+        spring_list.append(current)
 
-    solver.solve(100, time_step=0.01)
+    solver.solve(500, time_step=0.01)
 
-    for mass in mass_list:
+    for mass in mass_list[:1]:
         plt.plot(solver.t, mass.flow.values)
+    # plt.plot(solver.t, mass_2_output.effort.values)
+    # plt.plot(solver.t, spring_output.effort.values)
+    # plt.plot(solver.t, mass_2_output.loop_node.values)
     plt.show()
 
     # n = 100
