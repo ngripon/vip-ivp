@@ -8,9 +8,67 @@ from typing import Callable, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
+from kiwisolver import Solver
 from scipy.integrate import solve_ivp
 from sliderplot import sliderplot
 
+_solver_list = []
+
+
+def integrate(input_value: Union["TemporalVar", Number], x0: Number) -> "TemporalVar":
+    solver = _get_current_solver()
+    _check_solver_discrepancy(input_value, solver)
+    integral_value = solver.integrate(input_value, x0)
+    return integral_value
+
+
+def loop_node(input_value: Union["TemporalVar", Number]) -> "LoopNode":
+    solver = _get_current_solver()
+    _check_solver_discrepancy(input_value, solver)
+    loop_node = solver.loop_node(input_value)
+    return loop_node
+
+
+def create_source(value: Union[Callable, Number]) -> "TemporalVar":
+    solver = _get_current_solver()
+    source = solver.create_source(value)
+    return source
+
+
+def solve(t_end: Number, method='RK45', time_step=None, t_eval=None, **options) -> None:
+    solver = _get_current_solver()
+    solver.solve(t_end, method, time_step, t_eval, **options)
+
+
+def explore(f: Callable, t_end: Number, bounds=()) -> None:
+    solver = _get_current_solver()
+    solver.explore(f, t_end, bounds)
+
+
+def new_system() -> None:
+    new_solver = Solver()
+    _solver_list.append(new_solver)
+
+
+def clear() -> None:
+    solver = _get_current_solver()
+    solver.clear()
+
+
+def _get_current_solver() -> "Solver":
+    if not _solver_list:
+        new_system()
+    return _solver_list[-1]
+
+
+def _check_solver_discrepancy(input_value: Union["TemporalVar", Number], solver: Solver) -> None:
+    """
+    Raise an exception if there is a discrepancy between the input solver and the solver of the input variable.
+    :param input_value:
+    :param solver:
+    """
+    if isinstance(input_value, TemporalVar) and not solver is input_value.solver:
+        raise Exception("Can not use a variable from a previous system.")
 
 
 class Solver:
@@ -61,7 +119,7 @@ class Solver:
         if time_step is not None:
             if t_eval is not None:
                 warnings.warn("The value of t_eval has been overridden because time_step parameter is not None.")
-            t_eval=np.arange(0, t_end, time_step)
+            t_eval = np.arange(0, t_end, time_step)
         try:
             res = solve_ivp(self._dy, (0, t_end), x0, method=method, t_eval=t_eval, **options)
         except RecursionError:
@@ -75,7 +133,7 @@ class Solver:
 
     def explore(self, f: Callable, t_end: Number, bounds=()):
         def wrapper(*args, **kwargs):
-            self._clear()
+            self.clear()
             outputs = f(*args, **kwargs)
             self.solve(t_end)
             transformed_outputs = self.unwrap_leaves(outputs)
@@ -84,14 +142,14 @@ class Solver:
         functools.update_wrapper(wrapper, f)
         sliderplot(wrapper, bounds)
 
-    def _dy(self, t, y):
-        return [var(t, y) if callable(var) else var for var in self.feed_vars]
-
-    def _clear(self):
+    def clear(self):
         """
         Clear stored information.
         """
         self.__init__()
+
+    def _dy(self, t, y):
+        return [var(t, y) if callable(var) else var for var in self.feed_vars]
 
     def unwrap_leaves(self, outputs):
         """
@@ -295,31 +353,28 @@ class LoopNode(TemporalVar):
 
 
 if __name__ == '__main__':
-    solver = Solver()
+    # m = 1
+    # k = 1
+    # c = 1
+    # v0 = 0
+    # x0 = 5
+    # x = 1
+    # acc = loop_node(1 / m * x)
+    # vit = integrate(acc, v0)
+    # pos = integrate(vit, x0)
+    # acc.loop_into(1 / m * (-c * vit - k * pos))
+    # acc.loop_into(5)
+    # solve(50, time_step=0.01)
+    # plt.plot(acc.t, acc.values)
+    # plt.show()
 
-    #
-    m = 1
-    k = 1
-    c = 1
-    v0 = 0
-    x0 = 5
-    x = 1
-    acc = solver.loop_node(1 / m * x)
-    vit = solver.integrate(acc, v0)
-    pos = solver.integrate(vit, x0)
-    acc.loop_into(1 / m * (-c * vit - k * pos))
-    acc.loop_into(5)
-    solver.solve(50, time_step=0.01, t_eval=[0,1])
-    plt.plot(acc.t, acc.values)
-    plt.show()
+    def f(k=2, c=3, m=5, x0=1, v0=1):
+        acc = loop_node(1 / m)
+        vit = integrate(acc, v0)
+        pos = integrate(vit, x0)
+        acc.loop_into(1 / m * (-c * vit - k * pos))
+        return (pos, acc), (vit, acc)
 
-    # def f(k=2, c=3, m=5, x0=1, v0=1):
-    #     acc = solver.loop_node(1 / m)
-    #     vit = solver.integrate(acc, v0)
-    #     pos = solver.integrate(vit, x0)
-    #     acc.loop_into(1 / m * (-c * vit - k * pos))
-    #     return (pos, acc), (vit, acc)
-    #
-    #
-    # t_final = 50
-    # solver.explore(f, t_final, bounds=((-10, 10), (-10, 10), (0, 10)))
+
+    t_final = 50
+    explore(f, t_final, bounds=((-10, 10), (-10, 10), (0, 10)))
