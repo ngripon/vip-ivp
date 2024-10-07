@@ -12,6 +12,8 @@ from kiwisolver import Solver
 from scipy.integrate import solve_ivp
 from sliderplot import sliderplot
 
+from tests.test_valid_systems import solver
+
 _solver_list = []
 
 
@@ -43,6 +45,11 @@ def solve(t_end: Number, method='RK45', time_step=None, t_eval=None, **options) 
 def new_system() -> None:
     new_solver = Solver()
     _solver_list.append(new_solver)
+
+
+def clear() -> None:
+    solver = _get_current_solver()
+    solver.clear()
 
 
 def _get_current_solver() -> "Solver":
@@ -123,7 +130,7 @@ class Solver:
 
     def explore(self, f: Callable, t_end: Number, bounds=()):
         def wrapper(*args, **kwargs):
-            self._clear()
+            self.clear()
             outputs = f(*args, **kwargs)
             self.solve(t_end)
             transformed_outputs = self.unwrap_leaves(outputs)
@@ -132,14 +139,14 @@ class Solver:
         functools.update_wrapper(wrapper, f)
         sliderplot(wrapper, bounds)
 
-    def _dy(self, t, y):
-        return [var(t, y) if callable(var) else var for var in self.feed_vars]
-
-    def _clear(self):
+    def clear(self):
         """
         Clear stored information.
         """
         self.__init__()
+
+    def _dy(self, t, y):
+        return [var(t, y) if callable(var) else var for var in self.feed_vars]
 
     def unwrap_leaves(self, outputs):
         """
