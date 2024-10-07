@@ -178,7 +178,7 @@ class TemporalVar:
             self._set_init(x0)
 
     @property
-    def values(self):
+    def values(self) -> np.ndarray:
         if not self.solver.solved:
             raise Exception("The differential system has not been solved. "
                             "Call the solve() method before inquiring the variable values.")
@@ -315,6 +315,9 @@ class TemporalVar:
                 return NotImplemented
         else:
             return NotImplemented
+
+    def __array__(self):
+        return self.values
 
     def __repr__(self):
         if self.solver.solved:

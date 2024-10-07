@@ -127,7 +127,7 @@ if __name__ == '__main__':
 
     vip.solve(500, time_step=0.01)
 
-    for mass in mass_list[-5:]:
-        plt.plot(mass.flow.t, mass.flow.values)
+    for mass in mass_list[:1]:
+        plt.plot(mass.flow.t, mass.flow)
     plt.show()
 
