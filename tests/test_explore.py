@@ -78,8 +78,8 @@ def test_plant_controller(solver):
 
 def test_mass_spring_bond_graph(solver):
     def f(k=1, m=1):
-        def inertia(force: TemporalVar, mass: float):
-            acc = force / mass + 9.81
+        def inertia(forces: Sequence[TemporalVar], mass: float):
+            acc = np.sum(forces) / mass + 9.81
             vit = solver.integrate(acc, 0)
             return vit
 
@@ -89,11 +89,10 @@ def test_mass_spring_bond_graph(solver):
             force1 = -force2
             return force1, force2
 
-        speed = solver.loop_node(0)
-
-        force, _ = spring(speed, 0, k)
-        speed.loop_into(inertia(force, m))
-
-        return speed
+        force1 = solver.loop_node()
+        speed1 = inertia((force1,), m)
+        force, force2 = spring(speed1, 0, k)
+        force1.loop_into(force)
+        return speed1, force1
 
     solver.explore(f, 50)
