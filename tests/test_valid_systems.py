@@ -1,14 +1,16 @@
-
 import matplotlib.pyplot as plt
 import numpy as np
+import pytest
 from numpy.random.mtrand import Sequence
 
 import main as vip
 
+@pytest.fixture(autouse=True)
+def clear_solver_before_tests():
+    vip.clear()
 
 
 def test_operator_overloading():
-    vip.clear()
     acc = vip.loop_node(0)
     vit = vip.integrate(acc, 0)
     pos = vip.integrate(vit, 0)
@@ -19,7 +21,6 @@ def test_operator_overloading():
 
 
 def test_pendulum():
-    vip.clear()
     dd_th = vip.loop_node(0)
     d_th = vip.integrate(dd_th, 0)
     th = vip.integrate(d_th, np.pi / 2)
@@ -31,7 +32,6 @@ def test_pendulum():
 
 
 def test_source():
-    vip.clear()
     u = vip.create_source(lambda t: 5 * np.sin(5 * t))
     dd_th = vip.loop_node(u)
     d_th = vip.integrate(dd_th, 0)
@@ -41,7 +41,6 @@ def test_source():
 
 
 def test_loop():
-    vip.clear()
     acc = vip.loop_node(0.1)
     vit = vip.integrate(acc, 0)
     pos = vip.integrate(vit, 5)
@@ -51,13 +50,11 @@ def test_loop():
 
 
 def test_integrate_scalar():
-    vip.clear()
     x = vip.integrate(5, 1)
     vip.solve(10)
 
 
 def test_plant_controller():
-    vip.clear()
     def controller(error):
         ki = 1
         kp = 1
@@ -86,7 +83,6 @@ def test_plant_controller():
 
 
 def test_mass_spring_bond_graph():
-    vip.clear()
     def inertia(forces: Sequence[vip.TemporalVar], mass: float):
         acc = np.sum(forces) / mass + 9.81
         vit = vip.integrate(acc, 0)
