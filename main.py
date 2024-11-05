@@ -60,7 +60,7 @@ def _get_current_solver() -> "Solver":
     return _solver_list[-1]
 
 
-def _check_solver_discrepancy(input_value: Union["TemporalVar", Number], solver: Solver) -> None:
+def _check_solver_discrepancy(input_value: Union["TemporalVar", Number], solver: "Solver") -> None:
     """
     Raise an exception if there is a discrepancy between the input solver and the solver of the input variable.
     :param input_value:
