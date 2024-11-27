@@ -45,8 +45,20 @@ def test_harmonic_equation():
     y = vip.integrate(dy, 1)
     ddy.loop_into(-9 * y)
     vip.solve(x[-1], t_eval=x)
-    error_array=y_exact-y.values
-    plt.plot(x,y)
-    plt.plot(x,y_exact)
-    plt.show()
+    error_array = y_exact - y.values
+    assert all(error_array < ABSOLUTE_TOLERANCE)
+
+
+def test_second_order_ode():
+    # y'' + 4 * y' + 4 * y = 0
+    # Compute exact solution
+    x = np.linspace(0, 100, 1001)
+    y_exact = (2 * x + 1) * np.exp(-2 * x)
+    # Compute solver solution
+    ddy = vip.loop_node(0)
+    dy = vip.integrate(ddy, 0)
+    y = vip.integrate(dy, 1)
+    ddy.loop_into(-4 * dy - 4 * y)
+    vip.solve(x[-1], t_eval=x)
+    error_array = y_exact - y.values
     assert all(error_array < ABSOLUTE_TOLERANCE)
