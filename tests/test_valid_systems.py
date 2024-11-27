@@ -3,7 +3,7 @@ from typing import Sequence
 import numpy as np
 import pytest
 
-import main as vip
+import vip_ivp as vip
 
 
 @pytest.fixture(autouse=True)

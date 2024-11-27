@@ -1,7 +1,7 @@
 import pytest
 import numpy as np
 
-import main as vip
+import vip_ivp as vip
 
 ABSOLUTE_TOLERANCE = 0.01
 
