@@ -9,6 +9,8 @@ from typing import Callable, Union
 import numpy as np
 from scipy.integrate import solve_ivp
 from sliderplot import sliderplot
+from varname import varname, argname, nameof
+from varname.utils import ImproperUseError
 
 
 class Solver:
@@ -20,6 +22,7 @@ class Solver:
         self.t = None
         self.y = None
         self.solved = False
+        self.saved_vars = {}
 
     def integrate(self, input_value: "TemporalVar", x0: Number) -> "TemporalVar":
         self.feed_vars.append(input_value)
@@ -87,6 +90,7 @@ class Solver:
         Clear stored information.
         """
         self.__init__()
+
 
     def _dy(self, t, y):
         return [var(t, y) if callable(var) else var for var in self.feed_vars]

@@ -43,6 +43,20 @@ def clear() -> None:
     solver.clear()
 
 
+def save(*args) -> None:
+    solver = _get_current_solver()
+    if not all([isinstance(arg, TemporalVar) for arg in args]):
+        raise ValueError("Only TemporalVars can be saved.")
+    for i, variable in enumerate(args):
+        variable_name = argname(f'args[{i}]')
+        solver.saved_vars[variable_name] = variable
+
+
+def get_var(var_name: str) -> TemporalVar:
+    solver = _get_current_solver()
+    return solver.saved_vars[var_name]
+
+
 def _get_current_solver() -> "Solver":
     if not _solver_list:
         new_system()
