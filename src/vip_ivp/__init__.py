@@ -56,6 +56,10 @@ def get_var(var_name: str) -> TemporalVar:
     solver = _get_current_solver()
     return solver.saved_vars[var_name]
 
+def plot()->None:
+    solver=_get_current_solver()
+    solver.plot()
+
 
 def _get_current_solver() -> "Solver":
     if not _solver_list:
