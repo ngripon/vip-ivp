@@ -6,6 +6,7 @@ import warnings
 from numbers import Number
 from typing import Callable, Union
 
+import matplotlib.pyplot as plt
 import numpy as np
 from scipy.integrate import solve_ivp
 from sliderplot import sliderplot
@@ -20,6 +21,8 @@ class Solver:
         self.t = None
         self.y = None
         self.solved = False
+        self.saved_vars = {}
+        self.vars_to_plot = {}
 
     def integrate(self, input_value: "TemporalVar", x0: Number) -> "TemporalVar":
         self.feed_vars.append(input_value)
@@ -41,9 +44,10 @@ class Solver:
         else:
             return TemporalVar(self, lambda t, y: value)
 
-    def solve(self, t_end: Number, method='RK45', time_step=None, t_eval=None, **options) -> None:
+    def solve(self, t_end: Number, method='RK45', time_step=None, t_eval=None, plot: bool = True, **options) -> None:
         """
         Solve the equations of the dynamical system through an integration scheme.
+        :param plot: Plot the variables that called the "to_plot()" method
         :param t_end: Time at which the integration stops
         :param method: Integration method to use. For more information, check https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html.
         :param t_eval: Times at which to store the computed solution, must be sorted and lie within t_span. If None (default), use points selected by the solver.
@@ -70,6 +74,23 @@ class Solver:
         self.t = res.t
         self.y = res.y
         self.solved = True
+        if plot:
+            self.plot()
+
+    def plot(self):
+        if not self.vars_to_plot:
+            return
+        # Plot data
+        for variable_name, var in self.vars_to_plot.items():
+            plt.plot(var.t, var, label=variable_name)
+        # Label and axis
+        plt.title("Simulation results")
+        plt.ylabel("Time (s)")
+        plt.legend()
+        plt.xlim(0, var.t[-1])
+        plt.grid()
+        plt.tight_layout()
+        plt.show()
 
     def explore(self, f: Callable, t_end: Number, bounds=()):
         def wrapper(*args, **kwargs):
@@ -135,6 +156,22 @@ class TemporalVar:
 
     def apply_function(self, f: Callable) -> "TemporalVar":
         return TemporalVar(self.solver, lambda t, y: f(self(t, y)))
+
+    def save(self, name: str) -> None:
+        """
+        Save the temporal variable with a name
+        :param name: Key to retrieve the variable
+        """
+        if name in self.solver.saved_vars:
+            warnings.warn(f"A variable with name {name} already exists. Its value has been overridden.")
+        self.solver.saved_vars[name] = self
+
+    def to_plot(self, name: str) -> None:
+        """
+        Add the variable to the plotted data on solve.
+        :param name: Name of the variable in the legend of the plot.
+        """
+        self.solver.vars_to_plot[name]=self
 
     def _reset(self):
         self._values = None
