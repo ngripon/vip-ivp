@@ -91,7 +91,6 @@ class Solver:
         """
         self.__init__()
 
-
     def _dy(self, t, y):
         return [var(t, y) if callable(var) else var for var in self.feed_vars]
 
@@ -139,6 +138,15 @@ class TemporalVar:
 
     def apply_function(self, f: Callable) -> "TemporalVar":
         return TemporalVar(self.solver, lambda t, y: f(self(t, y)))
+
+    def save(self, name: str) -> None:
+        """
+        Save the temporal variable with a name
+        :param name: Key to retrieve the variable
+        """
+        if name in self.solver.saved_vars:
+            warnings.warn(f"A variable with name {name} already exists. Its value has been overridden.")
+        self.solver.saved_vars[name] = self
 
     def _reset(self):
         self._values = None
