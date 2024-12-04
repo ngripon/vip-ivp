@@ -10,8 +10,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.integrate import solve_ivp
 from sliderplot import sliderplot
-from varname import varname, argname, nameof
-from varname.utils import ImproperUseError
 
 
 class Solver:
