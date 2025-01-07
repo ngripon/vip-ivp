@@ -1,8 +1,9 @@
+import functools
 from typing import Union
 
 import matplotlib.pyplot as plt
 
-import main as vip
+import vip_ivp as vip
 
 
 class Mechanical1DBond:
@@ -86,6 +87,31 @@ def set_flow(bond: Union[Mechanical1DBond, float], flow: vip.TemporalVar):
         bond.flow = flow
 
 
+def foo():
+    def decorator_foo(func):
+        @functools.wraps(func)
+        def wrap(params):
+            output_flow, effort = Mechanical1DBondFlow.from_effort(input_effort)
+            flow_variable = func(input_effort.effort, output_flow.effort,
+                                 params)  # It is wrong because the force are summed
+            # into the effort variable on the previous line.
+            set_flow(input_effort, flow_variable)
+            set_flow(output_flow, flow_variable)
+            return output_flow
+        return wrap
+    return decorator_foo
+
+
+def inertia_raw(f1, f2, params=None):
+    if params is None:
+        params = {"mass": 1, "gravity": True, "speed0": 0}
+    acc = (f1 + f2) / params["mass"]
+    if params["gravity"]:
+        acc += 9.81
+    speed = vip.integrate(acc, params["speed0"])
+    return speed
+
+
 def inertia(input_effort: Mechanical1DBondEffort, mass, gravity: bool, speed0: float = 0) -> Mechanical1DBondFlow:
     output_flow, effort = Mechanical1DBondFlow.from_effort(input_effort)
     acc = effort / mass
@@ -130,4 +156,3 @@ if __name__ == '__main__':
     for mass in mass_list[:1]:
         plt.plot(mass.flow.t, mass.flow)
     plt.show()
-
