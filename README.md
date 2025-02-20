@@ -4,6 +4,22 @@ Solve ODEs using the flow of the script, without having to build the system of e
 
 ## Minimal example
 
+```python
+import vip_ivp as vip
+
+# Exponential decay : dN/dt = - λ * N
+d_n = vip.loop_node()
+n = vip.integrate(d_n, 1)
+d_n.loop_into(-0.5 * n)
+
+# Choose which variables to plot
+n.to_plot("Quantity")
+d_n.to_plot("Derivative")
+
+# Solve the system. The plot will automatically show.
+vip.solve(10, time_step=0.001)
+```
+
 ## Motivation
 
 The traditional way to solve an Initial Value Problem (IVP) is to determine the function $y'=f(t,y(t))$ of the system
@@ -56,7 +72,7 @@ vip.solve(t_simulation, time_step=time_step)
 Integrate a temporal variable starting from an initial condition.
 
 ```python
-integrated_var = integrate(source, x0=0)
+integrated_var = vip.integrate(source, x0=0)
 ```
 
 ### Handle integration loops
@@ -64,8 +80,31 @@ integrated_var = integrate(source, x0=0)
 Create loop nodes to handle feedback loops in the system.
 
 ```python
-loop = loop_node(input_value=0)
+loop = vip.loop_node(input_value=0)
 loop.loop_into(integrated_var)
+```
+
+Loop nodes are essential to solve ODEs in a "sequential" way.
+
+To solve an ODE, follow those steps:
+
+1. Create a loop node for the most derived variable :
+
+```python 
+ddy = vip.loop_node()
+```
+
+2. Create the other variables by integration :
+
+```python
+dy = vip.integrate(ddy, dy0)
+y = vip.integrate(dy, y0)
+```
+
+3. Loop into the equation (In this example : $4 \frac{d^2y}{dt^2} + 3 \frac{dy}{dt} + 2y = 5$) :
+
+```python
+ddy.loop_into(5 - 1 / 4 * (3 * dy + 2 * y))
 ```
 
 ### Create sources
@@ -73,7 +112,7 @@ loop.loop_into(integrated_var)
 Create source signals from temporal functions or scalar values.
 
 ```python
-source = create_source(lambda t: 2 * t)
+source = vip.create_source(lambda t: 2 * t)
 ```
 
 ### Solve the system of equations
@@ -81,34 +120,59 @@ source = create_source(lambda t: 2 * t)
 Solve the system until a specified end time.
 
 ```python
-solve(t_end=10)
+vip.solve(t_end=10,
+          method="RK45",
+          time_step=None,
+          t_eval=None,
+          plot=True,
+          **options)
 ```
+
+For `**options`, see
+the [SciPy documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html).
 
 ### Explore results
 
 Explore the function over given bounds and solve the system.
 
 ```python
-explore(lambda x: x ** 2, t_end=10, bounds=(0, 1))
+vip.explore(lambda x: x ** 2, t_end=10, bounds=(0, 1))
 ```
+
+## Advanced features
 
 ### Save and plot intermediary results
 
 Save and plot variables for later analysis.
 
+Its only use-case is when the variable may be lost due to context, typically for variables that are created inside
+functions.
+
 ```python
-integrated_var.save("integrated_var")
-plot()
+def foo():
+    variable = vip.create_source(5)
+    variable.save("bar")
+    variable.to_plot("Variable name")
+
+
+foo()
+bar = vip.get_var("bar")
+vip.solve(10)  # 'variable' will be plotted, even if it was declared in a function.
+
 ```
 
 ### Create a new system
 
-Initialize a new solver system.
+Initialize a new system.
+
+If you want to simulate multiple systems in the same script, use this function. Otherwise, the
+previous systems will be solved again with the new one, which will be slower.
 
 ```python
-new_system()
+vip.new_system()
 ```
 
 ## Limitations
 
-- There is no function to compute derivatives.
+- Temporal variables can only access their values at time $t$.
+- Therefore, there is no function to compute derivatives.
