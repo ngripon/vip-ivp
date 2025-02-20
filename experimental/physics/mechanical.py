@@ -4,61 +4,55 @@ from typing import Union
 import matplotlib.pyplot as plt
 
 import vip_ivp as vip
-from vip_ivp import LoopNode
 
 
-class Mechanical1DBond:
-    def __init__(self):
-        self.speed = None
-        self.force = None
-        self.loop_node = None
+class Bond:
+    def __init__(self, flow, effort):
+        self._flow = flow
+        self._effort = effort
 
     @property
     def effort(self):
-        return self.force
+        return self._effort
 
     @effort.setter
     def effort(self, value: vip.TemporalVar):
-        self.force = value
+        self._effort = value
 
     @property
     def flow(self):
-        return self.speed
+        return self._flow
 
     @flow.setter
     def flow(self, value: vip.TemporalVar):
-        self.speed = value
+        self._flow = value
 
     @property
     def power(self):
-        return self.speed * self.force
+        return self.flow * self.effort
 
 
-class Mechanical1DBondFlow(Mechanical1DBond):
+class BondFlow(Bond):
     def __init__(self, value: float = 0):
-        super().__init__()
-        self.speed = value
-        self.force = vip.loop_node()
+        super().__init__(value, vip.loop_node())
 
-    @Mechanical1DBond.effort.setter
+    @Bond.effort.setter
     def effort(self, value):
-        self.force.loop_into(value)
+        self.effort.loop_into(value)
 
 
-class Mechanical1DBondEffort(Mechanical1DBond):
+class BondEffort(Bond):
     def __init__(self, value: float = 0):
-        super().__init__()
-        self.speed = vip.loop_node()
-        self.force = value
+        super().__init__(vip.loop_node(), value)
 
-    @Mechanical1DBond.flow.setter
+    @Bond.flow.setter
     def flow(self, value):
-        self.speed.loop_into(value)
+        self.flow.loop_into(value)
 
 
 class Inertia:
-    def __init__(self, port1: Mechanical1DBondEffort, mass: float, gravity: bool, speed0: float = 0):
-        self.port2 = Mechanical1DBondFlow()
+    def __init__(self, port1: BondEffort, mass: float, gravity: bool, speed0: float = 0):
+        self.port2 = BondFlow()
         acc = self.port2.effort + port1.effort / mass
         if gravity:
             acc += 9.81
@@ -68,9 +62,9 @@ class Inertia:
 
 
 class Spring:
-    def __init__(self, port1: Mechanical1DBondFlow, stiffness: float, x0: float = 0):
-        self.port2 = Mechanical1DBondEffort()
-        x = vip.integrate(port1.speed - self.port2.speed, x0)
+    def __init__(self, port1: BondFlow, stiffness: float, x0: float = 0):
+        self.port2 = BondEffort()
+        x = vip.integrate(port1.flow - self.port2.flow, x0)
         effort_value = stiffness * x
         port1.effort = -effort_value
         self.port2.effort = effort_value
@@ -81,7 +75,7 @@ if __name__ == '__main__':
     n_springs = 100
     mass_list = []
     spring_list = []
-    current_effort = Mechanical1DBondEffort(0)
+    current_effort = BondEffort(0)
     for i in range(n_springs):
         mass = Inertia(current_effort, 1, False, 1 if i == 0 else 0)
         spring = Spring(mass.port2, 1)
