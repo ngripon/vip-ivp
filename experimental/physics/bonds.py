@@ -1,79 +1,57 @@
-from numbers import Number
-from typing import Union, Type
-
 import vip_ivp as vip
 
 
 class Bond:
-    def __init__(self):
-        self.flow = None
-        self.effort = None
-        self.loop_node = None
+    def __init__(self, flow, effort):
+        self._flow = flow
+        self._effort = effort
 
     @property
     def effort(self):
-        return self.effort
+        return self._effort
 
     @effort.setter
     def effort(self, value: vip.TemporalVar):
-        self.effort = value
+        self._effort = value
 
     @property
     def flow(self):
-        return self.flow
+        return self._flow
 
     @flow.setter
     def flow(self, value: vip.TemporalVar):
-        self.flow = value
+        self._flow = value
 
     @property
     def power(self):
         return self.flow * self.effort
 
 
-class BondFlow(Bond):
-    def __init__(self, value: float, loop_node):
-        super().__init__()
-        self.flow = value
-        self.effort = None
-        self.loop_node = loop_node
+def create_bond_types(name: str, effort_name: str, flow_name: str):
+    class BondFlow(Bond):
+        def __init__(self, value: float = 0):
+            super().__init__(value, vip.loop_node())
 
-    @classmethod
-    def from_effort(cls, bond: "BondEffort"):
-        if isinstance(bond, BondEffort):
-            loop_node = vip.loop_node(bond.effort)
-        elif isinstance(bond, Number):
-            loop_node = vip.loop_node(bond)
-        else:
-            raise Exception(f"Incompatible type: {bond} of type {type(bond)}.")
-        new_bond = cls(0, loop_node)
-        return new_bond, loop_node
+        @Bond.effort.setter
+        def effort(self, value):
+            self.effort.loop_into(value)
 
-    @Bond.effort.setter
-    def effort(self, value):
-        self.effort = value
-        self.loop_node.loop_into(self.effort)
+    class BondEffort(Bond):
+        def __init__(self, value: float = 0):
+            super().__init__(vip.loop_node(), value)
+
+        @Bond.flow.setter
+        def flow(self, value):
+            self.flow.loop_into(value)
+
+    BondEffort.__name__ = f"{name}Effort"
+    setattr(BondEffort, effort_name, BondEffort.effort)
+    setattr(BondEffort, flow_name, BondEffort.flow)
+    BondFlow.__name__ = f"{name}Flow"
+    setattr(BondFlow, effort_name, BondFlow.effort)
+    setattr(BondFlow, flow_name, BondFlow.flow)
+
+    return BondEffort, BondFlow
 
 
-class BondEffort(Bond):
-    def __init__(self, value: float, loop_node):
-        super().__init__()
-        self.flow = None
-        self.effort = value
-        self.loop_node = loop_node
-
-    @classmethod
-    def from_flow(cls, bond: "BondFlow"):
-        if isinstance(bond, BondFlow):
-            loop_node = vip.loop_node(bond.flow)
-        elif isinstance(bond, Number):
-            loop_node = vip.loop_node(bond)
-        else:
-            raise Exception(f"Incompatible type: {bond} of type {type(bond)}.")
-        new_bond = cls(0, loop_node)
-        return new_bond, loop_node
-
-    @Bond.flow.setter
-    def flow(self, value):
-        self.flow = value
-        self.loop_node.loop_into(-self.flow)
+Mechanical1DEffort, Mechanical1DFlow = create_bond_types("Mechanical1D", "force", "speed")
