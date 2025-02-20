@@ -1,6 +1,6 @@
 # vip-ivp
 
-Solve ODEs using the flow of the script, without having to build the system of equations.
+Solve ODEs naturally within the script's flow—no need to manually construct a system of equations.
 
 ## Minimal example
 
@@ -128,7 +128,8 @@ vip.solve(t_end=10,
           **options)
 ```
 
-For `**options`, see the [SciPy documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html).
+For `**options`, see
+the [SciPy documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html).
 
 ### Explore results
 
@@ -144,13 +145,15 @@ vip.explore(lambda x: x ** 2, t_end=10, bounds=(0, 1))
 
 Save and plot variables for later analysis.
 
-Its only use-case is when the variable may be lost due to context, typically for variables that are created inside functions.
+Its only use-case is when the variable may be lost due to context, typically for variables that are created inside
+functions.
 
 ```python
 def foo():
     variable = vip.create_source(5)
     variable.save("bar")
     variable.to_plot("Variable name")
+
 
 foo()
 bar = vip.get_var("bar")
@@ -161,7 +164,8 @@ vip.solve(10)  # 'variable' will be plotted, even if it was declared in a functi
 
 Initialize a new system.
 
-If you want to simulate multiple systems in the same script, use this function. Otherwise, the previous systems will be solved again with the new one, which will be slower.
+If you want to simulate multiple systems in the same script, use this function. Otherwise, the previous systems will be
+solved again with the new one, which will be slower.
 
 ```python
 vip.new_system()
