@@ -7,7 +7,7 @@ Solve ODEs using the flow of the script, without having to build the system of e
 ```python
 import vip_ivp as vip
 
-# Exponential decay : dN/dt = - λ * N
+# Exponential decay: dN/dt = - λ * N
 d_n = vip.loop_node()
 n = vip.integrate(d_n, 1)
 d_n.loop_into(-0.5 * n)
@@ -47,7 +47,7 @@ k = 25000  # Spring stiffness (N/m)
 displacement_x0 = 0.2  # Initial value of displacement (m)
 
 # Create simulation
-# System equation is : m * acc + c * vel + k * disp = 0 <=> acc = - 1 / m * (c * vel + k * disp)
+# System equation is: m * acc + c * vel + k * disp = 0 <=> acc = - 1 / m * (c * vel + k * disp)
 # We do not have access to velocity and displacement at this stage, so we create a loop node.
 acceleration = vip.loop_node()
 velocity = vip.integrate(acceleration, 0)
@@ -86,22 +86,22 @@ loop.loop_into(integrated_var)
 
 Loop nodes are essential to solve ODEs in a "sequential" way.
 
-To solve an ODE, follow those steps:
+To solve an ODE, follow these steps:
 
-1. Create a loop node for the most derived variable :
+1. Create a loop node for the highest-order derivative of the equation:
 
-```python 
+```python
 ddy = vip.loop_node()
 ```
 
-2. Create the other variables by integration :
+2. Create lower-order derivatives by integration
 
 ```python
 dy = vip.integrate(ddy, dy0)
 y = vip.integrate(dy, y0)
 ```
 
-3. Loop into the equation (In this example : $4 \frac{d^2y}{dt^2} + 3 \frac{dy}{dt} + 2y = 5$) :
+3. Loop into the equation (In this example: $4 \frac{d^2y}{dt^2} + 3 \frac{dy}{dt} + 2y = 5$):
 
 ```python
 ddy.loop_into(5 - 1 / 4 * (3 * dy + 2 * y))
@@ -128,8 +128,7 @@ vip.solve(t_end=10,
           **options)
 ```
 
-For `**options`, see
-the [SciPy documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html).
+For `**options`, see the [SciPy documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html).
 
 ### Explore results
 
@@ -145,8 +144,7 @@ vip.explore(lambda x: x ** 2, t_end=10, bounds=(0, 1))
 
 Save and plot variables for later analysis.
 
-Its only use-case is when the variable may be lost due to context, typically for variables that are created inside
-functions.
+Its only use-case is when the variable may be lost due to context, typically for variables that are created inside functions.
 
 ```python
 def foo():
@@ -154,19 +152,16 @@ def foo():
     variable.save("bar")
     variable.to_plot("Variable name")
 
-
 foo()
 bar = vip.get_var("bar")
 vip.solve(10)  # 'variable' will be plotted, even if it was declared in a function.
-
 ```
 
 ### Create a new system
 
 Initialize a new system.
 
-If you want to simulate multiple systems in the same script, use this function. Otherwise, the
-previous systems will be solved again with the new one, which will be slower.
+If you want to simulate multiple systems in the same script, use this function. Otherwise, the previous systems will be solved again with the new one, which will be slower.
 
 ```python
 vip.new_system()
