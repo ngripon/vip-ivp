@@ -95,8 +95,8 @@ def set_flow(bond: Union[Mechanical1DBond, float], flow: vip.TemporalVar):
 class Inertia:
     def __init__(self, port1: Mechanical1DBondEffort, mass: float, gravity: bool, speed0: float = 0):
         self.port2 = Mechanical1DBondFlow.from_effort(port1)
-        effort=self.port2.loop_node
-        acc = self.port2.loop_node / mass
+        effort = self.port2.loop_node
+        acc = effort / mass
         if gravity:
             acc += 9.81
         speed = vip.integrate(acc, speed0)
@@ -107,7 +107,7 @@ class Inertia:
 class Spring:
     def __init__(self, port1: Mechanical1DBondFlow, stiffness: float, x0: float = 0):
         self.port2 = Mechanical1DBondEffort.from_flow(port1)
-        velocity=self.port2.loop_node
+        velocity = self.port2.loop_node
         x = vip.integrate(velocity, x0)
         effort_value = stiffness * x
         port1.effort = -effort_value
