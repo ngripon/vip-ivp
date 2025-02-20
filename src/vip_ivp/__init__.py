@@ -1,16 +1,30 @@
+from varname import argname
 from .utils import *
 
 _solver_list = []
 
 
 def integrate(input_value: Union["TemporalVar", Number], x0: Number) -> "TemporalVar":
+    """
+    Integrate the input value starting from the initial condition x0.
+    
+    :param input_value: The value to be integrated, can be a TemporalVar or a number.
+    :param x0: The initial condition for the integration.
+    :return: The integrated TemporalVar.
+    """
     solver = _get_current_solver()
     _check_solver_discrepancy(input_value, solver)
     integral_value = solver.integrate(input_value, x0)
     return integral_value
 
 
-def loop_node(input_value: Union["TemporalVar", Number]) -> "LoopNode":
+def loop_node(input_value: Union["TemporalVar", Number] = 0) -> "LoopNode":
+    """
+    Create a loop node for the input value. Loop node can accept new inputs through its "loop_into()" method after being instantiated.
+    
+    :param input_value: The value to be looped, can be a TemporalVar or a number.
+    :return: The created LoopNode.
+    """
     solver = _get_current_solver()
     _check_solver_discrepancy(input_value, solver)
     loop_node = solver.loop_node(input_value)
@@ -18,32 +32,67 @@ def loop_node(input_value: Union["TemporalVar", Number]) -> "LoopNode":
 
 
 def create_source(value: Union[Callable, Number]) -> "TemporalVar":
+    """
+    Create a source signal from a temporal function or a scalar value.
+    
+    :param value: A function f(t) or a scalar value.
+    :return: The created TemporalVar.
+    """
     solver = _get_current_solver()
     source = solver.create_source(value)
     return source
 
 
 def solve(t_end: Number, method='RK45', time_step=None, t_eval=None, **options) -> None:
+    """
+    Solve the equations of the dynamical system through an integration scheme.
+    
+    :param t_end: Time at which the integration stops.
+    :param method: Integration method to use. Default is 'RK45'.
+    :param time_step: Time step for the integration. If None, use points selected by the solver.
+    :param t_eval: Times at which to store the computed solution. If None, use points selected by the solver.
+    :param options: Additional options for the solver.
+    """
     solver = _get_current_solver()
     solver.solve(t_end, method, time_step, t_eval, **options)
 
 
 def explore(f: Callable, t_end: Number, bounds=()) -> None:
+    """
+    Explore the function f over the given bounds and solve the system until t_end.
+    This function needs the sliderplot package.
+    
+    :param f: The function to explore.
+    :param t_end: Time at which the integration stops.
+    :param bounds: Bounds for the exploration.
+    """
     solver = _get_current_solver()
     solver.explore(f, t_end, bounds)
 
 
 def new_system() -> None:
+    """
+    Create a new solver system.
+    """
     new_solver = Solver()
     _solver_list.append(new_solver)
 
 
 def clear() -> None:
+    """
+    Clear the current solver's stored information.
+    """
     solver = _get_current_solver()
     solver.clear()
 
 
 def save(*args) -> None:
+    """
+    Save the given TemporalVars with their variable names.
+    
+    :param args: TemporalVars to be saved.
+    :raises ValueError: If any of the arguments is not a TemporalVar.
+    """
     solver = _get_current_solver()
     if not all([isinstance(arg, TemporalVar) for arg in args]):
         raise ValueError("Only TemporalVars can be saved.")
@@ -53,11 +102,21 @@ def save(*args) -> None:
 
 
 def get_var(var_name: str) -> TemporalVar:
+    """
+    Retrieve a saved TemporalVar by its name.
+    
+    :param var_name: The name of the saved TemporalVar.
+    :return: The retrieved TemporalVar.
+    """
     solver = _get_current_solver()
     return solver.saved_vars[var_name]
 
-def plot()->None:
-    solver=_get_current_solver()
+
+def plot() -> None:
+    """
+    Plot the variables that have been marked for plotting.
+    """
+    solver = _get_current_solver()
     solver.plot()
 
 
