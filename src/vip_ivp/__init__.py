@@ -18,7 +18,7 @@ def integrate(input_value: Union["TemporalVar", Number], x0: Number) -> "Tempora
     return integral_value
 
 
-def loop_node(input_value: Union["TemporalVar", Number]) -> "LoopNode":
+def loop_node(input_value: Union["TemporalVar", Number] = 0) -> "LoopNode":
     """
     Create a loop node for the input value. Loop node can accept new inputs through its "loop_into()" method after being instantiated.
     
