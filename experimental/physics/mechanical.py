@@ -35,68 +35,31 @@ class Mechanical1DBond:
 
 
 class Mechanical1DBondFlow(Mechanical1DBond):
-    def __init__(self, value: float, loop_node):
+    def __init__(self, value: float = 0):
         super().__init__()
         self.speed = value
-        self.force = None
-        self.loop_node = loop_node
-
-    @classmethod
-    def from_effort(cls, bond: "Mechanical1DBondEffort"):
-        if isinstance(bond, Mechanical1DBondEffort):
-            loop_node = vip.loop_node(bond.force)
-        elif isinstance(bond, Number):
-            loop_node = vip.loop_node(bond)
-        else:
-            raise Exception(f"Incompatible type: {bond} of type {type(bond)}.")
-        new_bond = cls(0, loop_node)
-        return new_bond
+        self.force = vip.loop_node()
 
     @Mechanical1DBond.effort.setter
     def effort(self, value):
-        self.force = value
-        self.loop_node.loop_into(self.force)
+        self.force.loop_into(value)
 
 
 class Mechanical1DBondEffort(Mechanical1DBond):
-    def __init__(self, value: float, loop_node: LoopNode):
+    def __init__(self, value: float = 0):
         super().__init__()
-        self.speed = None
+        self.speed = vip.loop_node()
         self.force = value
-        self.loop_node = loop_node
-
-    @classmethod
-    def from_flow(cls, bond: Union["Mechanical1DBondFlow", Number]) -> "Mechanical1DBondEffort":
-        if isinstance(bond, Mechanical1DBondFlow):
-            loop_node = vip.loop_node(bond.speed)
-        elif isinstance(bond, Number):
-            loop_node = vip.loop_node(bond)
-        else:
-            raise Exception(f"Incompatible type: {bond} of type {type(bond)}.")
-        new_bond = cls(0, loop_node)
-        return new_bond
 
     @Mechanical1DBond.flow.setter
     def flow(self, value):
-        self.speed = value
-        self.loop_node.loop_into(-self.flow)
-
-
-def set_effort(bond: Union[Mechanical1DBond, float], effort: vip.TemporalVar):
-    if isinstance(bond, Mechanical1DBond):
-        bond.effort = effort
-
-
-def set_flow(bond: Union[Mechanical1DBond, float], flow: vip.TemporalVar):
-    if isinstance(bond, Mechanical1DBond):
-        bond.flow = flow
+        self.speed.loop_into(value)
 
 
 class Inertia:
     def __init__(self, port1: Mechanical1DBondEffort, mass: float, gravity: bool, speed0: float = 0):
-        self.port2 = Mechanical1DBondFlow.from_effort(port1)
-        effort = self.port2.loop_node
-        acc = effort / mass
+        self.port2 = Mechanical1DBondFlow()
+        acc = self.port2.effort + port1.effort / mass
         if gravity:
             acc += 9.81
         speed = vip.integrate(acc, speed0)
@@ -106,9 +69,8 @@ class Inertia:
 
 class Spring:
     def __init__(self, port1: Mechanical1DBondFlow, stiffness: float, x0: float = 0):
-        self.port2 = Mechanical1DBondEffort.from_flow(port1)
-        velocity = self.port2.loop_node
-        x = vip.integrate(velocity, x0)
+        self.port2 = Mechanical1DBondEffort()
+        x = vip.integrate(port1.speed - self.port2.speed, x0)
         effort_value = stiffness * x
         port1.effort = -effort_value
         self.port2.effort = effort_value
@@ -119,7 +81,7 @@ if __name__ == '__main__':
     n_springs = 100
     mass_list = []
     spring_list = []
-    current_effort = Mechanical1DBondEffort.from_flow(0)
+    current_effort = Mechanical1DBondEffort(0)
     for i in range(n_springs):
         mass = Inertia(current_effort, 1, False, 1 if i == 0 else 0)
         spring = Spring(mass.port2, 1)
