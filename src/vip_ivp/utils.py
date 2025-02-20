@@ -25,34 +25,57 @@ class Solver:
         self.vars_to_plot = {}
 
     def integrate(self, input_value: "TemporalVar", x0: Number) -> "TemporalVar":
+        """
+        Integrate the input value starting from the initial condition x0.
+
+        :param input_value: The value to be integrated.
+        :param x0: The initial condition for the integration.
+        :return: The integrated TemporalVar.
+        """
         self.feed_vars.append(input_value)
         integrated_variable = TemporalVar(self, lambda t, y, idx=self.dim: y[idx], x0)
         self.dim += 1
         return integrated_variable
 
     def loop_node(self, input_value=0) -> "LoopNode":
+        """
+        Create a loop node with the input value.
+
+        :param input_value: Input value of the loop node, can be a TemporalVar or a number.
+        :return: The created LoopNode.
+        """
         return LoopNode(self, input_value)
 
     def create_source(self, value: Union[Callable, Number]) -> "TemporalVar":
         """
-        Create a source signal from a temporal function.
-        :param value: function f(t) or scalar
-        :return: Solver variable
+        Create a source signal from a temporal function or a scalar value.
+
+        :param value: A function f(t) or a scalar value.
+        :return: The created TemporalVar.
         """
         if callable(value):
             return TemporalVar(self, lambda t, y: value(t))
         else:
             return TemporalVar(self, lambda t, y: value)
 
-    def solve(self, t_end: Number, method='RK45', time_step=None, t_eval=None, plot: bool = True, **options) -> None:
+    def solve(
+        self,
+        t_end: Number,
+        method="RK45",
+        time_step=None,
+        t_eval=None,
+        plot: bool = True,
+        **options,
+    ) -> None:
         """
         Solve the equations of the dynamical system through an integration scheme.
-        :param plot: Plot the variables that called the "to_plot()" method
-        :param t_end: Time at which the integration stops
-        :param method: Integration method to use. For more information, check https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html.
-        :param t_eval: Times at which to store the computed solution, must be sorted and lie within t_span. If None (default), use points selected by the solver.
-        :param options: Please check https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html.
-        :return:
+
+        :param t_end: Time at which the integration stops.
+        :param method: Integration method to use. Default is 'RK45'.
+        :param time_step: Time step for the integration. If None, use points selected by the solver.
+        :param t_eval: Times at which to store the computed solution. If None, use points selected by the solver.
+        :param plot: Plot the variables that called the "to_plot()" method.
+        :param options: Additional options for the solver. See https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html.
         """
         # Apply checks before attempting to solve
         x0 = [x.init for x in self.initialized_vars]
@@ -62,14 +85,20 @@ class Solver:
         # Set t_eval
         if time_step is not None:
             if t_eval is not None:
-                warnings.warn("The value of t_eval has been overridden because time_step parameter is not None.")
+                warnings.warn(
+                    "The value of t_eval has been overridden because time_step parameter is not None."
+                )
             t_eval = np.arange(0, t_end, time_step)
         try:
-            res = solve_ivp(self._dy, (0, t_end), x0, method=method, t_eval=t_eval, **options)
+            res = solve_ivp(
+                self._dy, (0, t_end), x0, method=method, t_eval=t_eval, **options
+            )
         except RecursionError:
-            raise RecursionError("An algebraic loop has been detected in the system. "
-                                 "Please check in the set_value() methods if a variable use itself for computing "
-                                 "its value.")
+            raise RecursionError(
+                "An algebraic loop has been detected in the system. "
+                "Please check in the set_value() methods if a variable use itself for computing "
+                "its value."
+            )
         print(f"Performance = {time.time() - start}")
         self.t = res.t
         self.y = res.y
@@ -78,6 +107,9 @@ class Solver:
             self.plot()
 
     def plot(self):
+        """
+        Plot the variables that have been marked for plotting.
+        """
         if not self.vars_to_plot:
             return
         # Plot data
@@ -93,6 +125,14 @@ class Solver:
         plt.show()
 
     def explore(self, f: Callable, t_end: Number, bounds=()):
+        """
+        Explore the function f over the given bounds and solve the system until t_end.
+
+        :param f: The function to explore.
+        :param t_end: Time at which the integration stops.
+        :param bounds: Bounds for the exploration.
+        """
+
         def wrapper(*args, **kwargs):
             self.clear()
             outputs = f(*args, **kwargs)
@@ -114,9 +154,10 @@ class Solver:
 
     def unwrap_leaves(self, outputs):
         """
-        Transform all TemporalVar in an iterable into (x.t, x.values) pairs
-        :param outputs:
-        :return:
+        Transform all TemporalVar in an iterable into (x.t, x.values) pairs.
+
+        :param outputs: The outputs to transform.
+        :return: The transformed outputs.
         """
         if isinstance(outputs, TemporalVar):
             return outputs.t, outputs.values
@@ -141,8 +182,10 @@ class TemporalVar:
     @property
     def values(self) -> np.ndarray:
         if not self.solver.solved:
-            raise Exception("The differential system has not been solved. "
-                            "Call the solve() method before inquiring the variable values.")
+            raise Exception(
+                "The differential system has not been solved. "
+                "Call the solve() method before inquiring the variable values."
+            )
         if self._values is None:
             self._values = self(self.solver.t, self.solver.y)
         return self._values
@@ -150,28 +193,40 @@ class TemporalVar:
     @property
     def t(self):
         if not self.solver.solved:
-            raise Exception("The differential system has not been solved. "
-                            "Call the solve() method before inquiring the time variable.")
+            raise Exception(
+                "The differential system has not been solved. "
+                "Call the solve() method before inquiring the time variable."
+            )
         return self.solver.t
 
     def apply_function(self, f: Callable) -> "TemporalVar":
+        """
+        Apply a function to the TemporalVar.
+
+        :param f: The function to apply.
+        :return: The new TemporalVar with the applied function.
+        """
         return TemporalVar(self.solver, lambda t, y: f(self(t, y)))
 
     def save(self, name: str) -> None:
         """
-        Save the temporal variable with a name
-        :param name: Key to retrieve the variable
+        Save the temporal variable with a name.
+
+        :param name: Key to retrieve the variable.
         """
         if name in self.solver.saved_vars:
-            warnings.warn(f"A variable with name {name} already exists. Its value has been overridden.")
+            warnings.warn(
+                f"A variable with name {name} already exists. Its value has been overridden."
+            )
         self.solver.saved_vars[name] = self
 
     def to_plot(self, name: str) -> None:
         """
         Add the variable to the plotted data on solve.
+
         :param name: Name of the variable in the legend of the plot.
         """
-        self.solver.vars_to_plot[name]=self
+        self.solver.vars_to_plot[name] = self
 
     def _reset(self):
         self._values = None
@@ -265,7 +320,7 @@ class TemporalVar:
         return self
 
     def __neg__(self) -> "TemporalVar":
-        return TemporalVar(self.solver, lambda t, y: - self(t, y))
+        return TemporalVar(self.solver, lambda t, y: -self(t, y))
 
     def __abs__(self) -> "TemporalVar":
         return TemporalVar(self.solver, lambda t, y: abs(self(t, y)))
@@ -280,13 +335,22 @@ class TemporalVar:
             elif len(inputs) == 2:
                 # Bad coding...
                 if callable(inputs[0]) and callable(inputs[1]):
-                    return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0](t, y), inputs[1](t, y)))
+                    return TemporalVar(
+                        self.solver,
+                        lambda t, y: ufunc(inputs[0](t, y), inputs[1](t, y)),
+                    )
                 elif callable(inputs[0]) and not callable(inputs[1]):
-                    return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0](t, y), inputs[1]))
+                    return TemporalVar(
+                        self.solver, lambda t, y: ufunc(inputs[0](t, y), inputs[1])
+                    )
                 elif not callable(inputs[0]) and callable(inputs[1]):
-                    return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0], inputs[1](t, y)))
+                    return TemporalVar(
+                        self.solver, lambda t, y: ufunc(inputs[0], inputs[1](t, y))
+                    )
                 else:
-                    return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0], inputs[1]))
+                    return TemporalVar(
+                        self.solver, lambda t, y: ufunc(inputs[0], inputs[1])
+                    )
 
             else:
                 return NotImplemented
@@ -304,6 +368,13 @@ class TemporalVar:
 
 
 def compose(fun: Callable, var: TemporalVar) -> TemporalVar:
+    """
+    Compose a function with a TemporalVar.
+
+    :param fun: The function to compose.
+    :param var: The TemporalVar to compose with.
+    :return: The new TemporalVar with the composed function.
+    """
     return var.apply_function(fun)
 
 
@@ -312,12 +383,26 @@ class LoopNode(TemporalVar):
         self._nested_functions = []
         super().__init__(solver, input_value)
 
-    def loop_into(self, added_value: Union[TemporalVar, Number], operator_fun: Callable = operator.add):
+    def loop_into(
+        self,
+        added_value: Union[TemporalVar, Number],
+        operator_fun: Callable = operator.add,
+    ):
+        """
+        Add a value to the loop node using the specified operator function.
+
+        :param added_value: The value to add, can be a TemporalVar or a number.
+        :param operator_fun: The operator function to use for addition. Default is operator.add.
+        """
         index = len(self._nested_functions) - 1
         if isinstance(added_value, TemporalVar):
-            new_fun = lambda t, y, i=index: operator_fun(added_value(t, y), self._nested_functions[i](t, y))
+            new_fun = lambda t, y, i=index: operator_fun(
+                added_value(t, y), self._nested_functions[i](t, y)
+            )
         else:
-            new_fun = lambda t, y, i=index: operator_fun(self._nested_functions[i](t, y), added_value)
+            new_fun = lambda t, y, i=index: operator_fun(
+                self._nested_functions[i](t, y), added_value
+            )
         self._nested_functions.append(new_fun)
 
     @property
