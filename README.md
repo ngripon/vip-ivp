@@ -22,18 +22,21 @@ vip.solve(10, time_step=0.001)
 
 ## Motivation
 
-The traditional way to solve an Initial Value Problem (IVP) is to determine the function $y'=f(t,y(t))$ of the system
-and pass it into a solver, typically by using `scipy.integrate.solve_ivp()`.
+The traditional way to solve an **Initial Value Problem (IVP)** is to define the function  $y'=f(t,y(t))$  and pass it
+into a solver, such as `scipy.integrate.solve_ivp()`.
 
-However, this approach is error-prone for solving complex systems, as the function $f$ and the vector $y$ become huge.
-That's why the industry relies on tools like Simulink to solve IVP with lots of variables.
+However, this approach becomes **cumbersome and error-prone** for complex systems, as both $f$ and $y$ grow in size and
+complexity. This is why industries rely on tools like **Simulink**, which provide a more intuitive, graphical approach
+for handling large IVP systems.
 
-The goal of this package is to bring some good abstractions from graphical IVP solvers to a script approach:
+This package brings **key abstractions from graphical IVP solvers** into a scripting environment, enabling a **more
+natural and modular** way to define differential equations:
 
-- Decoupling the solver and the system.
-- Building the system like a flow.
-- Representing differential equations as loops.
-- Architecting the system with a functional-oriented paradigm.
+- **Decouples** the solver from the system definition.
+- **Builds the system incrementally**, following the script’s natural flow.
+- **Represents differential equations as loops**, improving clarity.
+- **Encourages a functional programming paradigm** for better system architecture.
+- **Seamlessly integrates with the Python ecosystem**, working alongside libraries like NumPy and SciPy.
 
 ## Demo: Mass-spring-damper model
 
