@@ -1,5 +1,4 @@
 import functools
-import operator
 import time
 import warnings
 
@@ -37,14 +36,14 @@ class Solver:
         self.dim += 1
         return integrated_variable
 
-    def loop_node(self, input_value=0) -> "LoopNode":
+    def loop_node(self) -> "LoopNode":
         """
-        Create a loop node with the input value.
+        Create a loop node. A loop node is a temporal variable that dissociate its declaration and value setting.
+        This mechanism allows it to take as input variable that are integrated from itself, thus allowing to solve ODEs.
 
-        :param input_value: Input value of the loop node, can be a TemporalVar or a number.
         :return: The created LoopNode.
         """
-        return LoopNode(self, input_value)
+        return LoopNode(self)
 
     def create_source(self, value: Union[Callable, Number]) -> "TemporalVar":
         """
@@ -59,13 +58,13 @@ class Solver:
             return TemporalVar(self, lambda t, y: value)
 
     def solve(
-        self,
-        t_end: Number,
-        method="RK45",
-        time_step=None,
-        t_eval=None,
-        plot: bool = True,
-        **options,
+            self,
+            t_end: Number,
+            method="RK45",
+            time_step=None,
+            t_eval=None,
+            plot: bool = True,
+            **options,
     ) -> None:
         """
         Solve the equations of the dynamical system through an integration scheme.
@@ -379,39 +378,23 @@ def compose(fun: Callable, var: TemporalVar) -> TemporalVar:
 
 
 class LoopNode(TemporalVar):
-    def __init__(self, solver: Solver, input_value):
-        self._nested_functions = []
-        super().__init__(solver, input_value)
+    def __init__(self, solver: Solver):
+        super().__init__(solver, lambda t, y: 0)
+        self._is_set = False
 
-    def loop_into(
-        self,
-        added_value: Union[TemporalVar, Number],
-        operator_fun: Callable = operator.add,
-    ):
+    def loop_into(self, value: Union[TemporalVar, Number], ):
         """
-        Add a value to the loop node using the specified operator function.
+        Set the input value of the loop node.
 
-        :param added_value: The value to add, can be a TemporalVar or a number.
-        :param operator_fun: The operator function to use for addition. Default is operator.add.
+        :param value: The value to add, can be a TemporalVar or a number.
         """
-        index = len(self._nested_functions) - 1
-        if isinstance(added_value, TemporalVar):
-            new_fun = lambda t, y, i=index: operator_fun(
-                added_value(t, y), self._nested_functions[i](t, y)
+        # Do not accept to loop into again if it has already been done
+        if self._is_set:
+            raise Exception(
+                "This Loop Node has already been set. Calling 'loop_into()' twice on the same variable is forbidden."
             )
+        if isinstance(value, TemporalVar):
+            self.function = lambda t, y: value(t, y)
         else:
-            new_fun = lambda t, y, i=index: operator_fun(
-                self._nested_functions[i](t, y), added_value
-            )
-        self._nested_functions.append(new_fun)
-
-    @property
-    def function(self):
-        return self._nested_functions[-1]
-
-    @function.setter
-    def function(self, value):
-        self._nested_functions.append(value)
-
-    def __call__(self, t, y):
-        return self.function(t, y)
+            self.function = lambda t, y: value
+        self._is_set = True

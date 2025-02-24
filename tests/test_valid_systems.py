@@ -6,13 +6,8 @@ import pytest
 import vip_ivp as vip
 
 
-@pytest.fixture(autouse=True)
-def clear_solver_before_tests():
-    vip.clear()
-
-
 def test_operator_overloading():
-    acc = vip.loop_node(0)
+    acc = vip.loop_node()
     vit = vip.integrate(acc, 0)
     pos = vip.integrate(vit, 0)
     acc.loop_into(-pos * vit - pos / vit % vit // pos + abs(pos ** vit))
@@ -22,7 +17,7 @@ def test_operator_overloading():
 
 
 def test_pendulum():
-    dd_th = vip.loop_node(0)
+    dd_th = vip.loop_node()
     d_th = vip.integrate(dd_th, 0)
     th = vip.integrate(d_th, np.pi / 2)
     dd_th.loop_into(-9.81 / 1 * np.sin(th))
@@ -31,19 +26,18 @@ def test_pendulum():
 
 def test_source():
     u = vip.create_source(lambda t: 5 * np.sin(5 * t))
-    dd_th = vip.loop_node(u)
+    dd_th = vip.loop_node()
     d_th = vip.integrate(dd_th, 0)
     th = vip.integrate(d_th, np.pi / 2)
-    dd_th.loop_into(-9.81 / 1 * np.sin(th))
+    dd_th.loop_into(u - 9.81 / 1 * np.sin(th))
     vip.solve(10)
 
 
 def test_loop():
-    acc = vip.loop_node(0.1)
+    acc = vip.loop_node()
     vit = vip.integrate(acc, 0)
     pos = vip.integrate(vit, 5)
-    acc.loop_into(1 / 10 * (-1 * vit - 1 * pos))
-    acc.loop_into(5)
+    acc.loop_into(0.1 + 1 / 10 * (-1 * vit - 1 * pos) + 5)
     vip.solve(50)
 
 
@@ -65,17 +59,17 @@ def test_plant_controller():
         c = 1
         v0 = 0
         x0 = 5
-        acc = vip.loop_node(1 / m * x)
+        acc = vip.loop_node()
         vit = vip.integrate(acc, v0)
         pos = vip.integrate(vit, x0)
-        acc.loop_into(1 / m * (-c * vit - k * pos + x))
+        acc.loop_into(1 / m * (x - c * vit - k * pos + x))
         return pos
 
     target = 1
-    error = vip.loop_node(target)
+    error = vip.loop_node()
     x = controller(error)
     y = plant(x)
-    error.loop_into(-y)
+    error.loop_into(target - y)
 
     vip.solve(50)
 
@@ -94,7 +88,7 @@ def test_mass_spring_bond_graph():
 
     k = 1
     mass = 1
-    speed1 = vip.loop_node(0)
+    speed1 = vip.loop_node()
     force1, force2 = spring(speed1, 0, k)
     vit = inertia((force1,), mass)
     speed1.loop_into(vit)

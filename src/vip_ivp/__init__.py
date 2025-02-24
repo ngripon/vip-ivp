@@ -18,16 +18,14 @@ def integrate(input_value: Union["TemporalVar", Number], x0: Number) -> "Tempora
     return integral_value
 
 
-def loop_node(input_value: Union["TemporalVar", Number] = 0) -> "LoopNode":
+def loop_node() -> "LoopNode":
     """
-    Create a loop node for the input value. Loop node can accept new inputs through its "loop_into()" method after being instantiated.
-    
-    :param input_value: The value to be looped, can be a TemporalVar or a number.
+    Create a loop node. Loop node can accept new inputs through its "loop_into()" method after being instantiated.
+
     :return: The created LoopNode.
     """
     solver = _get_current_solver()
-    _check_solver_discrepancy(input_value, solver)
-    loop_node = solver.loop_node(input_value)
+    loop_node = solver.loop_node()
     return loop_node
 
 

@@ -6,11 +6,6 @@ import vip_ivp as vip
 ABSOLUTE_TOLERANCE = 0.01
 
 
-@pytest.fixture(autouse=True)
-def clear_solver_before_tests():
-    vip.clear()
-
-
 def test_rc_circuit():
     # r * dq/dt + q/c = 0
     q0_values = np.linspace(1, 10, 10)
@@ -25,7 +20,7 @@ def test_rc_circuit():
                 exact_solution = q0 * np.exp(-t / (R * C))
                 # Compute solver solution
                 vip.clear()
-                dq = vip.loop_node(0)
+                dq = vip.loop_node()
                 q = vip.integrate(dq, q0)
                 dq.loop_into(-q / (R * C))
                 vip.solve(t[-1], t_eval=t)
@@ -39,7 +34,7 @@ def test_harmonic_equation():
     x = np.linspace(0, 10, 1001)
     y_exact = np.cos(3 * x) + 2 / 3 * np.sin(3 * x)
     # Compute solver solution
-    ddy = vip.loop_node(0)
+    ddy = vip.loop_node()
     dy = vip.integrate(ddy, 2)
     y = vip.integrate(dy, 1)
     ddy.loop_into(-9 * y)
@@ -54,7 +49,7 @@ def test_second_order_ode():
     x = np.linspace(0, 100, 1001)
     y_exact = (2 * x + 1) * np.exp(-2 * x)
     # Compute solver solution
-    ddy = vip.loop_node(0)
+    ddy = vip.loop_node()
     dy = vip.integrate(ddy, 0)
     y = vip.integrate(dy, 1)
     ddy.loop_into(-4 * dy - 4 * y)
