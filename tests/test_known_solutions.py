@@ -6,11 +6,6 @@ import vip_ivp as vip
 ABSOLUTE_TOLERANCE = 0.01
 
 
-@pytest.fixture(autouse=True)
-def clear_solver_before_tests():
-    vip.clear()
-
-
 def test_rc_circuit():
     # r * dq/dt + q/c = 0
     q0_values = np.linspace(1, 10, 10)

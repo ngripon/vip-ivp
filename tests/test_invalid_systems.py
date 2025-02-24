@@ -3,11 +3,6 @@ import pytest
 import vip_ivp as vip
 
 
-@pytest.fixture(autouse=True)
-def clear_solver_before_tests():
-    vip.clear()
-
-
 def test_algebraic_loop():
     x = vip.loop_node()
     ix = vip.integrate(x, 0)
