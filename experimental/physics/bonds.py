@@ -1,10 +1,18 @@
+import enum
+
 import vip_ivp as vip
 
 
+class Intensive(enum.Enum):
+    EFFORT = 0
+    FLOW = 1
+
+
 class Bond:
-    def __init__(self):
+    def __init__(self, intensive_variable: Intensive = Intensive.FLOW):
         self._flow = vip.loop_node()
         self._effort = vip.loop_node()
+        self.intensive_variable = intensive_variable
 
     @property
     def effort(self) -> vip.TemporalVar:
