@@ -1,5 +1,5 @@
 from numbers import Number
-from typing import Union
+from typing import Union, overload
 
 import matplotlib.pyplot as plt
 
@@ -8,17 +8,25 @@ import vip_ivp as vip
 from experimental.physics.bonds import Mechanical1DEffort, Mechanical1DFlow, Bond
 
 
+def get_port_effort(port: Mechanical1DEffort = None) -> Union[Mechanical1DEffort, Mechanical1DFlow]:
+    if port is not None:
+        return port
+    else:
+        return Mechanical1DFlow()
+
+
+def get_port_flow(port: Mechanical1DFlow = None) -> Union[Mechanical1DEffort, Mechanical1DFlow]:
+    if port is not None:
+        return port
+    else:
+        return Mechanical1DEffort()
+
+
 class Inertia:
     def __init__(self, mass: float, gravity: bool, speed0: float = 0, port1: Mechanical1DEffort = None,
                  port2: Mechanical1DEffort = None):
-        if port1 is not None:
-            self.port1 = port1
-        else:
-            self.port1 = Mechanical1DFlow()
-        if port2 is not None:
-            self.port2 = port1
-        else:
-            self.port2 = Mechanical1DFlow()
+        self.port1 = get_port_effort(port1)
+        self.port2 = get_port_effort(port2)
         acc = self.port2.force + self.port1.force / mass
         if gravity:
             acc += 9.81
@@ -28,11 +36,13 @@ class Inertia:
 
 
 class Spring:
-    def __init__(self, port1: Mechanical1DFlow, stiffness: float, x0: float = 0):
+    def __init__(self, stiffness: float, x0: float = 0, port1: Mechanical1DFlow = None, port2: Mechanical1DFlow = None):
+        self.port1 = get_port_flow(port1)
+        self.port2 = get_port_flow(port2)
         self.port2 = Mechanical1DEffort()
         x = vip.integrate(port1.flow - self.port2.flow, x0)
         effort_value = stiffness * x
-        port1.effort = -effort_value
+        self.port1.effort = -effort_value
         self.port2.effort = effort_value
 
 
@@ -43,8 +53,8 @@ if __name__ == '__main__':
     spring_list = []
     current_effort = Mechanical1DEffort(0)
     for i in range(n_springs):
-        mass = Inertia( 1, False, 1 if i == 0 else 0, port1=current_effort)
-        spring = Spring(mass.port2, 1)
+        mass = Inertia(1, False, 1 if i == 0 else 0, port1=current_effort)
+        spring = Spring(1, port1=mass.port2)
         current_effort = spring.port2
 
         mass_list.append(mass.port2)
