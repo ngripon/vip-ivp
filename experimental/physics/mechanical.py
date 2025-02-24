@@ -41,6 +41,8 @@ if __name__ == '__main__':
 
         mass_list.append(mass.port2)
         spring_list.append(spring.port2)
+    else:
+        spring.port2.flow=0
 
     vip.solve(500, time_step=0.01)
     # Plot

@@ -2,65 +2,58 @@ import vip_ivp as vip
 
 
 class Bond:
-    def __init__(self, flow, effort):
-        self._flow = flow
-        self._effort = effort
+    def __init__(self):
+        self._flow = vip.loop_node()
+        self._effort = vip.loop_node()
 
     @property
-    def effort(self):
+    def effort(self) -> vip.TemporalVar:
         return self._effort
 
     @effort.setter
     def effort(self, value: vip.TemporalVar):
-        self._effort = value
+        self._effort.loop_into(value)
 
     @property
-    def flow(self):
+    def flow(self) -> vip.TemporalVar:
         return self._flow
 
     @flow.setter
     def flow(self, value: vip.TemporalVar):
-        self._flow = value
+        self._flow.loop_into(value)
 
     @property
     def power(self):
         return self.flow * self.effort
 
 
-def rename_effort(new_name):
-    def decorator(cls):
-        if hasattr(cls, "effort"):
-            setattr(cls, new_name, cls.effort)
-        return cls
+class Mechanical1DBond(Bond):
+    @property
+    def force(self):
+        return self.effort
 
-    return decorator
+    @force.setter
+    def force(self, value: vip.TemporalVar):
+        self.effort = value
 
+    @property
+    def speed(self):
+        return self.flow
 
-def create_bond_types(name: str, effort_name: str, flow_name: str):
-    @rename_effort(effort_name)
-    class BondFlow(Bond):
-        def __init__(self, value: float = 0):
-            super().__init__(value, vip.loop_node())
-
-        @Bond.effort.setter
-        def effort(self, value):
-            self.effort.loop_into(value)
-
-    @rename_effort(effort_name)
-    class BondEffort(Bond):
-        def __init__(self, value: float = 0):
-            super().__init__(vip.loop_node(), value)
-
-        @Bond.flow.setter
-        def flow(self, value):
-            self.flow.loop_into(value)
-
-    BondEffort.__name__ = f"{name}Effort"
-    setattr(BondEffort, flow_name, BondEffort.flow)
-    BondFlow.__name__ = f"{name}Flow"
-    setattr(BondFlow, flow_name, BondFlow.flow)
-
-    return BondEffort, BondFlow
+    @speed.setter
+    def speed(self, value: vip.TemporalVar):
+        self.flow = value
 
 
-Mechanical1DEffort, Mechanical1DFlow = create_bond_types("Mechanical1D", "force", "speed")
+class Mechanical1DEffort(Mechanical1DBond):
+    def __init__(self, effort=None):
+        super().__init__()
+        if effort is not None:
+            self.effort = effort
+
+
+class Mechanical1DFlow(Mechanical1DBond):
+    def __init__(self, flow=None):
+        super().__init__()
+        if flow is not None:
+            self.flow = flow
