@@ -17,11 +17,3 @@ def test_set_loop_node_two_times():
     x.loop_into(6)
     with pytest.raises(Exception):
         x.loop_into(5)
-
-
-def test_forget_to_set_loop_node():
-    x = vip.loop_node()
-    ix = vip.integrate(x, 0)
-
-    with pytest.raises(Exception):
-        vip.solve(10)

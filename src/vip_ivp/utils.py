@@ -379,17 +379,17 @@ def compose(fun: Callable, var: TemporalVar) -> TemporalVar:
 
 class LoopNode(TemporalVar):
     def __init__(self, solver: Solver):
-        super().__init__(solver, None)
-        self.function=None
+        super().__init__(solver, lambda t, y: 0)
+        self._is_set = False
 
-    def loop_into(self,value: Union[TemporalVar, Number],):
+    def loop_into(self, value: Union[TemporalVar, Number], ):
         """
         Set the input value of the loop node.
 
         :param value: The value to add, can be a TemporalVar or a number.
         """
         # Do not accept to loop into again if it has already been done
-        if self.function is not None:
+        if self._is_set:
             raise Exception(
                 "This Loop Node has already been set. Calling 'loop_into()' twice on the same variable is forbidden."
             )
@@ -397,3 +397,4 @@ class LoopNode(TemporalVar):
             self.function = lambda t, y: value(t, y)
         else:
             self.function = lambda t, y: value
+        self._is_set = True
