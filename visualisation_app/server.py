@@ -19,7 +19,9 @@ def serve_static(path):
 
 @app.route("/api/foo")
 def send_text():
-    return jsonify({"message": "Hey you, out there in the cold!"})
+    with open("../demos/exponential_decay.py", "r") as f:
+        text = f.read()
+    return jsonify({"message": text})
 
 
 if __name__ == "__main__":
