@@ -1,4 +1,5 @@
 import enum
+from typing import List
 
 import vip_ivp as vip
 
@@ -13,9 +14,10 @@ class Bond:
         self._flow = vip.loop_node()
         self._effort = vip.loop_node()
         self.intensive_variable = intensive_variable
+        self._loop_nodes_to_update: List[vip.LoopNode] = []
 
     @property
-    def effort(self) -> vip.TemporalVar:
+    def effort(self) -> vip.LoopNode:
         return self._effort
 
     @effort.setter
@@ -23,7 +25,7 @@ class Bond:
         self._effort.loop_into(value)
 
     @property
-    def flow(self) -> vip.TemporalVar:
+    def flow(self) -> vip.LoopNode:
         return self._flow
 
     @flow.setter
@@ -58,6 +60,28 @@ class Mechanical1DEffort(Mechanical1DBond):
         super().__init__()
         if effort is not None:
             self.effort = effort
+        self._loop_nodes_to_update=[self.flow]
+
+    @classmethod
+    def from_bond(cls, bond: 'Mechanical1DEffort'):
+        new_bond = cls(bond.effort)
+        new_bond._loop_nodes_to_update.extend(bond._loop_nodes_to_update)
+        return new_bond
+
+    @property
+    def flow(self):
+        return super().flow
+
+    @flow.setter
+    def flow(self, value: vip.TemporalVar):
+        for node in self._loop_nodes_to_update:
+            node.loop_into(value, force=False)
+        # self._flow.loop_into(value)
+
+    def __add__(self, other: "Mechanical1DEffort") -> "Mechanical1DEffort":
+        new_bond = Mechanical1DEffort(other.effort + self.effort)
+        new_bond._loop_nodes_to_update.extend((other.flow, self.flow))
+        return new_bond
 
 
 class Mechanical1DFlow(Mechanical1DBond):
@@ -65,3 +89,20 @@ class Mechanical1DFlow(Mechanical1DBond):
         super().__init__()
         if flow is not None:
             self.flow = flow
+        self._loop_nodes_to_update=[self.effort]
+
+    @classmethod
+    def from_bond(cls, bond: 'Mechanical1DFlow'):
+        new_bond = cls(bond.flow)
+        new_bond._loop_nodes_to_update.extend(bond._loop_nodes_to_update)
+        return new_bond
+
+    @property
+    def effort(self):
+        return super().effort
+
+    @effort.setter
+    def effort(self, value: vip.TemporalVar):
+        for node in self._loop_nodes_to_update:
+            node.loop_into(value, force=True)
+        # self._effort.loop_into(value)
