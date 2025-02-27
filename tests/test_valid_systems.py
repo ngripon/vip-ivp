@@ -16,6 +16,21 @@ def test_operator_overloading():
     vip.solve(10)
 
 
+def test_multiple_loop_into():
+    d_n1 = vip.loop_node()
+    n1 = vip.integrate(d_n1, 1)
+    d_n1.loop_into(-0.3 * n1)
+    d_n1.loop_into(-0.2 * n1, force=True)
+
+    d_n2 = vip.loop_node()
+    n2 = vip.integrate(d_n2, 1)
+    d_n2.loop_into(-0.5 * n2)
+
+    vip.solve(10)
+    error_array=n2.values-n1.values
+    assert all(error_array < 1e-10)
+
+
 def test_pendulum():
     dd_th = vip.loop_node()
     d_th = vip.integrate(dd_th, 0)
