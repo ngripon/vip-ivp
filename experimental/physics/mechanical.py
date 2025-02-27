@@ -10,14 +10,14 @@ from experimental.physics.bonds import Mechanical1DEffort, Mechanical1DFlow, Bon
 
 def get_port_effort(port: Mechanical1DEffort = None) -> Union[Mechanical1DEffort, Mechanical1DFlow]:
     if port is not None:
-        return port
+        return Mechanical1DEffort.from_bond(port)
     else:
         return Mechanical1DFlow()
 
 
 def get_port_flow(port: Mechanical1DFlow = None) -> Union[Mechanical1DEffort, Mechanical1DFlow]:
     if port is not None:
-        return port
+        return Mechanical1DFlow.from_bond(port)
     else:
         return Mechanical1DEffort()
 
@@ -48,21 +48,46 @@ class Spring:
 
 if __name__ == '__main__':
     # 100 spring system
-    n_springs = 100
-    mass_list = []
-    spring_list = []
-    current_effort = Mechanical1DEffort(0)
-    for i in range(n_springs):
-        mass = Inertia(1, False, 1 if i == 0 else 0, port1=current_effort)
-        spring = Spring(1, port1=mass.port2)
-        current_effort = spring.port2
+    # n_springs = 100
+    # mass_list = []
+    # spring_list = []
+    # current_effort = Mechanical1DEffort(0)
+    # for i in range(n_springs):
+    #     mass = Inertia(1, False, 1 if i == 0 else 0, port1=current_effort)
+    #     spring = Spring(1, port1=mass.port2)
+    #     current_effort = spring.port2
+    #
+    #     mass_list.append(mass.port2)
+    #     spring_list.append(spring.port2)
+    #
+    # vip.solve(500, time_step=0.01)
+    # # Plot
+    #
+    # for mass in mass_list[:1]:
+    #     plt.plot(mass.flow.t, mass.flow)
+    # plt.show()
 
-        mass_list.append(mass.port2)
-        spring_list.append(spring.port2)
+    x0=1
+    k=1
+    m=1
 
-    vip.solve(500, time_step=0.01)
-    # Plot
+    # Mass damper mechanism
+    mass1 = Inertia(m, False, port1=Mechanical1DEffort(0))
+    spring1 = Spring(k,x0=x0, port1=mass1.port2, port2=Mechanical1DFlow(0))
+    spring2 = Spring(k,x0=x0, port1=mass1.port2, port2=Mechanical1DFlow(0))
 
-    for mass in mass_list[:1]:
-        plt.plot(mass.flow.t, mass.flow)
-    plt.show()
+    mass1.port2.flow.to_plot("aaa")
+
+    vip.solve(10, time_step=0.01)
+
+    vip.new_system()
+    acceleration = vip.loop_node()
+    velocity = vip.integrate(acceleration, 0)
+    displacement = vip.integrate(velocity, x0)
+    acceleration.loop_into(-(2*k * displacement) / m)
+    velocity.to_plot("bbb")
+    vip.solve(10, time_step=0.01)
+
+
+
+

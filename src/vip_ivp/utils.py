@@ -379,22 +379,40 @@ def compose(fun: Callable, var: TemporalVar) -> TemporalVar:
 
 class LoopNode(TemporalVar):
     def __init__(self, solver: Solver):
+        self._nested_functions = []
         super().__init__(solver, lambda t, y: 0)
         self._is_set = False
 
-    def loop_into(self, value: Union[TemporalVar, Number], ):
+    def loop_into(
+            self,
+            value: Union[TemporalVar, Number],
+            force: bool = False
+    ):
         """
         Set the input value of the loop node.
 
+        :param force: Add the value to the loop node even if it has already been set.
         :param value: The value to add, can be a TemporalVar or a number.
         """
-        # Do not accept to loop into again if it has already been done
-        if self._is_set:
+        if self._is_set and not force:
             raise Exception(
-                "This Loop Node has already been set. Calling 'loop_into()' twice on the same variable is forbidden."
+                "This Loop Node has already been set. If you want to add another value, use argument 'force = True'."
             )
+        index = len(self._nested_functions) - 1
         if isinstance(value, TemporalVar):
-            self.function = lambda t, y: value(t, y)
+            new_fun = lambda t, y, i=index: value(t, y) + self._nested_functions[i](t, y)
         else:
-            self.function = lambda t, y: value
+            new_fun = lambda t, y, i=index: self._nested_functions[i](t, y) + value
+        self._nested_functions.append(new_fun)
         self._is_set = True
+
+    @property
+    def function(self):
+        return self._nested_functions[-1]
+
+    @function.setter
+    def function(self, value):
+        self._nested_functions.append(value)
+
+    def __call__(self, t, y):
+        return self.function(t, y)
