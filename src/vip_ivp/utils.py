@@ -123,10 +123,13 @@ class Solver:
         plt.tight_layout()
         plt.show()
 
-    def explore(self, f: Callable, t_end: Number, bounds=()):
+    def explore(self, f: Callable, t_end: Number, bounds=(), time_step: float = None, title: str = ""):
         """
         Explore the function f over the given bounds and solve the system until t_end.
+        This function needs the sliderplot package.
 
+        :param title: Title of the plot
+        :param time_step: Time step of the simulation
         :param f: The function to explore.
         :param t_end: Time at which the integration stops.
         :param bounds: Bounds for the exploration.
@@ -135,12 +138,12 @@ class Solver:
         def wrapper(*args, **kwargs):
             self.clear()
             outputs = f(*args, **kwargs)
-            self.solve(t_end)
+            self.solve(t_end, time_step=time_step)
             transformed_outputs = self.unwrap_leaves(outputs)
             return transformed_outputs
 
         functools.update_wrapper(wrapper, f)
-        sliderplot(wrapper, bounds)
+        sliderplot(wrapper, bounds, page_title="vip-ivp", titles=[title], axes_labels=(("Time (s)", ""),))
 
     def clear(self):
         """

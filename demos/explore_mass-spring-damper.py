@@ -6,9 +6,9 @@ def mass_spring_damper_system(m=1, c=1, k=1, x0=0.2):
     velocity = vip.integrate(acceleration, 0)
     displacement = vip.integrate(velocity, x0)
     acceleration.loop_into(-(c * velocity + k * displacement) / m)
-    return velocity, displacement
+    return displacement
 
 
-# Solve the system
-t_simulation = 10  # s
-vip.explore(mass_spring_damper_system, t_simulation)
+t_simulation = 50  # s
+time_step = 0.001  # s
+vip.explore(mass_spring_damper_system, t_simulation, time_step=time_step, title="Mass-Spring-Damper mechanism")
