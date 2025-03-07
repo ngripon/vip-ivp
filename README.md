@@ -20,6 +20,16 @@ d_n.to_plot("Derivative")
 vip.solve(10, time_step=0.001)
 ```
 
+## Installation
+
+To install vip-ivp, simply run the following command:
+
+```
+pip install vip-ivp
+```
+
+This will install the latest version from PyPI.
+
 ## Motivation
 
 The traditional way to solve an **Initial Value Problem (IVP)** is to define the function  $y'=f(t,y(t))$  and pass it
@@ -152,7 +162,8 @@ vip.solve(10)  # 'variable' will be plotted, even if it was declared in a functi
 
 ### Explore results
 
-Generate an interactive plot from a given function. The plot includes sliders, allowing users to adjust input values dynamically.
+Generate an interactive plot from a given function. The plot includes sliders, allowing users to adjust input values
+dynamically.
 
 This feature requires the [sliderplot](https://github.com/ngripon/sliderplot) package:
 
