@@ -134,6 +134,21 @@ vip.solve(t_end=10,
 For `**options`, see
 the [SciPy documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html).
 
+### Plot results
+Plot variables with `.to_plot(variable_name : str)` method.
+
+The plot is automatically created when the system is solved.
+
+```python
+def foo():
+    variable = vip.create_source(5)
+    variable.to_plot("Variable name")
+
+
+foo()
+vip.solve(10)  # 'variable' will be plotted, even if it was declared in a function.
+```
+
 ### Explore results
 
 Explore the function over given bounds and solve the system.
@@ -144,9 +159,9 @@ vip.explore(lambda x: x ** 2, t_end=10, bounds=(0, 1))
 
 ## Advanced features
 
-### Save and plot intermediary results
+### Save intermediary results
 
-Save and plot variables for later analysis.
+Save variables for later analysis.
 
 Its only use-case is when the variable may be lost due to context, typically for variables that are created inside
 functions.
@@ -155,7 +170,6 @@ functions.
 def foo():
     variable = vip.create_source(5)
     variable.save("bar")
-    variable.to_plot("Variable name")
 
 
 foo()
