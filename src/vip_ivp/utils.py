@@ -98,7 +98,7 @@ class Solver:
                 "Please check in the set_value() methods if a variable use itself for computing "
                 "its value."
             )
-        print(f"Performance = {time.time() - start}")
+        # print(f"Performance = {time.time() - start}")
         self.t = res.t
         self.y = res.y
         self.solved = True
