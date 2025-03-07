@@ -55,17 +55,19 @@ def solve(t_end: Number, method='RK45', time_step=None, t_eval=None, **options) 
     solver.solve(t_end, method, time_step, t_eval, **options)
 
 
-def explore(f: Callable, t_end: Number, bounds=()) -> None:
+def explore(f: Callable, t_end: Number, bounds=(), time_step: float = None, title: str = "") -> None:
     """
     Explore the function f over the given bounds and solve the system until t_end.
     This function needs the sliderplot package.
-    
+
+    :param title: Title of the plot
+    :param time_step: Time step of the simulation
     :param f: The function to explore.
     :param t_end: Time at which the integration stops.
     :param bounds: Bounds for the exploration.
     """
     solver = _get_current_solver()
-    solver.explore(f, t_end, bounds)
+    solver.explore(f, t_end, bounds, time_step, title)
 
 
 def new_system() -> None:
