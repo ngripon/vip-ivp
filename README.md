@@ -154,7 +154,7 @@ vip.solve(10)  # 'variable' will be plotted, even if it was declared in a functi
 
 Generate an interactive plot from a given function. The plot includes sliders, allowing users to adjust input values dynamically.
 
-This feature requires the `sliderplot` package:
+This feature requires the [sliderplot](https://github.com/ngripon/sliderplot) package:
 
 `pip install sliderplot`
 
