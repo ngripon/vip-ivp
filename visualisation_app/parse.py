@@ -1,16 +1,28 @@
 import ast
 import matplotlib
 
-import vip_ivp as vip
-
 matplotlib.use('Agg')  # Use a non-interactive backend (no plots will show)
+
+import vip_ivp as vip  # Ensure vip is imported
+
+
+class Variable:
+    """Class representing a variable in the code with its dependencies, expression, and value."""
+
+    def __init__(self, name, dependencies, expression, value):
+        self.name = name
+        self.dependencies = dependencies
+        self.expression = expression
+        self.value = value  # Store the value of the variable
+
+    def __repr__(self):
+        return f"Variable(name={self.name}, dependencies={self.dependencies}, expression={self.expression}, value={self.value})"
 
 
 class DependencyVisitor(ast.NodeVisitor):
     def __init__(self, env):
         self.env = env
-        self.variables = {}  # Store declared variables
-        self.dependencies = {}  # Store dependencies (who uses who)
+        self.variables = []  # Store a list of Variable objects
         self.imported_modules = set()  # Track imported module names
 
     def visit_Import(self, node):
@@ -37,8 +49,10 @@ class DependencyVisitor(ast.NodeVisitor):
 
             # Check if the variable is an instance of vip.TemporalVariable
             if isinstance(variable_value, vip.TemporalVar):
-                self.variables[target] = variable_value
-                self.dependencies[target] = list(used_vars - self.imported_modules)  # Remove modules
+                # Create a Variable object with the name, dependencies, expression, and value
+                expression = ast.dump(node.value)  # Get a string representation of the expression
+                variable = Variable(target, list(used_vars - self.imported_modules), expression, variable_value)
+                self.variables.append(variable)
 
     def visit_Call(self, node):
         """Handle function calls like loop_into()."""
@@ -47,10 +61,10 @@ class DependencyVisitor(ast.NodeVisitor):
                 used_vars = self.extract_used_variables(node.args[0])  # Get used variables in loop_into argument
                 if isinstance(node.func.value, ast.Name):  # e.g., d_n
                     caller_var = node.func.value.id
-                    # Add the dependency from caller_var to used_var
-                    if caller_var not in self.dependencies:
-                        self.dependencies[caller_var] = []
-                    self.dependencies[caller_var].extend(used_vars)
+                    # Find the variable object for caller_var
+                    caller_variable = next((var for var in self.variables if var.name == caller_var), None)
+                    if caller_variable:
+                        caller_variable.dependencies.extend(used_vars)
 
     def extract_used_variables(self, node):
         """Recursively extracts all variables used in an expression."""
@@ -104,12 +118,12 @@ def extract_dependencies(file_path):
     # Now, visit all nodes to extract dependencies
     visitor.visit(tree)
 
-    return visitor.variables, visitor.dependencies
+    return visitor.variables  # Return the list of Variable objects
 
 
 # Example Usage:
 file_path = "../demos/exponential_decay.py"
-variables, dependencies = extract_dependencies(file_path)
+variables = extract_dependencies(file_path)
 
-print("Declared Variables:", variables)
-print("Dependencies:", dependencies)
+for var in variables:
+    print(var)
