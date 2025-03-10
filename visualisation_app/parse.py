@@ -7,16 +7,15 @@ import vip_ivp as vip  # Ensure vip is imported
 
 
 class Variable:
-    """Class representing a variable in the code with its dependencies, expression, and value."""
+    """Class representing a variable in the code with its dependencies and value."""
 
-    def __init__(self, name, dependencies, expression, value):
+    def __init__(self, name, dependencies, value):
         self.name = name
         self.dependencies = dependencies
-        self.expression = expression
         self.value = value  # Store the value of the variable
 
     def __repr__(self):
-        return f"Variable(name={self.name}, dependencies={self.dependencies}, expression={self.expression}, value={self.value})"
+        return f"Variable(name={self.name}, dependencies={self.dependencies}, value={self.value})"
 
 
 class DependencyVisitor(ast.NodeVisitor):
@@ -49,9 +48,8 @@ class DependencyVisitor(ast.NodeVisitor):
 
             # Check if the variable is an instance of vip.TemporalVariable
             if isinstance(variable_value, vip.TemporalVar):
-                # Create a Variable object with the name, dependencies, expression, and value
-                expression = ast.dump(node.value)  # Get a string representation of the expression
-                variable = Variable(target, list(used_vars - self.imported_modules), expression, variable_value)
+                # Create a Variable object with the name, dependencies, and value
+                variable = Variable(target, list(used_vars - self.imported_modules), variable_value)
                 self.variables.append(variable)
 
     def visit_Call(self, node):
