@@ -116,7 +116,7 @@ class Solver:
             plt.plot(var.t, var, label=variable_name)
         # Label and axis
         plt.title("Simulation results")
-        plt.ylabel("Time (s)")
+        plt.xlabel("Time (s)")
         plt.legend()
         plt.xlim(0, var.t[-1])
         plt.grid()
