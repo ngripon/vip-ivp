@@ -113,7 +113,7 @@ class Solver:
             return
         # Plot data
         for variable_name, var in self.vars_to_plot.items():
-            plt.plot(var.t, var, label=variable_name)
+            plt.plot(var.t, var.values, label=variable_name)
         # Label and axis
         plt.title("Simulation results")
         plt.xlabel("Time (s)")
@@ -329,6 +329,9 @@ class TemporalVar:
 
     def __getitem__(self, item):
         return TemporalVar(self.solver, lambda t, y: self(t, y)[item])
+
+    def __getattr__(self, item):
+        return TemporalVar(self.solver, lambda t, y: getattr(self(t, y), item))
 
     def __array_ufunc__(self, ufunc, method, *inputs) -> "TemporalVar":
         if method == "__call__":
