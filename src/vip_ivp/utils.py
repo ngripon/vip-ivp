@@ -60,8 +60,7 @@ class Solver:
     def solve(
             self,
             t_end: float,
-            method="RK45",
-            time_step=None,
+            time_step=np.inf,
             plot: bool = True,
             **options,
     ) -> None:
@@ -82,7 +81,7 @@ class Solver:
         try:
             self.t = [0]
             self.y = [x0]
-            solver = RK45(self._dy, 0, x0, t_end, max_step=time_step)
+            solver = RK45(self._dy, 0, x0, t_end, max_step=time_step, **options)
             while solver.status == "running":
                 solver.step()
                 self.t.append(solver.t)
