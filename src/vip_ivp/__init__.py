@@ -1,3 +1,5 @@
+from typing import Iterable, Mapping, Any
+
 from varname import argname
 from .utils import *
 
@@ -29,7 +31,7 @@ def loop_node() -> "LoopNode":
     return loop_node
 
 
-def create_source(value: Union[Callable, Number]) -> "TemporalVar":
+def create_source(value: Union[Callable, Number, Iterable[Number], Mapping[Any,Number]]) -> "TemporalVar":
     """
     Create a source signal from a temporal function or a scalar value.
     
@@ -134,3 +136,5 @@ def _check_solver_discrepancy(input_value: Union["TemporalVar", Number], solver:
     """
     if isinstance(input_value, TemporalVar) and not solver is input_value.solver:
         raise Exception("Can not use a variable from a previous system.")
+
+
