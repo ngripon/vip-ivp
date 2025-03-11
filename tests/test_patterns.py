@@ -23,3 +23,20 @@ def test_collections_get_methods():
     e = vip.integrate(obj.lol, 0)
 
     vip.solve(10)
+
+
+def test_use_numpy_function():
+    x = vip.create_source(5)
+    a = vip.integrate(x, 0)
+
+    np.random.seed(10)
+    map_length = 100
+    map_x = np.linspace(0, 100, map_length)
+    map_y = np.random.rand(map_length)
+    interp = vip.lambdify(np.interp)
+    y = interp(a, map_x, map_y)
+    vip.solve(10, time_step=0.01)
+
+    error_array = y.values - np.interp(a.values, map_x, map_y)
+
+    assert np.all(error_array==0)
