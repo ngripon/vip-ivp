@@ -1,3 +1,6 @@
+import inspect
+from typing import Iterable, Mapping, Any, ParamSpec
+
 from varname import argname
 from .utils import *
 
@@ -29,7 +32,7 @@ def loop_node() -> "LoopNode":
     return loop_node
 
 
-def create_source(value: Union[Callable, Number]) -> "TemporalVar":
+def create_source(value: Union[Callable, Number, Iterable[Number], Mapping[Any, Number]]) -> "TemporalVar":
     """
     Create a source signal from a temporal function or a scalar value.
     
@@ -118,6 +121,20 @@ def plot() -> None:
     """
     solver = _get_current_solver()
     solver.plot()
+
+
+P = ParamSpec("P")
+
+
+def lambdify(func: Callable[P, Any]) -> Callable[P, TemporalVar]:
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> TemporalVar:
+        content = lambda t, y: func(*[arg(t, y) if isinstance(arg, TemporalVar) else arg for arg in args],
+                                    **{key: (arg(t, y) if isinstance(arg, TemporalVar) else arg) for key, arg in
+                                       kwargs.items()})
+        return TemporalVar(_get_current_solver(), content)
+
+    functools.update_wrapper(wrapper, func)
+    return wrapper
 
 
 def _get_current_solver() -> "Solver":
