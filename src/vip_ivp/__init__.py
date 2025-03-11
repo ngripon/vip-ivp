@@ -1,5 +1,5 @@
 import inspect
-from typing import Iterable, Mapping, Any
+from typing import Iterable, Mapping, Any, ParamSpec
 
 from varname import argname
 from .utils import *
@@ -123,10 +123,14 @@ def plot() -> None:
     solver.plot()
 
 
-def lambdify(func):
-    def wrapper(*args, **kwargs):
+P = ParamSpec("P")
+
+
+def lambdify(func: Callable[P, Any]) -> Callable[P, TemporalVar]:
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> TemporalVar:
         content = lambda t, y: func(*[arg(t, y) if isinstance(arg, TemporalVar) else arg for arg in args],
-                                    **{key:(arg(t, y) if isinstance(arg, TemporalVar) else arg) for key, arg in kwargs.items()})
+                                    **{key: (arg(t, y) if isinstance(arg, TemporalVar) else arg) for key, arg in
+                                       kwargs.items()})
         return TemporalVar(_get_current_solver(), content)
 
     functools.update_wrapper(wrapper, func)
