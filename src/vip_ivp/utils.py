@@ -55,7 +55,7 @@ class Solver:
         if callable(value):
             return TemporalVar(self, lambda t, y: value(t))
         else:
-            return TemporalVar(self, lambda t, y: value)
+            return TemporalVar(self, lambda t, y: value if np.isscalar(t) else np.full_like(t, value))
 
     def solve(
             self,
