@@ -31,7 +31,7 @@ def loop_node() -> "LoopNode":
     return loop_node
 
 
-def create_source(value: Union[Callable, Number, Iterable[Number], Mapping[Any,Number]]) -> "TemporalVar":
+def create_source(value: Union[Callable, Number, Iterable[Number], Mapping[Any, Number]]) -> "TemporalVar":
     """
     Create a source signal from a temporal function or a scalar value.
     
@@ -122,6 +122,16 @@ def plot() -> None:
     solver.plot()
 
 
+def lambdify(func):
+    def wrapper(*args, **kwargs):
+        content = lambda t, y: func(*[arg(t, y) if isinstance(arg, TemporalVar) else arg for arg in args],
+                                    **{key:(arg(t, y) if isinstance(arg, TemporalVar) else arg) for key, arg in kwargs.items()})
+        return TemporalVar(_get_current_solver(), content)
+
+    functools.update_wrapper(wrapper, func)
+    return wrapper
+
+
 def _get_current_solver() -> "Solver":
     if not _solver_list:
         new_system()
@@ -136,5 +146,3 @@ def _check_solver_discrepancy(input_value: Union["TemporalVar", Number], solver:
     """
     if isinstance(input_value, TemporalVar) and not solver is input_value.solver:
         raise Exception("Can not use a variable from a previous system.")
-
-
