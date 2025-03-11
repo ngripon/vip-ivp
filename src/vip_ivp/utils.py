@@ -7,7 +7,7 @@ from typing import Callable, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.integrate import solve_ivp
+from scipy.integrate import solve_ivp, RK45
 from sliderplot import sliderplot
 
 
@@ -59,10 +59,9 @@ class Solver:
 
     def solve(
             self,
-            t_end: Number,
+            t_end: float,
             method="RK45",
             time_step=None,
-            t_eval=None,
             plot: bool = True,
             **options,
     ) -> None:
@@ -72,7 +71,6 @@ class Solver:
         :param t_end: Time at which the integration stops.
         :param method: Integration method to use. Default is 'RK45'.
         :param time_step: Time step for the integration. If None, use points selected by the solver.
-        :param t_eval: Times at which to store the computed solution. If None, use points selected by the solver.
         :param plot: Plot the variables that called the "to_plot()" method.
         :param options: Additional options for the solver. See https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html.
         """
@@ -81,26 +79,29 @@ class Solver:
         # Reinit values
         [var._reset() for var in self.vars]
         start = time.time()
-        # Set t_eval
-        if time_step is not None:
-            if t_eval is not None:
-                warnings.warn(
-                    "The value of t_eval has been overridden because time_step parameter is not None."
-                )
-            t_eval = np.arange(0, t_end, time_step)
         try:
-            res = solve_ivp(
-                self._dy, (0, t_end), x0, method=method, t_eval=t_eval, **options
-            )
+            self.t = [0]
+            self.y = [x0]
+            solver = RK45(self._dy, 0, x0, t_end, max_step=time_step)
+            while solver.status == "running":
+                solver.step()
+                self.t.append(solver.t)
+                self.y.append(solver.y)
+
+            self.y = np.array(self.y).swapaxes(0, 1)
+            self.t = np.array(self.t)
+            # res = solve_ivp(
+            #     self._dy, (0, t_end), x0, method=method, t_eval=t_eval, **options
+            # )
         except RecursionError:
             raise RecursionError(
                 "An algebraic loop has been detected in the system. "
                 "Please check in the set_value() methods if a variable use itself for computing "
                 "its value."
             )
-        # print(f"Performance = {time.time() - start}")
-        self.t = res.t
-        self.y = res.y
+
+        print(f"Performance = {time.time() - start}")
+
         self.solved = True
         if plot:
             self.plot()
