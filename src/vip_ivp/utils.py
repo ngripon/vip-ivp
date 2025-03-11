@@ -77,21 +77,19 @@ class Solver:
         x0 = [x.init for x in self.initialized_vars]
         # Reinit values
         [var._reset() for var in self.vars]
+
         start = time.time()
         try:
-            self.t = [0]
-            self.y = [x0]
+            t = [0]
+            y = [x0]
             solver = RK45(self._dy, 0, x0, t_end, max_step=time_step, **options)
             while solver.status == "running":
                 solver.step()
-                self.t.append(solver.t)
-                self.y.append(solver.y)
+                t.append(solver.t)
+                y.append(solver.y)
 
-            self.y = np.array(self.y).swapaxes(0, 1)
-            self.t = np.array(self.t)
-            # res = solve_ivp(
-            #     self._dy, (0, t_end), x0, method=method, t_eval=t_eval, **options
-            # )
+            self.y = np.array(y).swapaxes(0, 1)
+            self.t = np.array(t)
         except RecursionError:
             raise RecursionError(
                 "An algebraic loop has been detected in the system. "
