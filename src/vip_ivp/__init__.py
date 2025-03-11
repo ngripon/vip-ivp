@@ -124,7 +124,6 @@ def plot() -> None:
 
 
 def lambdify(func):
-    sig = inspect.signature(func)
     def wrapper(*args, **kwargs):
         content = lambda t, y: func(*[arg(t, y) if isinstance(arg, TemporalVar) else arg for arg in args],
                                     **{key:(arg(t, y) if isinstance(arg, TemporalVar) else arg) for key, arg in kwargs.items()})
