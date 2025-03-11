@@ -327,6 +327,9 @@ class TemporalVar:
     def __abs__(self) -> "TemporalVar":
         return TemporalVar(self.solver, lambda t, y: abs(self(t, y)))
 
+    def __getitem__(self, item):
+        return TemporalVar(self.solver, lambda t, y: self(t, y)[item])
+
     def __array_ufunc__(self, ufunc, method, *inputs) -> "TemporalVar":
         if method == "__call__":
             if len(inputs) == 1:
