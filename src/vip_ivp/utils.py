@@ -286,8 +286,8 @@ class Solver:
                 if t_eval_step.size > 0:
                     if sol is None:
                         sol = solver.dense_output()
-                    self.t.append(t_eval_step)
-                    self.y.append(sol(t_eval_step))
+                    self.t.extend(t_eval_step)
+                    self.y.extend(np.vstack(sol(t_eval_step)).T)
                     t_eval_i = t_eval_i_new
 
             if t_eval is not None and dense_output:
@@ -295,12 +295,9 @@ class Solver:
 
         message = MESSAGES.get(status, message)
 
-        if t_eval is None:
-            self.t = np.array(self.t)
-            self.y = np.vstack(self.y).T
-        elif self.t:
-            self.t = np.hstack(self.t)
-            self.y = np.hstack(self.y)
+        self.t = np.array(self.t)
+        self.y = np.vstack(self.y).T
+
 
         if dense_output:
             if t_eval is None:
@@ -391,6 +388,7 @@ class TemporalVar:
                 if len(self.solver.t) >= n_steps:
                     previous_t = self.solver.t[-n_steps]
                     previous_y = self.solver.y[-n_steps]
+
                     return self(previous_t, previous_y)
                 else:
                     return initial_value
