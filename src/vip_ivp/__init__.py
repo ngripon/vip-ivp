@@ -1,6 +1,7 @@
 import inspect
 from typing import Iterable, Mapping, Any, ParamSpec
 
+import numpy as np
 from varname import argname
 from .utils import *
 
@@ -74,16 +75,13 @@ def explore(f: Callable, t_end: Number, bounds=(), time_step: float = None, titl
 
 
 def derive(input_value: TemporalVar, initial_value=0) -> TemporalVar:
-    def inner_fun(t, y):
-        step_diff = 1
-        t_previous = input_value.get_previous_time(step_diff)
-        if t > t_previous:
-            u = input_value(t, y)
-            u_previous = input_value.get_previous_value(step_diff, initial_value)
-            return (u - u_previous) / (t - t_previous)
-        return initial_value
-
-    return TemporalVar(_get_current_solver(), inner_fun)
+    previous_value = input_value.delay(1, initial_value)
+    time_value = create_source(lambda t: t)
+    previous_time = time_value.delay(1)
+    d_y = input_value - previous_value
+    d_t = time_value - previous_time
+    derived_value = np.divide(d_y, d_t, where=d_t != 0)
+    return derived_value
 
 
 def new_system() -> None:
