@@ -1,7 +1,5 @@
-import inspect
-from typing import Iterable, Mapping, Any, ParamSpec
+from typing import ParamSpec
 
-import numpy as np
 from varname import argname
 from .utils import *
 
@@ -9,11 +7,13 @@ warnings.simplefilter("once")
 
 _solver_list = []
 
+T = TypeVar('T')
 
-def integrate(input_value: Union["TemporalVar", Number], x0: Number) -> "TemporalVar":
+
+def integrate(input_value: Union["TemporalVar[T]", Number], x0: Number) -> TemporalVar[float]:
     """
     Integrate the input value starting from the initial condition x0.
-    
+
     :param input_value: The value to be integrated, can be a TemporalVar or a number.
     :param x0: The initial condition for the integration.
     :return: The integrated TemporalVar.
@@ -31,14 +31,14 @@ def loop_node() -> "LoopNode":
     :return: The created LoopNode.
     """
     solver = _get_current_solver()
-    loop_node = solver.loop_node()
-    return loop_node
+    loop = solver.loop_node()
+    return loop
 
 
-def create_source(value: Union[Callable, Number, Iterable[Number], Mapping[Any, Number]]) -> "TemporalVar":
+def create_source(value: Union[Callable[[Union[float, np.ndarray]], T], T]) -> "TemporalVar[T]":
     """
     Create a source signal from a temporal function or a scalar value.
-    
+
     :param value: A function f(t) or a scalar value.
     :return: The created TemporalVar.
     """
@@ -61,7 +61,7 @@ def solve(t_end: Number, method='RK45', time_step=None, t_eval=None, **options) 
     solver.solve(t_end, method, time_step, t_eval, **options)
 
 
-def explore(f: Callable, t_end: Number, bounds=(), time_step: float = None, title: str = "") -> None:
+def explore(f: Callable[..., T], t_end: Number, bounds=(), time_step: float = None, title: str = "") -> None:
     """
     Explore the function f over the given bounds and solve the system until t_end.
     This function needs the sliderplot package.
@@ -76,7 +76,7 @@ def explore(f: Callable, t_end: Number, bounds=(), time_step: float = None, titl
     solver.explore(f, t_end, bounds, time_step, title)
 
 
-def differentiate(input_value: TemporalVar, initial_value=0) -> TemporalVar:
+def differentiate(input_value: TemporalVar[float], initial_value=0) -> TemporalVar[float]:
     # Warn the user not to abuse the differentiate function
     warnings.warn("It is recommended to use 'integrate' instead of 'differentiate' for solving IVPs, "
                   "because the solver cannot guarantee precision when computing derivatives.\n"
@@ -108,10 +108,10 @@ def clear() -> None:
     solver.clear()
 
 
-def save(*args) -> None:
+def save(*args: TemporalVar) -> None:
     """
     Save the given TemporalVars with their variable names.
-    
+
     :param args: TemporalVars to be saved.
     :raises ValueError: If any of the arguments is not a TemporalVar.
     """
@@ -126,7 +126,7 @@ def save(*args) -> None:
 def get_var(var_name: str) -> TemporalVar:
     """
     Retrieve a saved TemporalVar by its name.
-    
+
     :param var_name: The name of the saved TemporalVar.
     :return: The retrieved TemporalVar.
     """
@@ -145,11 +145,12 @@ def plot() -> None:
 P = ParamSpec("P")
 
 
-def lambdify(func: Callable[P, Any]) -> Callable[P, TemporalVar]:
+def lambdify(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> TemporalVar:
-        content = lambda t, y: func(*[arg(t, y) if isinstance(arg, TemporalVar) else arg for arg in args],
-                                    **{key: (arg(t, y) if isinstance(arg, TemporalVar) else arg) for key, arg in
-                                       kwargs.items()})
+        def content(t, y): return func(*[arg(t, y) if isinstance(arg, TemporalVar) else arg for arg in args],
+                                       **{key: (arg(t, y) if isinstance(arg, TemporalVar) else arg) for key, arg in
+                                          kwargs.items()})
+
         return TemporalVar(_get_current_solver(), content)
 
     functools.update_wrapper(wrapper, func)
