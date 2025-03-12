@@ -117,8 +117,6 @@ class Solver:
                 "its value."
             )
         print(f"Performance = {time.time() - start}")
-        self.t = res.t
-        self.y = res.y
         self.solved = True
         if plot:
             self.plot()
@@ -238,15 +236,15 @@ class Solver:
         solver = method(fun, t0, y0, tf, vectorized=vectorized, **options)
 
         if t_eval is None:
-            ts = [t0]
-            ys = [y0]
+            self.t = [t0]
+            self.y = [y0]
         elif t_eval is not None and dense_output:
-            ts = []
+            self.t = []
             ti = [t0]
             ys = []
         else:
-            ts = []
-            ys = []
+            self.t = []
+            self.y = []
 
         interpolants = []
 
@@ -272,8 +270,8 @@ class Solver:
                 sol = None
 
             if t_eval is None:
-                ts.append(t)
-                ys.append(y)
+                self.t.append(t)
+                self.y.append(y)
             else:
                 # The value in t_eval equal to t will be included.
                 if solver.direction > 0:
@@ -289,8 +287,8 @@ class Solver:
                 if t_eval_step.size > 0:
                     if sol is None:
                         sol = solver.dense_output()
-                    ts.append(t_eval_step)
-                    ys.append(sol(t_eval_step))
+                    self.t.append(t_eval_step)
+                    self.y.append(sol(t_eval_step))
                     t_eval_i = t_eval_i_new
 
             if t_eval is not None and dense_output:
@@ -299,16 +297,16 @@ class Solver:
         message = MESSAGES.get(status, message)
 
         if t_eval is None:
-            ts = np.array(ts)
-            ys = np.vstack(ys).T
-        elif ts:
-            ts = np.hstack(ts)
-            ys = np.hstack(ys)
+            self.t = np.array(self.t)
+            self.y = np.vstack(self.y).T
+        elif self.t:
+            self.t = np.hstack(self.t)
+            self.y = np.hstack(self.y)
 
         if dense_output:
             if t_eval is None:
                 sol = OdeSolution(
-                    ts, interpolants, alt_segment=True if method in [BDF, LSODA] else False
+                    self.t, interpolants, alt_segment=True if method in [BDF, LSODA] else False
                 )
             else:
                 sol = OdeSolution(
@@ -317,7 +315,7 @@ class Solver:
         else:
             sol = None
 
-        return OdeResult(t=ts, y=ys, sol=sol,
+        return OdeResult(t=self.t, y=self.y, sol=sol,
                          nfev=solver.nfev, njev=solver.njev, nlu=solver.nlu,
                          status=status, message=message, success=status >= 0)
 
