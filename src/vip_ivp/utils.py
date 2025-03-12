@@ -110,6 +110,8 @@ class Solver:
             res = self.solve_ivp(
                 self._dy, (0, t_end), x0, method=method, t_eval=t_eval, **options
             )
+            if not res.success:
+                raise Exception(res.message)
         except RecursionError:
             raise RecursionError(
                 "An algebraic loop has been detected in the system. "
@@ -294,9 +296,9 @@ class Solver:
                 ti.append(t)
 
         message = MESSAGES.get(status, message)
-
-        self.t = np.array(self.t)
-        self.y = np.vstack(self.y).T
+        if self.t:
+            self.t = np.array(self.t)
+            self.y = np.vstack(self.y).T
 
 
         if dense_output:
