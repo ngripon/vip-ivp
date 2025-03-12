@@ -382,18 +382,22 @@ class TemporalVar:
         """
         self.solver.vars_to_plot[name] = self
 
-    def get_previous_value(self, n_steps: int, initial_value=0):
-        if len(self.solver.y) >= n_steps:
-            previous_t = self.solver.t[-n_steps]
-            previous_y = self.solver.y[-n_steps]
-            return self(previous_t, previous_y)
-        return initial_value
+    def delay(self, n_steps: int, initial_value=0) -> "TemporalVar":
+        if n_steps < 1:
+            raise Exception("Delay accept only a positive step.")
 
-    def get_previous_time(self, n_steps: int) -> float:
-        if len(self.solver.y) >= n_steps:
-            previous_t = self.solver.t[-n_steps]
-            return previous_t
-        return 0
+        def previous_value(t, y):
+            if np.isscalar(t):
+                if len(self.solver.t) >= n_steps:
+                    previous_t = self.solver.t[-n_steps]
+                    previous_y = self.solver.y[-n_steps]
+                    return self(previous_t, previous_y)
+            else:
+                delayed_t = shift_array(t, n_steps, 0)
+                delayed_y = shift_array(y, n_steps, initial_value)
+                return self(delayed_t, delayed_y)
+
+        return TemporalVar(self.solver, previous_value)
 
     def _reset(self):
         self._values = None
@@ -594,3 +598,12 @@ class LoopNode(TemporalVar):
 
 class OdeResult(OptimizeResult):
     pass
+
+
+def shift_array(arr: np.ndarray, n: int, fill_value: float = 0):
+    shifted = np.roll(arr, n)  # Shift the array
+    if n > 0:
+        shifted[:n] = fill_value  # Fill first n elements
+    elif n < 0:
+        shifted[n:] = fill_value  # Fill last n elements
+    return shifted

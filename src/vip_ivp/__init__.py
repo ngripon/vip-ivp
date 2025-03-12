@@ -73,6 +73,19 @@ def explore(f: Callable, t_end: Number, bounds=(), time_step: float = None, titl
     solver.explore(f, t_end, bounds, time_step, title)
 
 
+def derive(input_value: TemporalVar, initial_value=0) -> TemporalVar:
+    def inner_fun(t, y):
+        step_diff = 1
+        t_previous = input_value.get_previous_time(step_diff)
+        if t > t_previous:
+            u = input_value(t, y)
+            u_previous = input_value.get_previous_value(step_diff, initial_value)
+            return (u - u_previous) / (t - t_previous)
+        return initial_value
+
+    return TemporalVar(_get_current_solver(), inner_fun)
+
+
 def new_system() -> None:
     """
     Create a new solver system.
