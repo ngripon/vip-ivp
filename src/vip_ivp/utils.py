@@ -496,6 +496,42 @@ class TemporalVar:
     def __abs__(self) -> "TemporalVar":
         return TemporalVar(self.solver, lambda t, y: abs(self(t, y)))
 
+    def __eq__(self, other):  # Handles '=='
+        return TemporalVar(
+            self.solver,
+            lambda t, y: self(t, y) == (other(t, y) if isinstance(other, TemporalVar) else other)
+        )
+
+    def __ne__(self, other):  # Handles '!='
+        return TemporalVar(
+            self.solver,
+            lambda t, y: self(t, y) != (other(t, y) if isinstance(other, TemporalVar) else other)
+        )
+
+    def __lt__(self, other):  # Handles '<'
+        return TemporalVar(
+            self.solver,
+            lambda t, y: self(t, y) < (other(t, y) if isinstance(other, TemporalVar) else other)
+        )
+
+    def __le__(self, other):  # Handles '<='
+        return TemporalVar(
+            self.solver,
+            lambda t, y: self(t, y) <= (other(t, y) if isinstance(other, TemporalVar) else other)
+        )
+
+    def __gt__(self, other):  # Handles '>'
+        return TemporalVar(
+            self.solver,
+            lambda t, y: self(t, y) > (other(t, y) if isinstance(other, TemporalVar) else other)
+        )
+
+    def __ge__(self, other):  # Handles '>='
+        return TemporalVar(
+            self.solver,
+            lambda t, y: self(t, y) >= (other(t, y) if isinstance(other, TemporalVar) else other)
+        )
+
     def __getitem__(self, item):
         return TemporalVar(self.solver, lambda t, y: self(t, y)[item])
 
@@ -504,25 +540,16 @@ class TemporalVar:
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs) -> "TemporalVar":
         if method == "__call__":
-            # Identify callable and non-callable inputs
-            callables = [inp for inp in inputs if callable(inp)]
-            non_callables = [inp for inp in inputs if not callable(inp)]
-
-            if callables:
-                # If at least one input is callable, we need to handle it as a function
-                return TemporalVar(
-                    self.solver,
-                    lambda t, y: ufunc(
-                        *[inp(t, y) if callable(inp) else inp for inp in inputs],
-                        **kwargs  # Pass all keyword arguments
-                    ),
-                )
-            else:
-                # If all inputs are non-callable, apply the ufunc directly
-                return TemporalVar(
-                    self.solver,
-                    lambda t, y: ufunc(*inputs, **kwargs),
-                )
+            return TemporalVar(
+                self.solver,
+                lambda t, y: ufunc(
+                    *[inp(t, y) if isinstance(inp, TemporalVar) else inp for inp in inputs],
+                    **{
+                        key: (value(t, y) if isinstance(value, TemporalVar) else value)
+                        for key, value in kwargs.items()
+                    }
+                ),
+            )
 
         return NotImplemented
 
