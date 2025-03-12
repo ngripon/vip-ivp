@@ -44,17 +44,18 @@ def create_source(value: Union[Callable, Number, Iterable[Number], Mapping[Any, 
     return source
 
 
-def solve(t_end: float, time_step=np.inf, plot: bool = True, **options) -> None:
+def solve(t_end: Number, method='RK45', time_step=None, t_eval=None, **options) -> None:
     """
     Solve the equations of the dynamical system through an integration scheme.
-    
-    :param plot: Whether to plot variables set "to_plot" after the solving.
+
     :param t_end: Time at which the integration stops.
+    :param method: Integration method to use. Default is 'RK45'.
     :param time_step: Time step for the integration. If None, use points selected by the solver.
+    :param t_eval: Times at which to store the computed solution. If None, use points selected by the solver.
     :param options: Additional options for the solver.
     """
     solver = _get_current_solver()
-    solver.solve(t_end, time_step, plot, **options)
+    solver.solve(t_end, method, time_step, t_eval, **options)
 
 
 def explore(f: Callable, t_end: Number, bounds=(), time_step: float = None, title: str = "") -> None:
