@@ -601,9 +601,9 @@ class OdeResult(OptimizeResult):
 
 
 def shift_array(arr: np.ndarray, n: int, fill_value: float = 0):
-    shifted = np.roll(arr, n)  # Shift the array
+    shifted = np.roll(arr, n, axis=-1)  # Shift the array
     if n > 0:
-        shifted[:n] = fill_value  # Fill first n elements
+        shifted[...,:n] = fill_value  # Fill first n elements
     elif n < 0:
-        shifted[n:] = fill_value  # Fill last n elements
+        shifted[...,n:] = fill_value  # Fill last n elements
     return shifted
