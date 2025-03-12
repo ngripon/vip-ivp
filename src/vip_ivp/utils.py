@@ -15,7 +15,7 @@ from scipy.integrate._ivp.radau import Radau
 from scipy.integrate._ivp.rk import RK23, RK45, DOP853
 from scipy.integrate._ivp.lsoda import LSODA
 from scipy.optimize import OptimizeResult
-from scipy.integrate._ivp.common import OdeSolution
+from scipy.integrate._ivp.common import EPS, OdeSolution
 from scipy.integrate._ivp.base import OdeSolver
 
 T = TypeVar('T')
@@ -43,7 +43,7 @@ class Solver:
         self.saved_vars = {}
         self.vars_to_plot = {}
 
-    def integrate(self, input_value: "TemporalVar", x0: float) -> "TemporalVar":
+    def integrate(self, input_value: "TemporalVar", x0: Number) -> "TemporalVar":
         """
         Integrate the input value starting from the initial condition x0.
 
@@ -139,7 +139,7 @@ class Solver:
         plt.title("Simulation results")
         plt.xlabel("Time (s)")
         plt.legend()
-        plt.xlim(0, next(iter(self.vars_to_plot.values()))[0].t[-1])
+        plt.xlim(0, var.t[-1])
         plt.grid()
         plt.tight_layout()
         plt.show()
@@ -325,8 +325,7 @@ class Solver:
 
 
 class TemporalVar(Generic[T]):
-    def __init__(self, solver: Solver, fun: Callable[[Union[float, np.ndarray], np.ndarray], T] = None,
-                 x0: Union[float, np.ndarray] = None):
+    def __init__(self, solver: Solver, fun: Callable[[Union[float, np.ndarray], np.ndarray], T] = None, x0: Union[float, np.ndarray] = None):
         self.solver = solver
         self.init = None
         if isinstance(fun, Callable):
@@ -408,10 +407,10 @@ class TemporalVar(Generic[T]):
 
         return TemporalVar(self.solver, previous_value)
 
-    def _reset(self) -> None:
+    def _reset(self):
         self._values = None
 
-    def _set_init(self, x0: Union[float, np.ndarray]) -> None:
+    def _set_init(self, x0: Union[float, np.ndarray]):
         self.init = x0
         self.solver.initialized_vars.append(self)
 
@@ -519,38 +518,38 @@ class TemporalVar(Generic[T]):
                 other(t, y) if isinstance(other, TemporalVar) else other)
         )
 
-    def __lt__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":  # Handles '<'
+    def __lt__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
         return TemporalVar(
             self.solver,
             lambda t, y: self(t, y) < (
                 other(t, y) if isinstance(other, TemporalVar) else other)
         )
 
-    def __le__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":  # Handles '<='
+    def __le__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
         return TemporalVar(
             self.solver,
             lambda t, y: self(t, y) <= (
                 other(t, y) if isinstance(other, TemporalVar) else other)
         )
 
-    def __gt__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":  # Handles '>'
+    def __gt__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
         return TemporalVar(
             self.solver,
             lambda t, y: self(t, y) > (
                 other(t, y) if isinstance(other, TemporalVar) else other)
         )
 
-    def __ge__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":  # Handles '>='
+    def __ge__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
         return TemporalVar(
             self.solver,
             lambda t, y: self(t, y) >= (
                 other(t, y) if isinstance(other, TemporalVar) else other)
         )
 
-    def __getitem__(self, item) -> "TemporalVar":
+    def __getitem__(self, item):
         return TemporalVar(self.solver, lambda t, y: self(t, y)[item])
 
-    def __getattr__(self, item) -> "TemporalVar":
+    def __getattr__(self, item):
         return TemporalVar(self.solver, lambda t, y: getattr(self(t, y), item))
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs) -> "TemporalVar":
@@ -570,17 +569,17 @@ class TemporalVar(Generic[T]):
 
         return NotImplemented
 
-    def __array__(self):
+    def __array__(self) -> np.ndarray:
         return self.values
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         if self.solver.solved:
             return f"{self.values}"
         else:
             return "Please call solve to get the values."
 
 
-def compose(fun: Callable, var: TemporalVar) -> TemporalVar:
+def compose(fun: Callable[[T], T], var: TemporalVar[T]) -> TemporalVar[T]:
     """
     Compose a function with a TemporalVar.
 
@@ -591,7 +590,7 @@ def compose(fun: Callable, var: TemporalVar) -> TemporalVar:
     return var.apply_function(fun)
 
 
-class LoopNode(TemporalVar):
+class LoopNode(TemporalVar[T]):
     def __init__(self, solver: Solver):
         self._nested_functions = []
         super().__init__(solver, lambda t, y: 0)
@@ -599,9 +598,9 @@ class LoopNode(TemporalVar):
 
     def loop_into(
             self,
-            value: Union[TemporalVar, Number],
+            value: Union[TemporalVar[T], T],
             force: bool = False
-    ) -> None:
+    ):
         """
         Set the input value of the loop node.
 
@@ -614,25 +613,23 @@ class LoopNode(TemporalVar):
             )
         index = len(self._nested_functions) - 1
         if isinstance(value, TemporalVar):
-            def new_fun(t, y, i=index):
-                return value(
-                    t, y) + self._nested_functions[i](t, y)
+            def new_fun(t, y, i=index): return value(
+                t, y) + self._nested_functions[i](t, y)
         else:
-            def new_fun(t, y, i=index):
-                return self._nested_functions[i](
-                    t, y) + value
+            def new_fun(t, y, i=index): return self._nested_functions[i](
+                t, y) + value
         self._nested_functions.append(new_fun)
         self._is_set = True
 
     @property
-    def function(self):
+    def function(self) -> Callable[[Union[float, np.ndarray], np.ndarray], T]:
         return self._nested_functions[-1]
 
     @function.setter
-    def function(self, value):
+    def function(self, value: Callable[[Union[float, np.ndarray], np.ndarray], T]):
         self._nested_functions.append(value)
 
-    def __call__(self, t: Union[float, np.ndarray], y: np.ndarray):
+    def __call__(self, t: Union[float, np.ndarray], y: np.ndarray) -> T:
         return self.function(t, y)
 
 
