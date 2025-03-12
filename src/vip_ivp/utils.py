@@ -233,18 +233,18 @@ class Solver:
         if method in METHODS:
             method = METHODS[method]
 
-        solver = method(fun, t0, y0, tf, vectorized=vectorized, **options)
-
         if t_eval is None:
             self.t = [t0]
             self.y = [y0]
         elif t_eval is not None and dense_output:
             self.t = []
             ti = [t0]
-            ys = []
+            self.y = []
         else:
             self.t = []
             self.y = []
+
+        solver = method(fun, t0, y0, tf, vectorized=vectorized, **options)
 
         interpolants = []
 
@@ -392,6 +392,8 @@ class TemporalVar:
                     previous_t = self.solver.t[-n_steps]
                     previous_y = self.solver.y[-n_steps]
                     return self(previous_t, previous_y)
+                else:
+                    return initial_value
             else:
                 delayed_t = shift_array(t, n_steps, 0)
                 delayed_y = shift_array(y, n_steps, initial_value)
