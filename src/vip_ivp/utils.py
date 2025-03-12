@@ -502,37 +502,29 @@ class TemporalVar:
     def __getattr__(self, item):
         return TemporalVar(self.solver, lambda t, y: getattr(self(t, y), item))
 
-    def __array_ufunc__(self, ufunc, method, *inputs) -> "TemporalVar":
+    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs) -> "TemporalVar":
         if method == "__call__":
-            if len(inputs) == 1:
-                if callable(inputs[0]):
-                    return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0](t, y)))
-                else:
-                    return TemporalVar(self.solver, lambda t, y: ufunc(inputs[0]))
-            elif len(inputs) == 2:
-                # Bad coding...
-                if callable(inputs[0]) and callable(inputs[1]):
-                    return TemporalVar(
-                        self.solver,
-                        lambda t, y: ufunc(inputs[0](t, y), inputs[1](t, y)),
-                    )
-                elif callable(inputs[0]) and not callable(inputs[1]):
-                    return TemporalVar(
-                        self.solver, lambda t, y: ufunc(inputs[0](t, y), inputs[1])
-                    )
-                elif not callable(inputs[0]) and callable(inputs[1]):
-                    return TemporalVar(
-                        self.solver, lambda t, y: ufunc(inputs[0], inputs[1](t, y))
-                    )
-                else:
-                    return TemporalVar(
-                        self.solver, lambda t, y: ufunc(inputs[0], inputs[1])
-                    )
+            # Identify callable and non-callable inputs
+            callables = [inp for inp in inputs if callable(inp)]
+            non_callables = [inp for inp in inputs if not callable(inp)]
 
+            if callables:
+                # If at least one input is callable, we need to handle it as a function
+                return TemporalVar(
+                    self.solver,
+                    lambda t, y: ufunc(
+                        *[inp(t, y) if callable(inp) else inp for inp in inputs],
+                        **kwargs  # Pass all keyword arguments
+                    ),
+                )
             else:
-                return NotImplemented
-        else:
-            return NotImplemented
+                # If all inputs are non-callable, apply the ufunc directly
+                return TemporalVar(
+                    self.solver,
+                    lambda t, y: ufunc(*inputs, **kwargs),
+                )
+
+        return NotImplemented
 
     def __array__(self):
         return self.values
@@ -603,7 +595,7 @@ class OdeResult(OptimizeResult):
 def shift_array(arr: np.ndarray, n: int, fill_value: float = 0):
     shifted = np.roll(arr, n, axis=-1)  # Shift the array
     if n > 0:
-        shifted[...,:n] = fill_value  # Fill first n elements
+        shifted[..., :n] = fill_value  # Fill first n elements
     elif n < 0:
-        shifted[...,n:] = fill_value  # Fill last n elements
+        shifted[..., n:] = fill_value  # Fill last n elements
     return shifted
