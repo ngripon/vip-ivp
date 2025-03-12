@@ -100,11 +100,11 @@ def test_mass_spring_bond_graph():
     vip.solve(50)
 
 
-def test_derive():
+def test_differentiate():
     d_n = vip.loop_node()
     n = vip.integrate(d_n, 1)
     d_n.loop_into(-0.5 * n)
-    d_n2 = vip.derive(n)
+    d_n2 = vip.differentiate(n)
     vip.solve(10, time_step=0.001)
 
     errors = d_n.values - d_n2.values

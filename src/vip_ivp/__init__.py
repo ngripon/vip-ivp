@@ -5,6 +5,8 @@ import numpy as np
 from varname import argname
 from .utils import *
 
+warnings.simplefilter("once")
+
 _solver_list = []
 
 
@@ -74,7 +76,13 @@ def explore(f: Callable, t_end: Number, bounds=(), time_step: float = None, titl
     solver.explore(f, t_end, bounds, time_step, title)
 
 
-def derive(input_value: TemporalVar, initial_value=0) -> TemporalVar:
+def differentiate(input_value: TemporalVar, initial_value=0) -> TemporalVar:
+    # Warn the user not to abuse the differentiate function
+    warnings.warn("It is recommended to use 'integrate' instead of 'differentiate' for solving IVPs, "
+                  "because the solver cannot guarantee precision when computing derivatives.\n"
+                  "If you choose to use 'differentiate', consider using a smaller step size for better accuracy.",
+                  category=UserWarning, stacklevel=2)
+
     previous_value = input_value.delay(1, initial_value)
     time_value = create_source(lambda t: t)
     previous_time = time_value.delay(1)

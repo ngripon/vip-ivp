@@ -8,7 +8,7 @@ def regulated_room_temperature(kp=0.1, ki=0.0, kd=0.0):
     temperature_ext = 10
     k = 0.005  # Heat transfer coefficient
     error = temperature_target - temperature
-    heater_power = kp * error + ki * vip.integrate(error, 0) + kd * vip.derive(error)
+    heater_power = kp * error + ki * vip.integrate(error, 0) + kd * vip.differentiate(error)
     d_temperature.loop_into(k * (heater_power - (temperature - temperature_ext)))
     return temperature
 
