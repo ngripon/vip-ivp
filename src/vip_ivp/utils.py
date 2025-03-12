@@ -248,7 +248,6 @@ class Solver:
 
         interpolants = []
 
-
         status = None
         while status is None:
             message = solver.step()
@@ -382,6 +381,19 @@ class TemporalVar:
         :param name: Name of the variable in the legend of the plot.
         """
         self.solver.vars_to_plot[name] = self
+
+    def get_previous_value(self, n_steps: int, initial_value=0):
+        if len(self.solver.y) >= n_steps:
+            previous_t = self.solver.t[-n_steps]
+            previous_y = self.solver.y[-n_steps]
+            return self(previous_t, previous_y)
+        return initial_value
+
+    def get_previous_time(self, n_steps: int) -> float:
+        if len(self.solver.y) >= n_steps:
+            previous_t = self.solver.t[-n_steps]
+            return previous_t
+        return 0
 
     def _reset(self):
         self._values = None
