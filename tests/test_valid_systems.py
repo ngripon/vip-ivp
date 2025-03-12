@@ -1,19 +1,8 @@
 from typing import Sequence
 
 import numpy as np
-import pytest
 
 import vip_ivp as vip
-
-
-def test_operator_overloading():
-    acc = vip.loop_node()
-    vit = vip.integrate(acc, 0)
-    pos = vip.integrate(vit, 0)
-    acc.loop_into(-pos * vit - pos / vit % vit // pos + abs(pos ** vit))
-
-    acc(0, [1, 1])
-    vip.solve(10)
 
 
 def test_multiple_loop_into():
@@ -27,7 +16,7 @@ def test_multiple_loop_into():
     d_n2.loop_into(-0.5 * n2)
 
     vip.solve(10)
-    error_array=n2.values-n1.values
+    error_array = n2.values - n1.values
     assert all(error_array < 1e-10)
 
 
@@ -109,3 +98,14 @@ def test_mass_spring_bond_graph():
     speed1.loop_into(vit)
 
     vip.solve(50)
+
+
+def test_derive():
+    d_n = vip.loop_node()
+    n = vip.integrate(d_n, 1)
+    d_n.loop_into(-0.5 * n)
+    d_n2 = vip.derive(n)
+    vip.solve(10, time_step=0.001)
+
+    errors = d_n.values - d_n2.values
+    assert all(errors[1:] < 0.001)

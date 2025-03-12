@@ -1,4 +1,4 @@
-import src.vip_ivp as vip
+import vip_ivp as vip
 
 
 def regulated_room_temperature(kp=0.1, ki=0.0, kd=0.0):
