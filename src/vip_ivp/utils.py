@@ -15,7 +15,7 @@ from scipy.integrate._ivp.radau import Radau
 from scipy.integrate._ivp.rk import RK23, RK45, DOP853
 from scipy.integrate._ivp.lsoda import LSODA
 from scipy.optimize import OptimizeResult
-from scipy.integrate._ivp.common import EPS, OdeSolution
+from scipy.integrate._ivp.common import OdeSolution
 from scipy.integrate._ivp.base import OdeSolver
 
 T = TypeVar('T')
@@ -43,7 +43,7 @@ class Solver:
         self.saved_vars = {}
         self.vars_to_plot = {}
 
-    def integrate(self, input_value: "TemporalVar", x0: Number) -> "TemporalVar":
+    def integrate(self, input_value: "TemporalVar", x0: float) -> "TemporalVar":
         """
         Integrate the input value starting from the initial condition x0.
 
@@ -590,7 +590,7 @@ def compose(fun: Callable[[T], T], var: TemporalVar[T]) -> TemporalVar[T]:
     return var.apply_function(fun)
 
 
-class LoopNode(TemporalVar[T]):
+class LoopNode(TemporalVar[float]):
     def __init__(self, solver: Solver):
         self._nested_functions = []
         super().__init__(solver, lambda t, y: 0)
