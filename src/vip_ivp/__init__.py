@@ -1,8 +1,11 @@
 import inspect
 from typing import Iterable, Mapping, Any, ParamSpec
 
+import numpy as np
 from varname import argname
 from .utils import *
+
+warnings.simplefilter("once")
 
 _solver_list = []
 
@@ -47,7 +50,7 @@ def create_source(value: Union[Callable, Number, Iterable[Number], Mapping[Any, 
 def solve(t_end: Number, method='RK45', time_step=None, t_eval=None, **options) -> None:
     """
     Solve the equations of the dynamical system through an integration scheme.
-    
+
     :param t_end: Time at which the integration stops.
     :param method: Integration method to use. Default is 'RK45'.
     :param time_step: Time step for the integration. If None, use points selected by the solver.
@@ -71,6 +74,22 @@ def explore(f: Callable, t_end: Number, bounds=(), time_step: float = None, titl
     """
     solver = _get_current_solver()
     solver.explore(f, t_end, bounds, time_step, title)
+
+
+def differentiate(input_value: TemporalVar, initial_value=0) -> TemporalVar:
+    # Warn the user not to abuse the differentiate function
+    warnings.warn("It is recommended to use 'integrate' instead of 'differentiate' for solving IVPs, "
+                  "because the solver cannot guarantee precision when computing derivatives.\n"
+                  "If you choose to use 'differentiate', consider using a smaller step size for better accuracy.",
+                  category=UserWarning, stacklevel=2)
+
+    previous_value = input_value.delay(1, initial_value)
+    time_value = create_source(lambda t: t)
+    previous_time = time_value.delay(1)
+    d_y = input_value - previous_value
+    d_t = time_value - previous_time
+    derived_value = np.divide(d_y, d_t, where=d_t != 0)
+    return derived_value
 
 
 def new_system() -> None:
