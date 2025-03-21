@@ -147,12 +147,11 @@ def plot() -> None:
 P = ParamSpec("P")
 
 
-def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
+def lambdify(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> TemporalVar:
         def content(t, y): return func(*[arg(t, y) if isinstance(arg, TemporalVar) else arg for arg in args],
                                        **{key: (arg(t, y) if isinstance(arg, TemporalVar) else arg) for key, arg in
-                                          kwargs.items()})
-
+                                       kwargs.items()})
         return TemporalVar(_get_current_solver(), content)
 
     functools.update_wrapper(wrapper, func)
