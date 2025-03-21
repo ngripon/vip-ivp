@@ -366,15 +366,6 @@ class TemporalVar(Generic[T]):
             )
         return self.solver.t
 
-    def apply_function(self, f: Callable[[T], T]) -> "TemporalVar[T]":
-        """
-        Apply a function to the TemporalVar.
-
-        :param f: The function to apply.
-        :return: The new TemporalVar with the applied function.
-        """
-        return TemporalVar(self.solver, lambda t, y: f(self(t, y)))
-
     def save(self, name: str) -> None:
         """
         Save the temporal variable with a name.
@@ -592,17 +583,6 @@ class TemporalVar(Generic[T]):
             return self._expression
         else:
             return self._name
-
-
-def compose(fun: Callable[[T], T], var: TemporalVar[T]) -> TemporalVar[T]:
-    """
-    Compose a function with a TemporalVar.
-
-    :param fun: The function to compose.
-    :param var: The TemporalVar to compose with.
-    :return: The new TemporalVar with the composed function.
-    """
-    return var.apply_function(fun)
 
 
 class LoopNode(TemporalVar[T]):
