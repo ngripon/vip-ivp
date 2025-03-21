@@ -1,5 +1,7 @@
-from typing import ParamSpec
+import inspect
+from typing import Iterable, Mapping, Any, ParamSpec, TypeVar
 
+import numpy as np
 from varname import argname
 from .utils import *
 
@@ -31,8 +33,8 @@ def loop_node() -> "LoopNode":
     :return: The created LoopNode.
     """
     solver = _get_current_solver()
-    loop = solver.loop_node()
-    return loop
+    loop_node = solver.loop_node()
+    return loop_node
 
 
 def create_source(value: Union[Callable[[Union[float, np.ndarray]], T], T]) -> "TemporalVar[T]":
@@ -149,8 +151,7 @@ def lambdify(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> TemporalVar:
         def content(t, y): return func(*[arg(t, y) if isinstance(arg, TemporalVar) else arg for arg in args],
                                        **{key: (arg(t, y) if isinstance(arg, TemporalVar) else arg) for key, arg in
-                                          kwargs.items()})
-
+                                       kwargs.items()})
         return TemporalVar(_get_current_solver(), content)
 
     functools.update_wrapper(wrapper, func)

@@ -15,7 +15,7 @@ from scipy.integrate._ivp.radau import Radau
 from scipy.integrate._ivp.rk import RK23, RK45, DOP853
 from scipy.integrate._ivp.lsoda import LSODA
 from scipy.optimize import OptimizeResult
-from scipy.integrate._ivp.common import OdeSolution
+from scipy.integrate._ivp.common import EPS, OdeSolution
 from scipy.integrate._ivp.base import OdeSolver
 
 T = TypeVar('T')
@@ -43,7 +43,7 @@ class Solver:
         self.saved_vars = {}
         self.vars_to_plot = {}
 
-    def integrate(self, input_value: "TemporalVar", x0: float) -> "TemporalVar":
+    def integrate(self, input_value: "TemporalVar", x0: Number) -> "TemporalVar":
         """
         Integrate the input value starting from the initial condition x0.
 
@@ -53,7 +53,7 @@ class Solver:
         """
         self.feed_vars.append(input_value)
         integrated_variable = TemporalVar(
-            self, lambda t, y, idx=self.dim: y[idx], x0)
+            self, lambda t, y, idx=self.dim: y[idx], x0, expression=f"integrate {input_value.get_expression()}")
         self.dim += 1
         return integrated_variable
 
@@ -73,10 +73,13 @@ class Solver:
         :param value: A function f(t) or a scalar value.
         :return: The created TemporalVar.
         """
+        expression = convert_to_string(value)
+        print(expression)
         if callable(value):
-            return TemporalVar(self, lambda t, y: value(t))
+            return TemporalVar(self, lambda t, y: value(t), expression=expression)
         else:
-            return TemporalVar(self, lambda t, y: value if np.isscalar(t) else np.full_like(t, value))
+            return TemporalVar(self, lambda t, y: value if np.isscalar(t) else np.full_like(t, value),
+                               expression=expression)
 
     def solve(
             self,
@@ -325,7 +328,8 @@ class Solver:
 
 
 class TemporalVar(Generic[T]):
-    def __init__(self, solver: Solver, fun: Callable[[Union[float, np.ndarray], np.ndarray], T] = None, x0: Union[float, np.ndarray] = None):
+    def __init__(self, solver: Solver, fun: Callable[[Union[float, np.ndarray], np.ndarray], T] = None,
+                 x0: Union[float, np.ndarray] = None, expression: str = None):
         self.solver = solver
         self.init = None
         if isinstance(fun, Callable):
@@ -333,6 +337,10 @@ class TemporalVar(Generic[T]):
         else:
             self.function = lambda t, y: fun
         self._values = None
+        # Variable definition
+        self._expression = inspect.getsource(fun) if expression is None else expression
+        self._name = None
+        self._inputs: list[TemporalVar] = []
 
         self.solver.vars.append(self)
         if x0 is not None:
@@ -418,10 +426,11 @@ class TemporalVar(Generic[T]):
         return self.function(t, y)
 
     def __add__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
+        expression = f"({self.get_expression()} + {other.get_expression()})"
         if isinstance(other, TemporalVar):
-            return TemporalVar(self.solver, lambda t, y: self(t, y) + other(t, y))
+            return TemporalVar(self.solver, lambda t, y: self(t, y) + other(t, y), expression=expression)
         else:
-            return TemporalVar(self.solver, lambda t, y: other + self(t, y))
+            return TemporalVar(self.solver, lambda t, y: other + self(t, y), expression=expression)
 
     def __radd__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
         return self.__add__(other)
@@ -576,7 +585,13 @@ class TemporalVar(Generic[T]):
         if self.solver.solved:
             return f"{self.values}"
         else:
-            return "Please call solve to get the values."
+            return f"{self._expression}"
+
+    def get_expression(self) -> str:
+        if self._name is None:
+            return self._expression
+        else:
+            return self._name
 
 
 def compose(fun: Callable[[T], T], var: TemporalVar[T]) -> TemporalVar[T]:
@@ -590,10 +605,10 @@ def compose(fun: Callable[[T], T], var: TemporalVar[T]) -> TemporalVar[T]:
     return var.apply_function(fun)
 
 
-class LoopNode(TemporalVar[float]):
+class LoopNode(TemporalVar[T]):
     def __init__(self, solver: Solver):
         self._nested_functions = []
-        super().__init__(solver, lambda t, y: 0)
+        super().__init__(solver, lambda t, y: 0, expression="")
         self._is_set = False
 
     def loop_into(
@@ -613,13 +628,16 @@ class LoopNode(TemporalVar[float]):
             )
         index = len(self._nested_functions) - 1
         if isinstance(value, TemporalVar):
-            def new_fun(t, y, i=index): return value(
-                t, y) + self._nested_functions[i](t, y)
+            def new_fun(t, y, i=index):
+                return value(
+                    t, y) + self._nested_functions[i](t, y)
         else:
-            def new_fun(t, y, i=index): return self._nested_functions[i](
-                t, y) + value
+            def new_fun(t, y, i=index):
+                return self._nested_functions[i](
+                    t, y) + value
         self._nested_functions.append(new_fun)
         self._is_set = True
+        self._expression = " + ".join(inspect.getsource(f) for f in self._nested_functions)
 
     @property
     def function(self) -> Callable[[Union[float, np.ndarray], np.ndarray], T]:
@@ -644,3 +662,19 @@ def shift_array(arr: np.ndarray, n: int, fill_value: float = 0):
     elif n < 0:
         shifted[..., n:] = fill_value  # Fill last n elements
     return shifted
+
+
+def convert_to_string(content):
+    if inspect.isfunction(content):
+        name = getattr(content, "__name__")
+        if name != "<lambda>":
+            return name + str(inspect.signature(content))
+        fun_string = inspect.getsourcelines(content)[0][0].strip()
+        if "create_source" in fun_string:
+            lambda_content=fun_string.split("create_source")[1].strip()[1:-1]
+            return lambda_content
+        fun_string = fun_string.split(" = ")[1]
+        return fun_string
+    elif inspect.isclass(content):
+        return content.__repr__()
+    return str(content)
