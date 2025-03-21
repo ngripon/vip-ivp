@@ -2,6 +2,7 @@ import functools
 import time
 import warnings
 import inspect
+import re
 
 from numbers import Number
 from typing import Callable, Union, TypeVar, Generic
@@ -53,7 +54,7 @@ class Solver:
         """
         self.feed_vars.append(input_value)
         integrated_variable = TemporalVar(
-            self, lambda t, y, idx=self.dim: y[idx], x0)
+            self, lambda t, y, idx=self.dim: y[idx], x0, expression=f"#INTEGRATE {_get_expression(input_value)}")
         self.dim += 1
         return integrated_variable
 
@@ -73,10 +74,12 @@ class Solver:
         :param value: A function f(t) or a scalar value.
         :return: The created TemporalVar.
         """
+        expression = convert_to_string(value)
         if callable(value):
-            return TemporalVar(self, lambda t, y: value(t))
+            return TemporalVar(self, lambda t, y: value(t), expression=expression)
         else:
-            return TemporalVar(self, lambda t, y: value if np.isscalar(t) else np.full_like(t, value))
+            return TemporalVar(self, lambda t, y: value if np.isscalar(t) else np.full_like(t, value),
+                               expression=expression)
 
     def solve(
             self,
@@ -325,7 +328,8 @@ class Solver:
 
 
 class TemporalVar(Generic[T]):
-    def __init__(self, solver: Solver, fun: Callable[[Union[float, np.ndarray], np.ndarray], T] = None, x0: Union[float, np.ndarray] = None):
+    def __init__(self, solver: Solver, fun: Callable[[Union[float, np.ndarray], np.ndarray], T] = None,
+                 x0: Union[float, np.ndarray] = None, expression: str = None):
         self.solver = solver
         self.init = None
         if isinstance(fun, Callable):
@@ -333,6 +337,10 @@ class TemporalVar(Generic[T]):
         else:
             self.function = lambda t, y: fun
         self._values = None
+        # Variable definition
+        self._expression = inspect.getsource(fun) if expression is None else expression
+        self.name = None
+        self._inputs: list[TemporalVar] = []
 
         self.solver.vars.append(self)
         if x0 is not None:
@@ -357,15 +365,6 @@ class TemporalVar(Generic[T]):
                 "Call the solve() method before inquiring the time variable."
             )
         return self.solver.t
-
-    def apply_function(self, f: Callable[[T], T]) -> "TemporalVar[T]":
-        """
-        Apply a function to the TemporalVar.
-
-        :param f: The function to apply.
-        :return: The new TemporalVar with the applied function.
-        """
-        return TemporalVar(self.solver, lambda t, y: f(self(t, y)))
 
     def save(self, name: str) -> None:
         """
@@ -418,10 +417,11 @@ class TemporalVar(Generic[T]):
         return self.function(t, y)
 
     def __add__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
+        expression = remove_redundant_brackets(f"({_get_expression(self)} + {_get_expression(other)})")
         if isinstance(other, TemporalVar):
-            return TemporalVar(self.solver, lambda t, y: self(t, y) + other(t, y))
+            return TemporalVar(self.solver, lambda t, y: self(t, y) + other(t, y), expression=expression)
         else:
-            return TemporalVar(self.solver, lambda t, y: other + self(t, y))
+            return TemporalVar(self.solver, lambda t, y: other + self(t, y), expression=expression)
 
     def __radd__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
         return self.__add__(other)
@@ -572,28 +572,21 @@ class TemporalVar(Generic[T]):
     def __array__(self) -> np.ndarray:
         return self.values
 
+    @property
+    def expression(self):
+        return self._expression
+
     def __repr__(self) -> str:
         if self.solver.solved:
             return f"{self.values}"
         else:
-            return "Please call solve to get the values."
-
-
-def compose(fun: Callable[[T], T], var: TemporalVar[T]) -> TemporalVar[T]:
-    """
-    Compose a function with a TemporalVar.
-
-    :param fun: The function to compose.
-    :param var: The TemporalVar to compose with.
-    :return: The new TemporalVar with the composed function.
-    """
-    return var.apply_function(fun)
+            return f"{self._expression}"
 
 
 class LoopNode(TemporalVar[T]):
     def __init__(self, solver: Solver):
         self._nested_functions = []
-        super().__init__(solver, lambda t, y: 0)
+        super().__init__(solver, lambda t, y: 0, expression="")
         self._is_set = False
 
     def loop_into(
@@ -613,13 +606,16 @@ class LoopNode(TemporalVar[T]):
             )
         index = len(self._nested_functions) - 1
         if isinstance(value, TemporalVar):
-            def new_fun(t, y, i=index): return value(
-                t, y) + self._nested_functions[i](t, y)
+            def new_fun(t, y, i=index):
+                return value(
+                    t, y) + self._nested_functions[i](t, y)
         else:
-            def new_fun(t, y, i=index): return self._nested_functions[i](
-                t, y) + value
+            def new_fun(t, y, i=index):
+                return self._nested_functions[i](
+                    t, y) + value
         self._nested_functions.append(new_fun)
         self._is_set = True
+        self._expression = " + ".join(inspect.getsource(f) for f in self._nested_functions)
 
     @property
     def function(self) -> Callable[[Union[float, np.ndarray], np.ndarray], T]:
@@ -644,3 +640,47 @@ def shift_array(arr: np.ndarray, n: int, fill_value: float = 0):
     elif n < 0:
         shifted[..., n:] = fill_value  # Fill last n elements
     return shifted
+
+
+def _get_expression(value) -> str:
+    if isinstance(value, TemporalVar):
+        frame = inspect.currentframe().f_back.f_back
+        instance = frame.f_locals.get("self")
+        if not instance or not isinstance(instance, TemporalVar):
+            found_key = next((key for key, dict_value in frame.f_locals.items() if dict_value is value), None)
+            if found_key is not None:
+                value.name = found_key
+                return value.name
+        return value.expression
+    else:
+        return str(value)
+
+
+def convert_to_string(content):
+    if inspect.isfunction(content):
+        name = getattr(content, "__name__")
+        if name != "<lambda>":
+            return name + str(inspect.signature(content))
+        fun_string = inspect.getsourcelines(content)[0][0].strip()
+        if "create_source" in fun_string:
+            lambda_content = fun_string.split("create_source")[1].strip()[1:-1]
+            return lambda_content
+        fun_string = fun_string.split(" = ")[1]
+        return fun_string
+    elif inspect.isclass(content):
+        return content.__repr__()
+    return str(content)
+
+def remove_redundant_brackets(expr):
+    # Regular expression to match redundant parentheses
+    def simplify(expression):
+        # Check if removing outer parentheses is safe
+        while True:
+            # Remove parentheses like (a + b) or (a * b) that don't change the meaning
+            new_expr = re.sub(r'\(([^()]+)\)', r'\1', expression)
+            if new_expr == expression:
+                break
+            expression = new_expr
+        return expression
+
+    return simplify(expr)
