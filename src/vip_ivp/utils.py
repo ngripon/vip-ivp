@@ -2,6 +2,7 @@ import functools
 import time
 import warnings
 import inspect
+import re
 
 from numbers import Number
 from typing import Callable, Union, TypeVar, Generic
@@ -74,7 +75,6 @@ class Solver:
         :return: The created TemporalVar.
         """
         expression = convert_to_string(value)
-        print(expression)
         if callable(value):
             return TemporalVar(self, lambda t, y: value(t), expression=expression)
         else:
@@ -339,7 +339,7 @@ class TemporalVar(Generic[T]):
         self._values = None
         # Variable definition
         self._expression = inspect.getsource(fun) if expression is None else expression
-        self._name = None
+        self.name = None
         self._inputs: list[TemporalVar] = []
 
         self.solver.vars.append(self)
@@ -417,7 +417,7 @@ class TemporalVar(Generic[T]):
         return self.function(t, y)
 
     def __add__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
-        expression = f"({self.get_expression()} + {_get_expression(other)})"
+        expression = remove_redundant_brackets(f"({_get_expression(self)} + {_get_expression(other)})")
         if isinstance(other, TemporalVar):
             return TemporalVar(self.solver, lambda t, y: self(t, y) + other(t, y), expression=expression)
         else:
@@ -572,17 +572,15 @@ class TemporalVar(Generic[T]):
     def __array__(self) -> np.ndarray:
         return self.values
 
+    @property
+    def expression(self):
+        return self._expression
+
     def __repr__(self) -> str:
         if self.solver.solved:
             return f"{self.values}"
         else:
             return f"{self._expression}"
-
-    def get_expression(self) -> str:
-        if self._name is None:
-            return self._expression
-        else:
-            return self._name
 
 
 class LoopNode(TemporalVar[T]):
@@ -646,7 +644,14 @@ def shift_array(arr: np.ndarray, n: int, fill_value: float = 0):
 
 def _get_expression(value) -> str:
     if isinstance(value, TemporalVar):
-        return value.get_expression()
+        frame = inspect.currentframe().f_back.f_back
+        instance = frame.f_locals.get("self")
+        if not instance or not isinstance(instance, TemporalVar):
+            found_key = next((key for key, dict_value in frame.f_locals.items() if dict_value is value), None)
+            if found_key is not None:
+                value.name = found_key
+                return value.name
+        return value.expression
     else:
         return str(value)
 
@@ -665,3 +670,17 @@ def convert_to_string(content):
     elif inspect.isclass(content):
         return content.__repr__()
     return str(content)
+
+def remove_redundant_brackets(expr):
+    # Regular expression to match redundant parentheses
+    def simplify(expression):
+        # Check if removing outer parentheses is safe
+        while True:
+            # Remove parentheses like (a + b) or (a * b) that don't change the meaning
+            new_expr = re.sub(r'\(([^()]+)\)', r'\1', expression)
+            if new_expr == expression:
+                break
+            expression = new_expr
+        return expression
+
+    return simplify(expr)
