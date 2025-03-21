@@ -53,7 +53,7 @@ class Solver:
         """
         self.feed_vars.append(input_value)
         integrated_variable = TemporalVar(
-            self, lambda t, y, idx=self.dim: y[idx], x0, expression=f"integrate {input_value.get_expression()}")
+            self, lambda t, y, idx=self.dim: y[idx], x0, expression=f"#INTEGRATE {_get_expression(input_value)}")
         self.dim += 1
         return integrated_variable
 
@@ -426,7 +426,7 @@ class TemporalVar(Generic[T]):
         return self.function(t, y)
 
     def __add__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
-        expression = f"({self.get_expression()} + {other.get_expression()})"
+        expression = f"({self.get_expression()} + {_get_expression(other)})"
         if isinstance(other, TemporalVar):
             return TemporalVar(self.solver, lambda t, y: self(t, y) + other(t, y), expression=expression)
         else:
@@ -664,6 +664,13 @@ def shift_array(arr: np.ndarray, n: int, fill_value: float = 0):
     return shifted
 
 
+def _get_expression(value) -> str:
+    if isinstance(value, TemporalVar):
+        return value.get_expression()
+    else:
+        return str(value)
+
+
 def convert_to_string(content):
     if inspect.isfunction(content):
         name = getattr(content, "__name__")
@@ -671,7 +678,7 @@ def convert_to_string(content):
             return name + str(inspect.signature(content))
         fun_string = inspect.getsourcelines(content)[0][0].strip()
         if "create_source" in fun_string:
-            lambda_content=fun_string.split("create_source")[1].strip()[1:-1]
+            lambda_content = fun_string.split("create_source")[1].strip()[1:-1]
             return lambda_content
         fun_string = fun_string.split(" = ")[1]
         return fun_string
