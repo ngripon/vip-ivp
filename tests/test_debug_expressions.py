@@ -113,6 +113,7 @@ def test_diff_equation():
     dx = vip.integrate(ddx, 0)
     x = vip.integrate(dx, 0)
     ddx.loop_into(2 * x - 4 * dx)
+    print(x.name)
     assert dx.expression == "#INTEGRATE ddx"
     assert x.expression == "#INTEGRATE dx"
     assert ddx.expression== "2 * x - 4 * dx"

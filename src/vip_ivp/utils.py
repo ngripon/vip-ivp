@@ -672,13 +672,13 @@ def _get_expression(value) -> str:
         frame = inspect.currentframe().f_back.f_back
         if Path(frame.f_code.co_filename).as_posix().endswith("vip_ivp/__init__.py"):
             frame = frame.f_back
-        instance = frame.f_locals.get("self")
-        if not instance or not isinstance(instance, TemporalVar):
-            found_key = next(
-                (key for key, dict_value in frame.f_locals.items() if dict_value is value), None)
-            if found_key is not None:
-                value.name = found_key
-                return value.name
+        while frame.f_locals.get("self") and isinstance(frame.f_locals.get("self"), TemporalVar):
+            frame = frame.f_back
+        found_key = next(
+            (key for key, dict_value in frame.f_locals.items() if dict_value is value), None)
+        if found_key is not None:
+            value.name = found_key
+            return value.name
         return value.expression
     else:
         return str(value)
