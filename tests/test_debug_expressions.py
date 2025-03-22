@@ -104,5 +104,16 @@ def test_operations():
     s = a + b * c + d
     assert s.expression == "a + b * c + d"
 
-    t = np.sin(a, where=b>1)
+    t = np.sin(a, where=b > 1)
     assert t.expression == "sin(a, where=b > 1)"
+
+
+def test_diff_equation():
+    ddx = vip.loop_node()
+    dx = vip.integrate(ddx, 0)
+    x = vip.integrate(dx, 0)
+    ddx.loop_into(2 * x - 4 * dx)
+    assert dx.expression == "#INTEGRATE ddx"
+    assert x.expression == "#INTEGRATE dx"
+    assert ddx.expression== "2 * x - 4 * dx"
+

@@ -5,6 +5,7 @@ import inspect
 import re
 
 from numbers import Number
+from pathlib import Path
 from typing import Callable, Union, TypeVar, Generic
 
 import matplotlib.pyplot as plt
@@ -684,6 +685,11 @@ def shift_array(arr: np.ndarray, n: int, fill_value: float = 0):
 def _get_expression(value) -> str:
     if isinstance(value, TemporalVar):
         frame = inspect.currentframe().f_back.f_back
+        if Path(frame.f_code.co_filename).as_posix().endswith("vip_ivp/__init__.py"):
+            frame = frame.f_back
+        print(frame.f_code.co_filename)
+        print(frame.f_code.co_name)
+
         instance = frame.f_locals.get("self")
         if not instance or not isinstance(instance, TemporalVar):
             found_key = next(
