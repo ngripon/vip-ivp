@@ -442,7 +442,7 @@ class TemporalVar(Generic[T]):
             return TemporalVar(self.solver, lambda t, y: other - self(t, y), expression=expression)
 
     def __mul__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
-        expression = f"{_get_expression(self)} * {_get_expression(other)}"
+        expression = f"{add_necessary_brackets(_get_expression(self))} * {add_necessary_brackets(_get_expression(other))}"
         if isinstance(other, TemporalVar):
             return TemporalVar(self.solver, lambda t, y: self(t, y) * other(t, y), expression=expression)
         else:
@@ -702,16 +702,11 @@ def convert_to_string(content):
     return str(content)
 
 
-def remove_redundant_brackets(expr):
-    # Regular expression to match redundant parentheses
-    def simplify(expression):
-        # Check if removing outer parentheses is safe
-        while True:
-            # Remove parentheses like (a + b) or (a * b) that don't change the meaning
-            new_expr = re.sub(r'\(([^()]+)\)', r'\1', expression)
-            if new_expr == expression:
-                break
-            expression = new_expr
+def add_necessary_brackets(expression: str) -> str:
+    operators = ["+", "-", "=", "<", ">"]
+    begin = expression.split("(")[0]
+    end = expression.split(")")[-1]
+    if any(op in begin for op in operators) or any(op in end for op in operators):
+        return f"({expression})"
+    else:
         return expression
-
-    return simplify(expr)
