@@ -103,3 +103,6 @@ def test_operations():
     # Check with other operations mixed in
     s = a + b * c + d
     assert s.expression == "a + b * c + d"
+
+    t = np.sin(a, where=b>1)
+    assert t.expression == "sin(a, where=b > 1)"
