@@ -624,7 +624,7 @@ class TemporalVar(Generic[T]):
 
 class LoopNode(TemporalVar[T]):
     def __init__(self, solver: Solver):
-        self._nested_functions = []
+        self._input_vars: list[TemporalVar] = []
         super().__init__(solver, lambda t, y: 0, expression="")
         self._is_set = False
 
@@ -643,30 +643,15 @@ class LoopNode(TemporalVar[T]):
             raise Exception(
                 "This Loop Node has already been set. If you want to add another value, use argument 'force = True'."
             )
-        index = len(self._nested_functions) - 1
-        if isinstance(value, TemporalVar):
-            def new_fun(t, y, i=index):
-                return value(
-                    t, y) + self._nested_functions[i](t, y)
-        else:
-            def new_fun(t, y, i=index):
-                return self._nested_functions[i](
-                    t, y) + value
-        self._nested_functions.append(new_fun)
+        if not isinstance(value, TemporalVar):
+            value = self.solver.create_source(value)
+        self._input_vars.append(value)
         self._is_set = True
-        self._expression = " + ".join(inspect.getsource(f)
-                                      for f in self._nested_functions)
-
-    @property
-    def function(self) -> Callable[[Union[float, np.ndarray], np.ndarray], T]:
-        return self._nested_functions[-1]
-
-    @function.setter
-    def function(self, value: Callable[[Union[float, np.ndarray], np.ndarray], T]):
-        self._nested_functions.append(value)
+        self._expression = " + ".join(_get_expression(var)
+                                      for var in self._input_vars)
 
     def __call__(self, t: Union[float, np.ndarray], y: np.ndarray) -> T:
-        return self.function(t, y)
+        return np.sum(var(t, y) for var in self._input_vars)
 
 
 class OdeResult(OptimizeResult):
@@ -687,9 +672,6 @@ def _get_expression(value) -> str:
         frame = inspect.currentframe().f_back.f_back
         if Path(frame.f_code.co_filename).as_posix().endswith("vip_ivp/__init__.py"):
             frame = frame.f_back
-        print(frame.f_code.co_filename)
-        print(frame.f_code.co_name)
-
         instance = frame.f_locals.get("self")
         if not instance or not isinstance(instance, TemporalVar):
             found_key = next(
