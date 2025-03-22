@@ -1,9 +1,8 @@
-import inspect
-from typing import Iterable, Mapping, Any, ParamSpec, TypeVar
+from typing import ParamSpec
 
-import numpy as np
 from varname import argname
 from .utils import *
+from .utils import _get_expression
 
 warnings.simplefilter("once")
 
@@ -91,6 +90,7 @@ def differentiate(input_value: TemporalVar[float], initial_value=0) -> TemporalV
     d_y = input_value - previous_value
     d_t = time_value - previous_time
     derived_value = np.divide(d_y, d_t, where=d_t != 0)
+    derived_value._expression = f"#D/DT {_get_expression(input_value)}"
     return derived_value
 
 
@@ -152,8 +152,19 @@ def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
         def content(t, y): return func(*[arg(t, y) if isinstance(arg, TemporalVar) else arg for arg in args],
                                        **{key: (arg(t, y) if isinstance(arg, TemporalVar) else arg) for key, arg in
                                           kwargs.items()})
+        # Format input for the expression
+        inputs_expr = [_get_expression(inp) if isinstance(inp, TemporalVar) else str(inp) for inp in args]
+        kwargs_expr = [
+            f"{key}={_get_expression(value) if isinstance(value, TemporalVar) else str(value)}"
+            for key, value in kwargs.items()
+        ]
+        expression = f"{func.__name__}({", ".join(inputs_expr)}"
+        if kwargs_expr:
+            expression += ", ".join(kwargs_expr)
+        expression += ")"
 
-        return TemporalVar(_get_current_solver(), content)
+        return TemporalVar(_get_current_solver(), content,
+                           expression=expression)
 
     functools.update_wrapper(wrapper, func)
     return wrapper

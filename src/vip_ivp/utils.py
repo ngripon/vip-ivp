@@ -406,7 +406,7 @@ class TemporalVar(Generic[T]):
                 delayed_y = shift_array(y, n_steps, initial_value)
                 return self(delayed_t, delayed_y)
 
-        return TemporalVar(self.solver, previous_value)
+        return TemporalVar(self.solver, previous_value, expression=f"#DELAY({n_steps}) {_get_expression(self)}")
 
     def _reset(self):
         self._values = None

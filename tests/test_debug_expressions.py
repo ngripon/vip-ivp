@@ -113,8 +113,25 @@ def test_diff_equation():
     dx = vip.integrate(ddx, 0)
     x = vip.integrate(dx, 0)
     ddx.loop_into(2 * x - 4 * dx)
-    print(x.name)
+
     assert dx.expression == "#INTEGRATE ddx"
     assert x.expression == "#INTEGRATE dx"
-    assert ddx.expression== "2 * x - 4 * dx"
+    assert ddx.expression == "2 * x - 4 * dx"
 
+
+def test_transformations():
+    a = vip.create_source(5)
+
+    da = vip.differentiate(a)
+    ia = vip.integrate(a, 0)
+    delay_a = a.delay(1)
+
+    def foo(bar):
+        return bar + 1
+
+    foo_a = vip.f(foo)(a)
+
+    assert da.expression == "#D/DT a"
+    assert ia.expression == "#INTEGRATE a"
+    assert delay_a.expression == "#DELAY(1) a"
+    assert foo_a.expression == "foo(a)"
