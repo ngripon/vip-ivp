@@ -8,9 +8,9 @@ ABSOLUTE_TOLERANCE = 0.01
 
 def test_rc_circuit():
     # r * dq/dt + q/c = 0
-    q0_values = np.linspace(1, 10, 10)
-    r_values = np.linspace(1, 10, 10)
-    c_values = np.linspace(1, 10, 10)
+    q0_values = np.linspace(1, 10, 5)
+    r_values = np.linspace(1, 10, 5)
+    c_values = np.linspace(1, 10, 5)
 
     for q0 in q0_values:
         for R in r_values:

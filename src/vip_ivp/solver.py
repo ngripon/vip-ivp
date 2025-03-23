@@ -279,7 +279,10 @@ class Solver:
                     if sol is None:
                         sol = solver.dense_output()
                     self.t.extend(t_eval_step)
-                    self.y.extend(np.vstack(sol(t_eval_step)).T)
+                    if self.dim!=0:
+                        self.y.extend(np.vstack(sol(t_eval_step)).T)
+                    else:
+                        self.y.extend([0]*len(t_eval_step))
                     t_eval_i = t_eval_i_new
 
             if t_eval is not None and dense_output:
