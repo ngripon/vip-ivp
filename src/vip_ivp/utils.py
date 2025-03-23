@@ -595,9 +595,9 @@ class TemporalVar(Generic[T]):
             f"{key}={_get_expression(value) if isinstance(value, TemporalVar) else str(value)}"
             for key, value in kwargs.items()
         ]
-        expression = f"{ufunc.__name__}({", ".join(inputs_expr)}"
+        expression = f"{ufunc.__name__}({', '.join(inputs_expr)}"
         if kwargs:
-            expression += f", {", ".join(kwargs_expr)}"
+            expression += f", {', '.join(kwargs_expr)}"
         expression += ")"
         if method == "__call__":
             return TemporalVar(

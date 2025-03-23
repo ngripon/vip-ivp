@@ -158,7 +158,7 @@ def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
             f"{key}={_get_expression(value) if isinstance(value, TemporalVar) else str(value)}"
             for key, value in kwargs.items()
         ]
-        expression = f"{func.__name__}({", ".join(inputs_expr)}"
+        expression = f"{func.__name__}({', '.join(inputs_expr)}"
         if kwargs_expr:
             expression += ", ".join(kwargs_expr)
         expression += ")"
