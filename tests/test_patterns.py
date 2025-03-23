@@ -30,7 +30,6 @@ def test_collections_get_methods():
     print(obj.lol.values)
 
 
-
 def test_use_numpy_function():
     x = vip.create_source(5)
     a = vip.integrate(x, 0)
