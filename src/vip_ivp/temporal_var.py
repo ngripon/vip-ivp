@@ -347,7 +347,7 @@ def create_source(solver: "Solver", value: Union[Callable[[Union[float, np.ndarr
 def get_expression(value) -> str:
     if isinstance(value, TemporalVar):
         frame = inspect.currentframe().f_back.f_back
-        if Path(frame.f_code.co_filename).as_posix().endswith("vip_ivp/__init__.py"):
+        if Path(frame.f_code.co_filename).as_posix().endswith("vip_ivp/api.py"):
             frame = frame.f_back
         while frame.f_locals.get("self") and isinstance(frame.f_locals.get("self"), TemporalVar):
             frame = frame.f_back
