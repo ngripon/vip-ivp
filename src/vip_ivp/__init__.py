@@ -1,6 +1,9 @@
+import functools
 from typing import ParamSpec
 
 from varname import argname
+
+from .solver import *
 from .utils import *
 from .utils import _get_expression
 
