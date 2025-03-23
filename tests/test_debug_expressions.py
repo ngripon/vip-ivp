@@ -107,6 +107,12 @@ def test_operations():
     t = np.sin(a, where=b > 1)
     assert t.expression == "sin(a, where=b > 1)"
 
+    u = -(a + b)
+    assert u.expression == "-(a + b)"
+
+    v = a - (b + c)
+    assert v.expression == "a - (b + c)"
+
 
 def test_diff_equation():
     ddx = vip.loop_node()

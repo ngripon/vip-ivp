@@ -433,14 +433,14 @@ class TemporalVar(Generic[T]):
             return TemporalVar(self.solver, lambda t, y: other + self(t, y), expression=expression)
 
     def __sub__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
-        expression = f"{_get_expression(self)} - {_get_expression(other)}"
+        expression = f"{_get_expression(self)} - {add_necessary_brackets(_get_expression(other))}"
         if isinstance(other, TemporalVar):
             return TemporalVar(self.solver, lambda t, y: self(t, y) - other(t, y), expression=expression)
         else:
             return TemporalVar(self.solver, lambda t, y: self(t, y) - other, expression=expression)
 
     def __rsub__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
-        expression = f"{_get_expression(other)} - {_get_expression(self)}"
+        expression = f"{_get_expression(other)} - {add_necessary_brackets(_get_expression(self))}"
         if isinstance(other, TemporalVar):
             return TemporalVar(self.solver, lambda t, y: other(t, y) - self(t, y), expression=expression)
         else:
