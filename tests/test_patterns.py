@@ -33,10 +33,9 @@ def test_use_numpy_function():
     map_length = 100
     map_x = np.linspace(0, 100, map_length)
     map_y = np.random.rand(map_length)
-    interp = vip.lambdify(np.interp)
-    y = interp(a, map_x, map_y)
+    y = vip.f(np.interp)(a, map_x, map_y)
     vip.solve(10, time_step=0.01)
 
     error_array = y.values - np.interp(a.values, map_x, map_y)
 
-    assert np.all(error_array==0)
+    assert np.all(error_array == 0)
