@@ -18,7 +18,7 @@ from scipy.optimize import OptimizeResult
 from scipy.integrate._ivp.common import EPS, OdeSolution
 from scipy.integrate._ivp.base import OdeSolver
 
-from .utils import TemporalVar, _get_expression
+from .temporal_var import TemporalVar, get_expression
 
 T = TypeVar('T')
 
@@ -58,7 +58,7 @@ class Solver:
         """
         self.feed_vars.append(input_value)
         integrated_variable = TemporalVar(
-            self, lambda t, y, idx=self.dim: y[idx], expression=f"#INTEGRATE {_get_expression(input_value)}")
+            self, lambda t, y, idx=self.dim: y[idx], expression=f"#INTEGRATE {get_expression(input_value)}")
         integrated_variable.set_init(x0)
         self.dim += 1
         return integrated_variable

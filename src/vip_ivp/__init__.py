@@ -1,11 +1,11 @@
-import functools
 from typing import ParamSpec
 
 from varname import argname
 
 from .solver import *
+from .temporal_var import *
 from .utils import *
-from .utils import _get_expression
+
 
 warnings.simplefilter("once")
 
@@ -46,7 +46,7 @@ def create_source(value: Union[Callable[[Union[float, np.ndarray]], T], T]) -> "
     :return: The created TemporalVar.
     """
     solver = _get_current_solver()
-    return utils.create_source(solver, value)
+    return temporal_var.create_source(solver, value)
 
 
 def solve(t_end: Number, method='RK45', time_step=None, t_eval=None, **options) -> None:
@@ -99,7 +99,7 @@ def delay(input_value: TemporalVar[T], n_steps: int, initial_value: T = 0) -> Te
             return input_value(delayed_t, delayed_y)
 
     return TemporalVar(input_value.solver, previous_value,
-                       expression=f"#DELAY({n_steps}) {_get_expression(input_value)}")
+                       expression=f"#DELAY({n_steps}) {get_expression(input_value)}")
 
 
 def differentiate(input_value: TemporalVar[float], initial_value=0) -> TemporalVar[float]:
@@ -115,7 +115,7 @@ def differentiate(input_value: TemporalVar[float], initial_value=0) -> TemporalV
     d_y = input_value - previous_value
     d_t = time_value - previous_time
     derived_value = np.divide(d_y, d_t, where=d_t != 0)
-    derived_value._expression = f"#D/DT {_get_expression(input_value)}"
+    derived_value._expression = f"#D/DT {get_expression(input_value)}"
     return derived_value
 
 
@@ -179,9 +179,9 @@ def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
                                           kwargs.items()})
 
         # Format input for the expression
-        inputs_expr = [_get_expression(inp) if isinstance(inp, TemporalVar) else str(inp) for inp in args]
+        inputs_expr = [get_expression(inp) if isinstance(inp, TemporalVar) else str(inp) for inp in args]
         kwargs_expr = [
-            f"{key}={_get_expression(value) if isinstance(value, TemporalVar) else str(value)}"
+            f"{key}={get_expression(value) if isinstance(value, TemporalVar) else str(value)}"
             for key, value in kwargs.items()
         ]
         expression = f"{func.__name__}({', '.join(inputs_expr)}"
