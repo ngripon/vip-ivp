@@ -49,6 +49,20 @@ def test_integrate_scalar():
     x = vip.integrate(5, 1)
     vip.solve(10)
 
+def test_system_without_integration():
+    # Without time step
+    a=vip.create_source(lambda t:t)
+    b=2*a
+    vip.solve(10)
+    assert np.array_equal(2*a.values,b.values)
+
+    # With time step
+    vip.new_system()
+    a=vip.create_source(lambda t:t)
+    b=2*a
+    vip.solve(10, time_step=0.1)
+    assert np.array_equal(2*a.values,b.values)
+
 
 def test_plant_controller():
     def controller(error):
