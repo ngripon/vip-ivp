@@ -22,7 +22,7 @@ def test_collections_get_methods():
     d = vip.integrate(arr_slice[0], 0)
     e = vip.integrate(obj.lol, 0)
 
-    vip.solve(10)
+    vip.solve(10, time_step=1)
 
     print(l[0].values)
     print(di["b"].values)

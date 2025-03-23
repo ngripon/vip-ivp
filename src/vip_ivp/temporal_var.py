@@ -249,7 +249,9 @@ class TemporalVar(Generic[T]):
 
     def __getitem__(self, item):
         expression = f"{add_necessary_brackets(get_expression(self))}[{item}]"
-        return TemporalVar(self.solver, lambda t, y: self(t, y)[item], expression=expression)
+        return TemporalVar(self.solver,
+                           lambda t, y: self(t, y)[item] if np.isscalar(t) else np.array([x[item] for x in self(t, y)]),
+                           expression=expression)
 
     def __getattr__(self, item):
         expression = f"{add_necessary_brackets(get_expression(self))}.{item}"
@@ -340,10 +342,13 @@ def create_source(solver: "Solver", value: Union[Callable[[Union[float, np.ndarr
     if callable(value):
         return TemporalVar(solver, lambda t, y: value(t), expression=expression)
     else:
-        return TemporalVar(solver, lambda t, y: value if np.isscalar(t) else np.full_like(t, value),
-                           expression=expression)
-
-
+        if np.isscalar(value):
+            return TemporalVar(solver, lambda t, y: value if np.isscalar(t) else np.full_like(t, value),
+                               expression=expression)
+        else:
+            return TemporalVar(solver,
+                               lambda t, y: value if np.isscalar(t) else np.array([value for _ in range(len(t))]),
+                               expression=expression)
 
 
 def get_expression(value) -> str:
