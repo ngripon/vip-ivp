@@ -32,6 +32,7 @@ METHODS = {'RK23': RK23,
 MESSAGES = {0: "The solver successfully reached the end of the integration interval.",
             1: "A termination event occurred."}
 
+
 class OdeResult(OptimizeResult):
     pass
 
@@ -48,7 +49,7 @@ class Solver:
         self.saved_vars = {}
         self.vars_to_plot = {}
 
-    def integrate(self, input_value: "TemporalVar", x0: Number) -> "TemporalVar":
+    def integrate(self, input_value: "TemporalVar[T]", x0: T) -> "TemporalVar[T]":
         """
         Integrate the input value starting from the initial condition x0.
 
@@ -56,6 +57,7 @@ class Solver:
         :param x0: The initial condition for the integration.
         :return: The integrated TemporalVar.
         """
+
         self.feed_vars.append(input_value)
         integrated_variable = TemporalVar(
             self, lambda t, y, idx=self.dim: y[idx], expression=f"#INTEGRATE {get_expression(input_value)}")
@@ -279,10 +281,10 @@ class Solver:
                     if sol is None:
                         sol = solver.dense_output()
                     self.t.extend(t_eval_step)
-                    if self.dim!=0:
+                    if self.dim != 0:
                         self.y.extend(np.vstack(sol(t_eval_step)).T)
                     else:
-                        self.y.extend([0]*len(t_eval_step))
+                        self.y.extend([0] * len(t_eval_step))
                     t_eval_i = t_eval_i_new
 
             if t_eval is not None and dense_output:

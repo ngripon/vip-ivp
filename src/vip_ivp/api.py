@@ -15,7 +15,7 @@ _solver_list = []
 T = TypeVar('T')
 
 
-def create_source(value: Union[Callable[[Union[float, np.ndarray]], T], T]) -> "TemporalVar[T]":
+def create_source(value: Union[Callable[[Union[float, np.ndarray]], T], T]) -> TemporalVar[T]:
     """
     Create a source signal from a temporal function or a scalar value.
 
@@ -26,7 +26,7 @@ def create_source(value: Union[Callable[[Union[float, np.ndarray]], T], T]) -> "
     return temporal_var.create_source(solver, value)
 
 
-def integrate(input_value: Union["TemporalVar[T]", Number], x0: Number) -> TemporalVar[float]:
+def integrate(input_value: TemporalVar[T], x0: T) -> TemporalVar[T]:
     """
     Integrate the input value starting from the initial condition x0.
 
@@ -40,7 +40,7 @@ def integrate(input_value: Union["TemporalVar[T]", Number], x0: Number) -> Tempo
     return integral_value
 
 
-def loop_node() -> "LoopNode":
+def loop_node() -> LoopNode:
     """
     Create a loop node. Loop node can accept new inputs through its "loop_into()" method after being instantiated.
 
