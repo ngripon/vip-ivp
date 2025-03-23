@@ -59,29 +59,6 @@ class Solver:
         self.dim += 1
         return integrated_variable
 
-    def loop_node(self) -> "LoopNode":
-        """
-        Create a loop node. A loop node is a temporal variable that dissociate its declaration and value setting.
-        This mechanism allows it to take as input variable that are integrated from itself, thus allowing to solve ODEs.
-
-        :return: The created LoopNode.
-        """
-        return LoopNode(self)
-
-    def create_source(self, value: Union[Callable, Number]) -> "TemporalVar":
-        """
-        Create a source signal from a temporal function or a scalar value.
-
-        :param value: A function f(t) or a scalar value.
-        :return: The created TemporalVar.
-        """
-        expression = convert_to_string(value)
-        if callable(value):
-            return TemporalVar(self, lambda t, y: value(t), expression=expression)
-        else:
-            return TemporalVar(self, lambda t, y: value if np.isscalar(t) else np.full_like(t, value),
-                               expression=expression)
-
     def solve(
             self,
             t_end: Number,
@@ -652,7 +629,7 @@ class LoopNode(TemporalVar[T]):
                 "This Loop Node has already been set. If you want to add another value, use argument 'force = True'."
             )
         if not isinstance(value, TemporalVar):
-            value = self.solver.create_source(value)
+            value = create_source(self.solver, value)
         self._input_vars.append(value)
         self._is_set = True
         self._expression = " + ".join(_get_expression(var)
@@ -660,6 +637,22 @@ class LoopNode(TemporalVar[T]):
 
     def __call__(self, t: Union[float, np.ndarray], y: np.ndarray) -> T:
         return np.sum(var(t, y) for var in self._input_vars)
+
+
+def create_source(solver: Solver, value: Union[Callable[[Union[float, np.ndarray]], T], T]) -> "TemporalVar[T]":
+    """
+    Create a source signal from a temporal function or a scalar value.
+
+    :param solver: Solver
+    :param value: A function f(t) or a scalar value.
+    :return: The created TemporalVar.
+    """
+    expression = convert_to_string(value)
+    if callable(value):
+        return TemporalVar(solver, lambda t, y: value(t), expression=expression)
+    else:
+        return TemporalVar(solver, lambda t, y: value if np.isscalar(t) else np.full_like(t, value),
+                           expression=expression)
 
 
 class OdeResult(OptimizeResult):

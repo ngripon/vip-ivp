@@ -32,8 +32,7 @@ def loop_node() -> "LoopNode":
     :return: The created LoopNode.
     """
     solver = _get_current_solver()
-    loop_node = solver.loop_node()
-    return loop_node
+    return LoopNode(solver)
 
 
 def create_source(value: Union[Callable[[Union[float, np.ndarray]], T], T]) -> "TemporalVar[T]":
@@ -44,8 +43,7 @@ def create_source(value: Union[Callable[[Union[float, np.ndarray]], T], T]) -> "
     :return: The created TemporalVar.
     """
     solver = _get_current_solver()
-    source = solver.create_source(value)
-    return source
+    return utils.create_source(solver, value)
 
 
 def solve(t_end: Number, method='RK45', time_step=None, t_eval=None, **options) -> None:
@@ -62,19 +60,19 @@ def solve(t_end: Number, method='RK45', time_step=None, t_eval=None, **options) 
     solver.solve(t_end, method, time_step, t_eval, **options)
 
 
-def explore(f: Callable[..., T], t_end: Number, bounds=(), time_step: float = None, title: str = "") -> None:
+def explore(fun: Callable[..., T], t_end: Number, bounds=(), time_step: float = None, title: str = "") -> None:
     """
     Explore the function f over the given bounds and solve the system until t_end.
     This function needs the sliderplot package.
 
     :param title: Title of the plot
     :param time_step: Time step of the simulation
-    :param f: The function to explore.
+    :param fun: The function to explore.
     :param t_end: Time at which the integration stops.
     :param bounds: Bounds for the exploration.
     """
     solver = _get_current_solver()
-    solver.explore(f, t_end, bounds, time_step, title)
+    solver.explore(fun, t_end, bounds, time_step, title)
 
 
 def differentiate(input_value: TemporalVar[float], initial_value=0) -> TemporalVar[float]:
@@ -152,6 +150,7 @@ def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
         def content(t, y): return func(*[arg(t, y) if isinstance(arg, TemporalVar) else arg for arg in args],
                                        **{key: (arg(t, y) if isinstance(arg, TemporalVar) else arg) for key, arg in
                                           kwargs.items()})
+
         # Format input for the expression
         inputs_expr = [_get_expression(inp) if isinstance(inp, TemporalVar) else str(inp) for inp in args]
         kwargs_expr = [
