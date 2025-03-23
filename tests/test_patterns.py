@@ -40,6 +40,11 @@ def test_use_numpy_function():
 
     assert np.all(error_array == 0)
 
+def test_multidimensional_integration():
+    da=[5,4]
+    a=vip.integrate(da,[0,0])
+    vip.solve(10)
+
 
 def test_conditions():
     a = vip.create_source(lambda t: t)
