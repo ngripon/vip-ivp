@@ -2,6 +2,7 @@ import vip_ivp as vip
 import numpy as np
 
 
+
 def test_source_expression():
     lambda_fun = lambda t: t
 
@@ -130,7 +131,7 @@ def test_transformations():
 
     da = vip.differentiate(a)
     ia = vip.integrate(a, 0)
-    delay_a = a.delay(1)
+    delay_a = vip.delay(a,1)
 
     def foo(bar):
         return bar + 1
