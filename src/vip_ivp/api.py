@@ -1,11 +1,10 @@
-from typing import ParamSpec
+from typing import ParamSpec, overload, List, Dict, Any
 
 import numpy as np
 from varname import argname
 
 from .solver import *
 from .temporal_var import *
-from . import temporal_var
 from .utils import *
 
 warnings.simplefilter("once")
@@ -13,17 +12,42 @@ warnings.simplefilter("once")
 _solver_list = []
 
 T = TypeVar('T')
+K = TypeVar("K")
 
 
-def create_source(value: Union[Callable[[Union[float, np.ndarray]], T], T]) -> TemporalVar[T]:
+@overload
+def create_source(value: List[Union[Callable[[Union[float, np.ndarray]], T], T]]) -> List[TemporalVar[T]]: ...
+
+
+@overload
+def create_source(value: Dict[K, Union[Callable[[Union[float, np.ndarray]], T], T]]) -> Dict[K, TemporalVar[T]]: ...
+
+
+@overload
+def create_source(value: np.ndarray) -> np.ndarray: ...
+
+
+@overload
+def create_source(value: Union[Callable[[Union[float, np.ndarray]], T], T]) -> TemporalVar[T]: ...
+
+
+def create_source(value):
     """
     Create a source signal from a temporal function or a scalar value.
 
     :param value: A function f(t) or a scalar value.
     :return: The created TemporalVar.
     """
-    solver = _get_current_solver()
-    return temporal_var.create_source(solver, value)
+    if isinstance(value, np.ndarray):
+        # Handle NumPy array by wrapping each element
+        return np.vectorize(lambda x: create_source(x))(value)
+    elif isinstance(value, dict):
+        return {k: create_source(v) for k, v in value.items()}
+    elif isinstance(value, list):
+        return [create_source(v) for v in value]
+    else:
+        solver = _get_current_solver()
+        return wrap_source(solver, value)
 
 
 def integrate(input_value: TemporalVar[T], x0: T) -> TemporalVar[T]:

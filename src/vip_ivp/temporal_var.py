@@ -324,7 +324,7 @@ class LoopNode(TemporalVar[T]):
                 "This Loop Node has already been set. If you want to add another value, use argument 'force = True'."
             )
         if not isinstance(value, TemporalVar):
-            value = create_source(self.solver, value)
+            value = wrap_source(self.solver, value)
         self._input_vars.append(value)
         self._is_set = True
         self._expression = " + ".join(get_expression(var)
@@ -334,7 +334,7 @@ class LoopNode(TemporalVar[T]):
         return np.sum(var(t, y) for var in self._input_vars)
 
 
-def create_source(solver: "Solver", value: Union[Callable[[Union[float, np.ndarray]], T], T]) -> "TemporalVar[T]":
+def wrap_source(solver: "Solver", value: Union[Callable[[Union[float, np.ndarray]], T], T]) -> "TemporalVar[T]":
     """
     Create a source signal from a temporal function or a scalar value.
 
