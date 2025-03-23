@@ -39,3 +39,11 @@ def test_use_numpy_function():
     error_array = y.values - np.interp(a.values, map_x, map_y)
 
     assert np.all(error_array == 0)
+
+
+def test_conditions():
+    a = vip.create_source(lambda t: t)
+    b = vip.create_source(5)
+    c = vip.where(a < 5, a, b)
+    vip.solve(10, time_step=0.1)
+    assert np.array_equal(c.values, np.where(a.values < 5, a.values, b.values))
