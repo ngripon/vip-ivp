@@ -22,6 +22,11 @@ def test_collections_get_methods():
     d = vip.integrate(arr_slice[0], 0)
     e = vip.integrate(obj.lol, 0)
 
+    vb = b.values
+    vc = c.values
+    vd = d.values
+    ve = e.values
+
     vip.solve(10)
 
 

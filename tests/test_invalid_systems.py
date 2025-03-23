@@ -17,3 +17,10 @@ def test_set_loop_node_two_times():
     x.loop_into(6)
     with pytest.raises(Exception):
         x.loop_into(5)
+
+
+def test_simulation_meets_exception():
+    a = vip.create_source(lambda t: 5 - t)
+    b = 1 / a
+    b.to_plot("B")
+    vip.solve(10, time_step=0.1)
