@@ -36,3 +36,27 @@ def add_necessary_brackets(expression: str) -> str:
         return f"({expression})"
     else:
         return expression
+
+
+def flatten(input_data):
+    if isinstance(input_data, dict):
+        flat_input = list(input_data.values())
+    elif isinstance(input_data, np.ndarray):
+        flat_input = input_data.flatten().tolist()
+    elif isinstance(input_data, list):
+        flat_input = np.array(input_data, dtype=object).flatten().tolist()
+    else:
+        flat_input = [input_data]
+    return flat_input
+
+
+def unflatten(flat_output, input_data):
+    if isinstance(input_data, dict):
+        keys = list(input_data.keys())
+        return dict(zip(keys, flat_output))
+    elif isinstance(input_data, np.ndarray):
+        return np.array(flat_output).reshape(input_data.shape)
+    elif isinstance(input_data, list):
+        return np.array(flat_output, dtype=object).reshape(np.array(input_data, dtype=object).shape).tolist()
+    else:
+        return flat_output[0]
