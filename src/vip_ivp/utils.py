@@ -55,7 +55,8 @@ class Solver:
         """
         self.feed_vars.append(input_value)
         integrated_variable = TemporalVar(
-            self, lambda t, y, idx=self.dim: y[idx], x0, expression=f"#INTEGRATE {_get_expression(input_value)}")
+            self, lambda t, y, idx=self.dim: y[idx], expression=f"#INTEGRATE {_get_expression(input_value)}")
+        integrated_variable.set_init(x0)
         self.dim += 1
         return integrated_variable
 
@@ -307,7 +308,7 @@ class Solver:
 
 class TemporalVar(Generic[T]):
     def __init__(self, solver: Solver, fun: Callable[[Union[float, np.ndarray], np.ndarray], T] = None,
-                 x0: Union[float, np.ndarray] = None, expression: str = None):
+                 expression: str = None):
         self.solver = solver
         self.init = None
         if isinstance(fun, Callable):
@@ -322,8 +323,6 @@ class TemporalVar(Generic[T]):
         self._inputs: list[TemporalVar] = []
 
         self.solver.vars.append(self)
-        if x0 is not None:
-            self._set_init(x0)
 
     @property
     def values(self) -> np.ndarray:
@@ -368,7 +367,7 @@ class TemporalVar(Generic[T]):
     def _reset(self):
         self._values = None
 
-    def _set_init(self, x0: Union[float, np.ndarray]):
+    def set_init(self, x0: Union[Number, np.ndarray]):
         self.init = x0
         self.solver.initialized_vars.append(self)
 
