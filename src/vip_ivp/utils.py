@@ -365,26 +365,6 @@ class TemporalVar(Generic[T]):
         """
         self.solver.vars_to_plot[name] = self
 
-    def delay(self, n_steps: int, initial_value: T = 0) -> "TemporalVar[T]":
-        if n_steps < 1:
-            raise Exception("Delay accept only a positive step.")
-
-        def previous_value(t, y):
-            if np.isscalar(t):
-                if len(self.solver.t) >= n_steps:
-                    previous_t = self.solver.t[-n_steps]
-                    previous_y = self.solver.y[-n_steps]
-
-                    return self(previous_t, previous_y)
-                else:
-                    return initial_value
-            else:
-                delayed_t = shift_array(t, n_steps, 0)
-                delayed_y = shift_array(y, n_steps, initial_value)
-                return self(delayed_t, delayed_y)
-
-        return TemporalVar(self.solver, previous_value, expression=f"#DELAY({n_steps}) {_get_expression(self)}")
-
     def _reset(self):
         self._values = None
 

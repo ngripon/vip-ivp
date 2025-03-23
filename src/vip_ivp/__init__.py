@@ -75,6 +75,30 @@ def explore(fun: Callable[..., T], t_end: Number, bounds=(), time_step: float = 
     solver.explore(fun, t_end, bounds, time_step, title)
 
 
+def delay(input_value: TemporalVar[T], n_steps: int, initial_value: T = 0) -> TemporalVar[T]:
+    if not isinstance(input_value, TemporalVar):
+        raise Exception("Only TemporalVars can be delayed.")
+    elif n_steps < 1:
+        raise Exception("Delay accept only a positive step.")
+
+    def previous_value(t, y):
+        if np.isscalar(t):
+            if len(input_value.solver.t) >= n_steps:
+                previous_t = input_value.solver.t[-n_steps]
+                previous_y = input_value.solver.y[-n_steps]
+
+                return input_value(previous_t, previous_y)
+            else:
+                return initial_value
+        else:
+            delayed_t = shift_array(t, n_steps, 0)
+            delayed_y = shift_array(y, n_steps, initial_value)
+            return input_value(delayed_t, delayed_y)
+
+    return TemporalVar(input_value.solver, previous_value,
+                       expression=f"#DELAY({n_steps}) {_get_expression(input_value)}")
+
+
 def differentiate(input_value: TemporalVar[float], initial_value=0) -> TemporalVar[float]:
     # Warn the user not to abuse the differentiate function
     warnings.warn("It is recommended to use 'integrate' instead of 'differentiate' for solving IVPs, "
@@ -82,9 +106,9 @@ def differentiate(input_value: TemporalVar[float], initial_value=0) -> TemporalV
                   "If you choose to use 'differentiate', consider using a smaller step size for better accuracy.",
                   category=UserWarning, stacklevel=2)
 
-    previous_value = input_value.delay(1, initial_value)
+    previous_value = delay(input_value, 1, initial_value)
     time_value = create_source(lambda t: t)
-    previous_time = time_value.delay(1)
+    previous_time = delay(time_value, 1)
     d_y = input_value - previous_value
     d_t = time_value - previous_time
     derived_value = np.divide(d_y, d_t, where=d_t != 0)
