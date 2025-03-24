@@ -701,7 +701,7 @@ def get_expression(value) -> str:
         frame = inspect.currentframe().f_back.f_back
         while (frame.f_locals.get("self")
                and (isinstance(frame.f_locals.get("self"), TemporalVar)
-                    or isinstance(frame.f_locals.get("self"),Solver))
+                    or isinstance(frame.f_locals.get("self"), Solver))
                or Path(frame.f_code.co_filename).as_posix().endswith("vip_ivp/api.py")):
             frame = frame.f_back
         found_key = next(

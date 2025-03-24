@@ -48,8 +48,7 @@ def test_use_numpy_function():
     assert np.all(error_array == 0)
 
 
-def test_multidimensional_integration():
-    # Source
+def test_multidimensional_integration_source():
     da = vip.create_source(np.array([5, 4]))
     a = vip.integrate(da, [1, 0])
     d = vip.integrate({"a": 5, "b": 4}, {"a": 1, "b": 0})
@@ -63,8 +62,9 @@ def test_multidimensional_integration():
     assert np.allclose(d["a"].values, a0_fun(a[0].t))
     assert np.allclose(d["b"].values, a1_fun(a[1].t))
 
-    # LoopNode
-    vip.new_system()
+def test_multidimensional_integration_loop_node():
+    ...
+
 
 
 def test_conditions():
