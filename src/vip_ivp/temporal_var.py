@@ -76,12 +76,33 @@ class TemporalVar(Generic[T]):
         """
         self.solver.vars_to_plot[name] = self
 
-    def _reset(self):
-        self._values = None
+    @classmethod
+    def from_source(cls,solver: "Solver", value: Union[Callable[[Union[float, np.ndarray]], T], T]):
+        """
+        Create a source signal from a temporal function or a scalar value.
+
+        :param solver: Solver
+        :param value: A function f(t) or a scalar value.
+        :return: The created TemporalVar.
+        """
+        expression = convert_to_string(value)
+        if callable(value):
+            return cls(solver, lambda t, y: value(t), expression=expression)
+        else:
+            if np.isscalar(value):
+                return cls(solver, lambda t, y: value if np.isscalar(t) else np.full_like(t, value),
+                                   expression=expression)
+            else:
+                return cls(solver,
+                                   lambda t, y: value if np.isscalar(t) else np.array([value for _ in range(len(t))]),
+                                   expression=expression)
 
     def set_init(self, x0: Union[Number, np.ndarray]):
         self.init = x0
         self.solver.initialized_vars.append(self)
+
+    def _reset(self):
+        self._values = None
 
     def __call__(self, t: Union[float, np.ndarray], y: np.ndarray) -> T:
         return self.function(t, y)
@@ -326,7 +347,7 @@ class LoopNode(TemporalVar[T]):
                 "This Loop Node has already been set. If you want to add another value, use argument 'force = True'."
             )
         if not isinstance(value, TemporalVar):
-            value = wrap_source(self.solver, value)
+            value = TemporalVar.from_source(self.solver, value)
         self._input_vars.append(value)
         self._is_set = True
         self._expression = " + ".join(get_expression(var)
@@ -334,27 +355,6 @@ class LoopNode(TemporalVar[T]):
 
     def __call__(self, t: Union[float, np.ndarray], y: np.ndarray) -> T:
         return np.sum(var(t, y) for var in self._input_vars)
-
-
-def wrap_source(solver: "Solver", value: Union[Callable[[Union[float, np.ndarray]], T], T]) -> "TemporalVar[T]":
-    """
-    Create a source signal from a temporal function or a scalar value.
-
-    :param solver: Solver
-    :param value: A function f(t) or a scalar value.
-    :return: The created TemporalVar.
-    """
-    expression = convert_to_string(value)
-    if callable(value):
-        return TemporalVar(solver, lambda t, y: value(t), expression=expression)
-    else:
-        if np.isscalar(value):
-            return TemporalVar(solver, lambda t, y: value if np.isscalar(t) else np.full_like(t, value),
-                               expression=expression)
-        else:
-            return TemporalVar(solver,
-                               lambda t, y: value if np.isscalar(t) else np.array([value for _ in range(len(t))]),
-                               expression=expression)
 
 
 def create_scenario(solver: "Solver", scenario_table: pd.DataFrame, time_key: str, interpolation_kind="linear") -> Dict[
@@ -365,7 +365,7 @@ def create_scenario(solver: "Solver", scenario_table: pd.DataFrame, time_key: st
             continue
         fun = interp1d(scenario_table[time_key], scenario_table[col], kind=interpolation_kind, bounds_error=False,
                        fill_value=(scenario_table[col].iat[0], scenario_table[col].iat[-1]))
-        variable = wrap_source(solver, fun)
+        variable = TemporalVar.from_source(solver, fun)
         variables[col] = variable
     return variables
 

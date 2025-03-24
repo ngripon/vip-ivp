@@ -1,7 +1,6 @@
 import json
-from typing import ParamSpec, overload, List, Dict, Any
+from typing import ParamSpec, overload, List, Dict, Union
 
-import numpy as np
 import pandas as pd
 from varname import argname
 
@@ -50,7 +49,7 @@ def create_source(value):
         return [create_source(v) for v in value]
     else:
         solver = _get_current_solver()
-        return wrap_source(solver, value)
+        return TemporalVar.from_source(solver, value)
 
 
 def create_scenario(scenario_table: Union[pd.DataFrame, str, dict], time_key: str, interpolation_kind="linear",
@@ -304,7 +303,7 @@ def _check_solver_discrepancy(input_value: Union["TemporalVar", Number], solver:
         raise Exception("Can not use a variable from a previous system.")
 
 
-def _convert_to_temporal_var(value: T | TemporalVar[T]) -> TemporalVar[T]:
+def _convert_to_temporal_var(value: Union[T, TemporalVar[T]]) -> TemporalVar[T]:
     if not isinstance(value, TemporalVar):
         value = create_source(value)
     return value
