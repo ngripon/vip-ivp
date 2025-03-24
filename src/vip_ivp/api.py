@@ -44,6 +44,13 @@ def create_source(value):
         return [create_source(v) for v in value.tolist()]
     elif isinstance(value, list):
         return [create_source(v) for v in value]
+    elif is_custom_class(value):
+        new_obj = value.__class__.__new__(value.__class__)
+        # Iterate over the object's attributes
+        for attr_name, attr_value in vars(value).items():
+            var = create_source(attr_value)  # Transform the attribute to TemporalVar
+            setattr(new_obj, attr_name, var)  # Set the transformed attribute on the new object
+        return new_obj
     else:
         solver = _get_current_solver()
         return TemporalVar.from_source(solver, value)

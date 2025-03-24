@@ -13,6 +13,9 @@ def test_source_expression():
         def __init__(self, bar):
             self.bar = bar
 
+        def __repr__(self):
+            return f"bar = {self.bar}"
+
     class_value = Foo(5)
 
     constant = vip.create_source(5)

@@ -1,4 +1,6 @@
 import inspect
+import types
+from typing import Any
 
 import numpy as np
 
@@ -60,3 +62,15 @@ def unflatten(flat_output, input_data):
         return np.array(flat_output, dtype=object).reshape(np.array(input_data, dtype=object).shape).tolist()
     else:
         return flat_output[0]
+
+
+def is_custom_class(obj: Any) -> bool:
+    # Check if the object is a built-in type like list, dict, scalar, or ndarray
+    if isinstance(obj, (list, dict, int, float, np.ndarray, bool, str, types.FunctionType, types.LambdaType)):
+        return False
+
+    # Check if the object is an instance of a custom class
+    if isinstance(obj, object):
+        return True
+
+    return False
