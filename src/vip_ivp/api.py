@@ -30,14 +30,15 @@ def create_source(value: Union[Callable[[Union[float, np.ndarray]], T], T]) -> "
 def create_scenario(scenario_table: Union[pd.DataFrame, str, dict], time_key: str, interpolation_kind="linear") -> Dict[
     Any, TemporalVar]:
     solver = _get_current_solver()
-    if isinstance(scenario_table,str):
+    if isinstance(scenario_table, str):
         if scenario_table.endswith(".csv"):
             ...
         else:
             raise ValueError("Unsupported file type")
     elif isinstance(scenario_table, dict):
-        ...
-    elif isinstance(scenario_table,pd.DataFrame):
+        input_data = pd.DataFrame(scenario_table)
+        return temporal_var.create_scenario(solver, input_data, time_key, interpolation_kind)
+    elif isinstance(scenario_table, pd.DataFrame):
         return temporal_var.create_scenario(solver, scenario_table, time_key, interpolation_kind)
     else:
         raise ValueError("Unsupported input type")

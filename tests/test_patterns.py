@@ -56,16 +56,22 @@ def test_conditions():
 
 
 def test_scenario_interpolation():
-    scenario = pd.DataFrame({"t": [0, 1, 2, 3, 4], "a": [1, 2, 3, 4, 5], "b": [0, 10, -10, 10, -10]})
-    variables = vip.create_scenario(scenario, "t")
+    scenario_dict = {"t": [0, 1, 2, 3, 4], "a": [1, 2, 3, 4, 5], "b": [0, 10, -10, 10, -10]}
+    scenario_df = pd.DataFrame(scenario_dict)
 
-    vip.solve(4, time_step=0.5)
+    scenarii_inputs = [scenario_df, scenario_dict]
 
-    a = variables["a"]
-    b = variables["b"]
+    for scenario in scenarii_inputs:
+        vip.new_system()
+        variables = vip.create_scenario(scenario, "t")
 
-    assert a[0] == 1
-    assert a[1] == 1.5
-    assert b[0] == 0
-    assert b[1] == 5
-    assert b[3] == 0
+        vip.solve(4, time_step=0.5)
+
+        a = variables["a"]
+        b = variables["b"]
+
+        assert a[0] == 1
+        assert a[1] == 1.5
+        assert b[0] == 0
+        assert b[1] == 5
+        assert b[3] == 0
