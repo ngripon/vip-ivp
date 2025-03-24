@@ -365,7 +365,7 @@ def create_scenario(solver: "Solver", scenario_table: pd.DataFrame, time_key: st
             continue
         fun = interp1d(scenario_table[time_key], scenario_table[col], kind=interpolation_kind, bounds_error=False,
                        fill_value=(scenario_table[col].iat[0], scenario_table[col].iat[-1]))
-        variable = create_source(solver, fun)
+        variable = wrap_source(solver, fun)
         variables[col] = variable
     return variables
 
