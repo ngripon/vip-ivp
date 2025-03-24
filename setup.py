@@ -23,5 +23,5 @@ setuptools.setup(
     package_dir={"": "src"},
     packages=setuptools.find_packages(where="src"),
     python_requires=">=3.10",
-    install_requires=['numpy', 'scipy', 'matplotlib']
+    install_requires=['numpy', 'scipy', 'matplotlib', 'pandas']
 )
