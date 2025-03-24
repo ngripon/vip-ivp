@@ -66,7 +66,6 @@ def test_scenario_interpolation():
 
     for scenario in scenarii_inputs:
         print(f"Test scenario: {scenario}")
-        print(os.getcwd())
         vip.new_system()
         variables = vip.create_scenario(scenario, "t", sep=";")
 
