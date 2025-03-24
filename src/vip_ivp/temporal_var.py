@@ -1,12 +1,14 @@
 import warnings
 import inspect
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, Any
 
 from numbers import Number
 from pathlib import Path
 from typing import Callable, Union, TypeVar, Generic
 
 import numpy as np
+import pandas as pd
+from scipy.interpolate import interp1d
 
 from .utils import add_necessary_brackets, convert_to_string
 
@@ -353,6 +355,19 @@ def wrap_source(solver: "Solver", value: Union[Callable[[Union[float, np.ndarray
             return TemporalVar(solver,
                                lambda t, y: value if np.isscalar(t) else np.array([value for _ in range(len(t))]),
                                expression=expression)
+
+
+def create_scenario(solver: "Solver", scenario_table: pd.DataFrame, time_key: str, interpolation_kind="linear") -> Dict[
+    Any, TemporalVar]:
+    variables = {}
+    for col in scenario_table.columns:
+        if col == time_key:
+            continue
+        fun = interp1d(scenario_table[time_key], scenario_table[col], kind=interpolation_kind, bounds_error=False,
+                       fill_value=(scenario_table[col].iat[0], scenario_table[col].iat[-1]))
+        variable = create_source(solver, fun)
+        variables[col] = variable
+    return variables
 
 
 def get_expression(value) -> str:

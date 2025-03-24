@@ -1,10 +1,13 @@
+import json
 from typing import ParamSpec, overload, List, Dict, Any
 
 import numpy as np
+import pandas as pd
 from varname import argname
 
 from .solver import *
 from .temporal_var import *
+from . import temporal_var
 from .utils import *
 
 warnings.simplefilter("once")
@@ -50,7 +53,60 @@ def create_source(value):
         return wrap_source(solver, value)
 
 
-def integrate(input_value: TemporalVar[T], x0: T) -> TemporalVar[T]:
+def create_scenario(scenario_table: Union[pd.DataFrame, str, dict], time_key: str, interpolation_kind="linear",
+                    sep=',') -> Dict[
+    Any, TemporalVar]:
+    """
+    Creates a scenario from a given input table, which can be in various formats such as CSV, JSON, dictionary, or DataFrame.
+    The maps in the scenario table are interpolated over time and converted into TemporalVar objects.
+    The function processes the data and returns a dictionary of TemporalVar objects.
+
+    :param scenario_table: The input data, which can be one of the following formats:
+        - A CSV file path (string)
+        - A JSON file path (string)
+        - A dictionary of data
+        - A pandas DataFrame
+    :type scenario_table: Union[pd.DataFrame, str, dict]
+
+    :param time_key: The key (column) to use as time for the scenario.
+    :type time_key: str
+
+    :param interpolation_kind: The kind of interpolation to use. Default is "linear". This determines how values are
+        interpolated between time points.
+    :type interpolation_kind: str, optional
+
+    :param sep: The separator to use when reading CSV files. Default is a comma.
+    :type sep: str, optional
+
+    :return: A dictionary of TemporalVar objects representing the scenario, where the keys are the variables and the
+        values are the corresponding TemporalVar instances.
+    :rtype: Dict[Any, TemporalVar]
+
+    :raises ValueError: If the input file type is unsupported or the input type is invalid.
+    """
+    solver = _get_current_solver()
+    if isinstance(scenario_table, str):
+        if scenario_table.endswith(".csv"):
+            input_data = pd.read_csv(scenario_table, sep=sep)
+            print(input_data)
+            return temporal_var.create_scenario(solver, input_data, time_key, interpolation_kind)
+        elif scenario_table.endswith(".json"):
+            with open(scenario_table, "r") as f:
+                dict_data = json.load(f)
+            input_data = pd.DataFrame(dict_data)
+            return temporal_var.create_scenario(solver, input_data, time_key, interpolation_kind)
+        else:
+            raise ValueError("Unsupported file type")
+    elif isinstance(scenario_table, dict):
+        input_data = pd.DataFrame(scenario_table)
+        return temporal_var.create_scenario(solver, input_data, time_key, interpolation_kind)
+    elif isinstance(scenario_table, pd.DataFrame):
+        return temporal_var.create_scenario(solver, scenario_table, time_key, interpolation_kind)
+    else:
+        raise ValueError("Unsupported input type")
+
+
+def integrate(input_value: Union[TemporalVar[T], Number], x0: Number) -> TemporalVar[float]:
     """
     Integrate the input value starting from the initial condition x0.
 

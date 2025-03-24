@@ -1,6 +1,8 @@
+import os
 from dataclasses import dataclass
 
 import numpy as np
+import pandas as pd
 
 import vip_ivp as vip
 
@@ -58,3 +60,28 @@ def test_conditions():
     c = vip.where(a < 5, a, b)
     vip.solve(10, time_step=0.1)
     assert np.array_equal(c.values, np.where(a.values < 5, a.values, b.values))
+
+
+def test_scenario_interpolation():
+    scenario_dict = {"t": [0, 1, 2, 3, 4], "a": [1, 2, 3, 4, 5], "b": [0, 10, -10, 10, -10]}
+    scenario_df = pd.DataFrame(scenario_dict)
+    scenario_json = "tests/files/scenarii/scenario_basic.json"
+    scenario_csv = "tests/files/scenarii/scenario_basic.csv"
+
+    scenarii_inputs = [scenario_df, scenario_dict, scenario_json, scenario_csv]
+
+    for scenario in scenarii_inputs:
+        print(f"Test scenario: {scenario}")
+        vip.new_system()
+        variables = vip.create_scenario(scenario, "t", sep=";")
+
+        vip.solve(4, time_step=0.5)
+
+        a = variables["a"]
+        b = variables["b"]
+
+        assert a[0] == 1
+        assert a[1] == 1.5
+        assert b[0] == 0
+        assert b[1] == 5
+        assert b[3] == 0
