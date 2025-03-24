@@ -63,7 +63,7 @@ class Solver:
         is_scalar = np.isscalar(input_value)
         if is_scalar:
             input_value = [input_value]
-            x0=[x0]
+            x0 = [x0]
         integrated_structure = self._get_integrated_structure(input_value, x0)
 
         if is_scalar:
@@ -699,10 +699,10 @@ def create_scenario(solver: "Solver", scenario_table: pd.DataFrame, time_key: st
 def get_expression(value) -> str:
     if isinstance(value, TemporalVar):
         frame = inspect.currentframe().f_back.f_back
-        if Path(frame.f_code.co_filename).as_posix().endswith("vip_ivp/api.py"):
-            frame = frame.f_back
-        while frame.f_locals.get("self") and (
-                isinstance(frame.f_locals.get("self"), TemporalVar) or isinstance(frame.f_locals.get("self"), Solver)):
+        while (frame.f_locals.get("self")
+               and (isinstance(frame.f_locals.get("self"), TemporalVar)
+                    or isinstance(frame.f_locals.get("self"),Solver))
+               or Path(frame.f_code.co_filename).as_posix().endswith("vip_ivp/api.py")):
             frame = frame.f_back
         found_key = next(
             (key for key, dict_value in frame.f_locals.items() if dict_value is value), None)
