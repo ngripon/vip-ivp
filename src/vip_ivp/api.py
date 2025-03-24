@@ -1,6 +1,7 @@
 from typing import ParamSpec
 
 import numpy as np
+import pandas as pd
 from varname import argname
 
 from .solver import *
@@ -26,10 +27,20 @@ def create_source(value: Union[Callable[[Union[float, np.ndarray]], T], T]) -> "
     return temporal_var.create_source(solver, value)
 
 
-def create_scenario(scenario_table: pd.DataFrame, time_key: str, interpolation_kind="linear") -> Dict[
+def create_scenario(scenario_table: Union[pd.DataFrame, str, dict], time_key: str, interpolation_kind="linear") -> Dict[
     Any, TemporalVar]:
     solver = _get_current_solver()
-    return temporal_var.create_scenario(solver, scenario_table, time_key, interpolation_kind)
+    if isinstance(scenario_table,str):
+        if scenario_table.endswith(".csv"):
+            ...
+        else:
+            raise ValueError("Unsupported file type")
+    elif isinstance(scenario_table, dict):
+        ...
+    elif isinstance(scenario_table,pd.DataFrame):
+        return temporal_var.create_scenario(solver, scenario_table, time_key, interpolation_kind)
+    else:
+        raise ValueError("Unsupported input type")
 
 
 def integrate(input_value: Union["TemporalVar[T]", Number], x0: Number) -> TemporalVar[float]:
