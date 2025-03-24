@@ -26,6 +26,12 @@ def create_source(value: Union[Callable[[Union[float, np.ndarray]], T], T]) -> "
     return temporal_var.create_source(solver, value)
 
 
+def create_scenario(scenario_table: pd.DataFrame, time_key: str, interpolation_kind="linear") -> Dict[
+    Any, TemporalVar]:
+    solver = _get_current_solver()
+    return temporal_var.create_scenario(solver, scenario_table, time_key, interpolation_kind)
+
+
 def integrate(input_value: Union["TemporalVar[T]", Number], x0: Number) -> TemporalVar[float]:
     """
     Integrate the input value starting from the initial condition x0.
