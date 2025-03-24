@@ -28,15 +28,17 @@ def create_source(value: Union[Callable[[Union[float, np.ndarray]], T], T]) -> "
     return temporal_var.create_source(solver, value)
 
 
-def create_scenario(scenario_table: Union[pd.DataFrame, str, dict], time_key: str, interpolation_kind="linear") -> Dict[
+def create_scenario(scenario_table: Union[pd.DataFrame, str, dict], time_key: str, interpolation_kind="linear", sep=',') -> Dict[
     Any, TemporalVar]:
     solver = _get_current_solver()
     if isinstance(scenario_table, str):
         if scenario_table.endswith(".csv"):
-            ...
+            input_data = pd.read_csv(scenario_table, sep=sep)
+            print(input_data)
+            return temporal_var.create_scenario(solver, input_data, time_key, interpolation_kind)
         elif scenario_table.endswith(".json"):
-            with open(scenario_table,"r") as f:
-                dict_data=json.load(f)
+            with open(scenario_table, "r") as f:
+                dict_data = json.load(f)
             input_data = pd.DataFrame(dict_data)
             return temporal_var.create_scenario(solver, input_data, time_key, interpolation_kind)
         else:
