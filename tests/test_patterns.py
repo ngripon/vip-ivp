@@ -48,10 +48,14 @@ def test_use_numpy_function():
     assert np.all(error_array == 0)
 
 def test_multidimensional_integration():
+    # Source
     da=vip.create_source(np.array([5,4]))
     print(da)
     a=vip.integrate(da,[0,0])
     vip.solve(10)
+
+    # LoopNode
+    vip.new_system()
 
 
 def test_conditions():

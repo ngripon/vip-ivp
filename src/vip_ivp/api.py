@@ -4,9 +4,8 @@ from typing import ParamSpec, overload, List, Dict, Union
 import pandas as pd
 from varname import argname
 
-from .solver import *
-from .temporal_var import *
-from . import temporal_var
+from .base import *
+from . import base
 from .utils import *
 
 warnings.simplefilter("once")
@@ -92,19 +91,19 @@ def create_scenario(scenario_table: Union[pd.DataFrame, str, dict], time_key: st
         if scenario_table.endswith(".csv"):
             input_data = pd.read_csv(scenario_table, sep=sep)
             print(input_data)
-            return temporal_var.create_scenario(solver, input_data, time_key, interpolation_kind)
+            return base.create_scenario(solver, input_data, time_key, interpolation_kind)
         elif scenario_table.endswith(".json"):
             with open(scenario_table, "r") as f:
                 dict_data = json.load(f)
             input_data = pd.DataFrame(dict_data)
-            return temporal_var.create_scenario(solver, input_data, time_key, interpolation_kind)
+            return base.create_scenario(solver, input_data, time_key, interpolation_kind)
         else:
             raise ValueError("Unsupported file type")
     elif isinstance(scenario_table, dict):
         input_data = pd.DataFrame(scenario_table)
-        return temporal_var.create_scenario(solver, input_data, time_key, interpolation_kind)
+        return base.create_scenario(solver, input_data, time_key, interpolation_kind)
     elif isinstance(scenario_table, pd.DataFrame):
-        return temporal_var.create_scenario(solver, scenario_table, time_key, interpolation_kind)
+        return base.create_scenario(solver, scenario_table, time_key, interpolation_kind)
     else:
         raise ValueError("Unsupported input type")
 

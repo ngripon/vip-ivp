@@ -1,6 +1,6 @@
 import inspect
 import types
-from typing import Any
+from typing import Any, Generator, Callable
 
 import numpy as np
 
@@ -40,28 +40,40 @@ def add_necessary_brackets(expression: str) -> str:
         return expression
 
 
-def flatten(input_data):
-    if isinstance(input_data, dict):
-        flat_input = list(input_data.values())
-    elif isinstance(input_data, np.ndarray):
-        flat_input = input_data.flatten().tolist()
-    elif isinstance(input_data, list):
-        flat_input = np.array(input_data, dtype=object).flatten().tolist()
+def iter_structure(data: Any) -> Generator:
+    """
+    Recursively iterates over an arbitrary structure and yields (container, key/index, value)
+    so the caller can modify the structure in-place if it's mutable.
+
+    Args:
+        data: The arbitrary structure (list, dict, object, etc.)
+
+    Yields:
+        (parent, key/index, value) where:
+        - parent: The container holding the value
+        - key/index: The key (for dicts) or index (for lists)
+        - value: The actual value
+    """
+    if isinstance(data, list):
+        for i, item in enumerate(data):
+            yield data, i, item  # Yield reference to modify in-place
+            yield from iter_structure(item)
+
+    elif isinstance(data, dict):
+        for key, value in data.items():
+            yield data, key, value  # Yield reference to modify in-place
+            yield from iter_structure(value)
+
+    elif hasattr(data, "__dict__"):  # Check if it's an object
+        for key, value in vars(data).items():
+            yield data, key, value  # Yield reference to modify in-place
+            yield from iter_structure(value)
+
     else:
-        flat_input = [input_data]
-    return flat_input
+        yield None, None, data  # Base case: Scalars (no modification needed)
 
 
-def unflatten(flat_output, input_data):
-    if isinstance(input_data, dict):
-        keys = list(input_data.keys())
-        return dict(zip(keys, flat_output))
-    elif isinstance(input_data, np.ndarray):
-        return np.array(flat_output).reshape(input_data.shape)
-    elif isinstance(input_data, list):
-        return np.array(flat_output, dtype=object).reshape(np.array(input_data, dtype=object).shape).tolist()
-    else:
-        return flat_output[0]
+
 
 
 def is_custom_class(obj: Any) -> bool:
