@@ -15,8 +15,10 @@ _solver_list = []
 T = TypeVar('T')
 K = TypeVar("K")
 
+# TODO: Fix this typing as it does not handle the list of list possibility
 @overload
-def create_source(value: np.ndarray) -> List[TemporalVar[T]]: ...
+def create_source(value: np.ndarray) -> List[TemporalVar[float]]: ...
+
 
 @overload
 def create_source(value: List[Union[Callable[[Union[float, np.ndarray]], T], T]]) -> List[TemporalVar[T]]: ...
@@ -108,7 +110,19 @@ def create_scenario(scenario_table: Union[pd.DataFrame, str, dict], time_key: st
         raise ValueError("Unsupported input type")
 
 
-def integrate(input_value: Union[TemporalVar[T], Number], x0: Number) -> TemporalVar[float]:
+@overload
+def integrate(input_value: List[TemporalVar[T]], x0: List[T]) -> List[TemporalVar[T]]: ...
+
+
+@overload
+def integrate(input_value: Dict[K, TemporalVar[T]], x0: Dict[K, T]) -> Dict[K, TemporalVar[T]]: ...
+
+
+@overload
+def integrate(input_value: Number, x0: Number) -> TemporalVar[Number]: ...
+
+
+def integrate(input_value: TemporalVar[T], x0: T) -> TemporalVar[T]:
     """
     Integrate the input value starting from the initial condition x0.
 
