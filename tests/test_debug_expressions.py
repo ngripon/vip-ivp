@@ -19,19 +19,28 @@ def test_source_expression():
     anonymous = vip.create_source(lambda t: t)
     lambda_source = vip.create_source(lambda_fun)
     fun_source = vip.create_source(fun)
+
     dict_source = vip.create_source({"a": 5, "b": 4})
     list_source = vip.create_source([1, 2, 3])
     array_source = vip.create_source(np.linspace(0, 10, 11))
     object_source = vip.create_source(class_value)
 
+    # Scalars
     assert constant._expression == str(5)
     assert anonymous._expression == "lambda t: t"
     assert lambda_source._expression == "lambda t: t"  # Assigned lambda should be identical
     assert fun_source._expression == "fun(t)"
-    assert dict_source._expression == str({"a": 5, "b": 4})  # Convert to string
-    assert list_source._expression == str([1, 2, 3])  # Convert list to string
-    assert array_source._expression == str(np.linspace(0, 10, 11))  # Convert array to list then string
-    assert object_source._expression == repr(class_value)  # Use object representation
+    # Collection
+    assert repr(dict_source) == str({"a": 5, "b": 4})  # Convert to string
+    assert repr(list_source) == str([1, 2, 3])  # Convert list to string
+    assert repr(array_source) == str(np.linspace(0, 10, 11).tolist())  # Convert array to list then string
+    assert repr(object_source) == repr(class_value)  # Use object representation
+    # Collection elements
+    assert dict_source["a"]._expression == str(5)
+    assert list_source[1]._expression == str(2)
+    assert array_source[2]._expression == str(2.0)
+    assert object_source.bar._expression == str(5)
+
 
 
 def test_operations():

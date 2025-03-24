@@ -16,6 +16,8 @@ _solver_list = []
 T = TypeVar('T')
 K = TypeVar("K")
 
+@overload
+def create_source(value: np.ndarray) -> List[TemporalVar[T]]: ...
 
 @overload
 def create_source(value: List[Union[Callable[[Union[float, np.ndarray]], T], T]]) -> List[TemporalVar[T]]: ...
@@ -23,10 +25,6 @@ def create_source(value: List[Union[Callable[[Union[float, np.ndarray]], T], T]]
 
 @overload
 def create_source(value: Dict[K, Union[Callable[[Union[float, np.ndarray]], T], T]]) -> Dict[K, TemporalVar[T]]: ...
-
-
-@overload
-def create_source(value: np.ndarray) -> np.ndarray: ...
 
 
 @overload
@@ -40,11 +38,10 @@ def create_source(value):
     :param value: A function f(t) or a scalar value.
     :return: The created TemporalVar.
     """
-    if isinstance(value, np.ndarray):
-        # Handle NumPy array by wrapping each element
-        return np.vectorize(lambda x: create_source(x))(value)
-    elif isinstance(value, dict):
+    if isinstance(value, dict):
         return {k: create_source(v) for k, v in value.items()}
+    elif isinstance(value, np.ndarray):
+        return [create_source(v) for v in value.tolist()]
     elif isinstance(value, list):
         return [create_source(v) for v in value]
     else:
