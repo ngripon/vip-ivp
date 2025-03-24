@@ -1,3 +1,4 @@
+import json
 from typing import ParamSpec
 
 import numpy as np
@@ -33,6 +34,11 @@ def create_scenario(scenario_table: Union[pd.DataFrame, str, dict], time_key: st
     if isinstance(scenario_table, str):
         if scenario_table.endswith(".csv"):
             ...
+        elif scenario_table.endswith(".json"):
+            with open(scenario_table,"r") as f:
+                dict_data=json.load(f)
+            input_data = pd.DataFrame(dict_data)
+            return temporal_var.create_scenario(solver, input_data, time_key, interpolation_kind)
         else:
             raise ValueError("Unsupported file type")
     elif isinstance(scenario_table, dict):

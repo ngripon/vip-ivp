@@ -1,3 +1,4 @@
+import os
 from dataclasses import dataclass
 
 import numpy as np
@@ -58,8 +59,9 @@ def test_conditions():
 def test_scenario_interpolation():
     scenario_dict = {"t": [0, 1, 2, 3, 4], "a": [1, 2, 3, 4, 5], "b": [0, 10, -10, 10, -10]}
     scenario_df = pd.DataFrame(scenario_dict)
+    scenario_json = "files/scenarii/scenario_basic.json"
 
-    scenarii_inputs = [scenario_df, scenario_dict]
+    scenarii_inputs = [scenario_df, scenario_dict, scenario_json]
 
     for scenario in scenarii_inputs:
         vip.new_system()
