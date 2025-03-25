@@ -345,7 +345,7 @@ class Solver:
 class TemporalVar(Generic[T]):
     def __init__(self,
                  solver: "Solver",
-                 fun: Union[Callable[[Union[float, np.ndarray], np.ndarray], T], np.ndarray] = None,
+                 fun: Union[Callable[[Union[float, np.ndarray], np.ndarray], T], np.ndarray, dict] = None,
                  expression: str = None):
         self.solver = solver
 
@@ -355,6 +355,8 @@ class TemporalVar(Generic[T]):
             self.function = fun
         elif isinstance(fun, (list, np.ndarray)):
             self.function = np.vectorize(lambda f: TemporalVar(solver, f))(np.array(fun))
+        elif isinstance(fun, dict):
+            self.function = {key: TemporalVar(solver, val) for key, val in fun.items()}
         else:
             self.function = lambda t, y: fun
         self._values = None
@@ -424,6 +426,10 @@ class TemporalVar(Generic[T]):
             elif isinstance(value, (list, np.ndarray)):
                 temporal_var_arr = np.vectorize(lambda f: cls.from_source(solver, f))(np.array(value))
                 return cls(solver, temporal_var_arr, expression=expression)
+            elif isinstance(value, dict):
+                temporal_var_dict = {key: cls.from_source(solver, val) for key, val in value.items()}
+                return cls(solver, temporal_var_dict, expression=expression)
+            raise ValueError(f"Unsupported type for 'value' argument: {type(value)}.")
 
     def _reset(self):
         self._values = None

@@ -2,21 +2,11 @@ import vip_ivp as vip
 import numpy as np
 
 
-
 def test_source_expression():
     lambda_fun = lambda t: t
 
     def fun(t):
         return t
-
-    class Foo:
-        def __init__(self, bar):
-            self.bar = bar
-
-        def __repr__(self):
-            return f"bar = {self.bar}"
-
-    class_value = Foo(5)
 
     constant = vip.create_source(5)
     anonymous = vip.create_source(lambda t: t)
@@ -26,7 +16,6 @@ def test_source_expression():
     dict_source = vip.create_source({"a": 5, "b": 4})
     list_source = vip.create_source([1, 2, 3])
     array_source = vip.create_source(np.linspace(0, 10, 11))
-    object_source = vip.create_source(class_value)
 
     # Scalars
     assert constant._expression == str(5)
@@ -36,14 +25,11 @@ def test_source_expression():
     # Collection
     assert repr(dict_source) == str({"a": 5, "b": 4})  # Convert to string
     assert repr(list_source) == str([1, 2, 3])  # Convert list to string
-    assert repr(array_source) == str(np.linspace(0, 10, 11).tolist())  # Convert array to list then string
-    assert repr(object_source) == repr(class_value)  # Use object representation
+    assert repr(array_source) == str(np.linspace(0, 10, 11))  # Convert array to list then string
     # Collection elements
-    assert dict_source["a"]._expression == str(5)
-    assert list_source[1]._expression == str(2)
-    assert array_source[2]._expression == str(2.0)
-    assert object_source.bar._expression == str(5)
-
+    assert dict_source["a"]._expression == 'dict_source[a]'
+    assert list_source[1]._expression == "list_source[1]"
+    assert array_source[2]._expression == "array_source[2]"
 
 
 def test_operations():
@@ -143,7 +129,7 @@ def test_transformations():
 
     da = vip.differentiate(a)
     ia = vip.integrate(a, 0)
-    delay_a = vip.delay(a,1)
+    delay_a = vip.delay(a, 1)
 
     def foo(bar):
         return bar + 1
