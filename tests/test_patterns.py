@@ -93,8 +93,8 @@ def test_scenario_interpolation():
         a = variables["a"]
         b = variables["b"]
 
-        assert a[0] == 1
-        assert a[1] == 1.5
-        assert b[0] == 0
-        assert b[1] == 5
-        assert b[3] == 0
+        assert a.values[0] == 1
+        assert a.values[1] == 1.5
+        assert b.values[0] == 0
+        assert b.values[1] == 5
+        assert b.values[3] == 0

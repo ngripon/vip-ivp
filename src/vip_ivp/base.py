@@ -45,7 +45,7 @@ class Solver:
         self.dim = 0
         self.vars = []
         self.feed_vars = []
-        self.initialized_vars = []
+        self.x0 = []
         self.t = None
         self.y = None
         self.solved = False
@@ -91,7 +91,7 @@ class Solver:
         self.feed_vars.append(var)
         integrated_variable = TemporalVar(
             self, lambda t, y, idx=self.dim: y[idx], expression=f"#INTEGRATE {get_expression(var)}")
-        integrated_variable.set_init(x0)
+        self.x0.append(x0)
         self.dim += 1
         return integrated_variable
 
@@ -114,8 +114,6 @@ class Solver:
         :param plot: Plot the variables that called the "to_plot()" method.
         :param options: Additional options for the solver. See https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html.
         """
-        # Apply checks before attempting to solve
-        x0 = [x.init for x in self.initialized_vars]
         # Reinit values
         [var._reset() for var in self.vars]
         start = time.time()
@@ -128,7 +126,7 @@ class Solver:
             t_eval = np.arange(0, t_end, time_step)
         try:
             res = self.solve_ivp(
-                self._dy, (0, t_end), x0, method=method, t_eval=t_eval, **options
+                self._dy, (0, t_end), self.x0, method=method, t_eval=t_eval, **options
             )
             if not res.success:
                 raise Exception(res.message)
@@ -156,7 +154,7 @@ class Solver:
         plt.title("Simulation results")
         plt.xlabel("Time (s)")
         plt.legend()
-        plt.xlim(0, var.t[-1])
+        plt.xlim(0, self.t[-1])
         plt.grid()
         plt.tight_layout()
         plt.show()
@@ -348,7 +346,6 @@ class TemporalVar(Generic[T]):
     def __init__(self, solver: "Solver", fun: Callable[[Union[float, np.ndarray], np.ndarray], T] = None,
                  expression: str = None):
         self.solver = solver
-        self.init = None
         if isinstance(fun, Callable):
             self.function = fun
         else:
@@ -421,10 +418,6 @@ class TemporalVar(Generic[T]):
                 return cls(solver,
                            lambda t, y: value if np.isscalar(t) else np.array([value for _ in range(len(t))]),
                            expression=expression)
-
-    def set_init(self, x0: Union[Number, np.ndarray]):
-        self.init = x0
-        self.solver.initialized_vars.append(self)
 
     def _reset(self):
         self._values = None
@@ -595,19 +588,19 @@ class TemporalVar(Generic[T]):
             expression=expression
         )
 
-    def __getitem__(self, item):
-        expression = f"{add_necessary_brackets(get_expression(self))}[{item}]"
-        return TemporalVar(
-            self.solver,
-            lambda t, y: self(t, y)[item] if np.isscalar(t) else np.array([x[item] for x in self(t, y)]),
-            expression=expression)
-
-    def __getattr__(self, item):
-        expression = f"{add_necessary_brackets(get_expression(self))}.{item}"
-        return TemporalVar(
-            self.solver, lambda t, y: getattr(self(t, y), item) if np.isscalar(t) else np.array(
-                [getattr(x, item) for x in self(t, y)]),
-            expression=expression)
+    # def __getitem__(self, item):
+    #     expression = f"{add_necessary_brackets(get_expression(self))}[{item}]"
+    #     return TemporalVar(
+    #         self.solver,
+    #         lambda t, y: self(t, y)[item] if np.isscalar(t) else np.array([x[item] for x in self(t, y)]),
+    #         expression=expression)
+    #
+    # def __getattr__(self, item):
+    #     expression = f"{add_necessary_brackets(get_expression(self))}.{item}"
+    #     return TemporalVar(
+    #         self.solver, lambda t, y: getattr(self(t, y), item) if np.isscalar(t) else np.array(
+    #             [getattr(x, item) for x in self(t, y)]),
+    #         expression=expression)
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs) -> "TemporalVar":
         inputs_expr = [get_expression(inp) if isinstance(inp, TemporalVar) else str(inp) for inp in inputs]
@@ -636,8 +629,8 @@ class TemporalVar(Generic[T]):
 
         return NotImplemented
 
-    def __array__(self) -> np.ndarray:
-        return self.values
+    # def __array__(self) -> np.ndarray:
+    #     return self.values
 
     @property
     def expression(self):
