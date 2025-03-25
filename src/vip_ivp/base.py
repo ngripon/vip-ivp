@@ -346,8 +346,13 @@ class TemporalVar(Generic[T]):
     def __init__(self, solver: "Solver", fun: Callable[[Union[float, np.ndarray], np.ndarray], T] = None,
                  expression: str = None):
         self.solver = solver
-        if isinstance(fun, Callable):
+
+        if isinstance(fun, TemporalVar):
+            self.function=fun.function
+        elif isinstance(fun, Callable):
             self.function = fun
+        elif isinstance(fun, (list, np.ndarray)):
+            self.function = np.vectorize(lambda f: TemporalVar(solver, f))(np.array(fun))
         else:
             self.function = lambda t, y: fun
         self._values = None
@@ -414,15 +419,16 @@ class TemporalVar(Generic[T]):
             if np.isscalar(value):
                 return cls(solver, lambda t, y: value if np.isscalar(t) else np.full_like(t, value),
                            expression=expression)
-            else:
-                return cls(solver,
-                           lambda t, y: value if np.isscalar(t) else np.array([value for _ in range(len(t))]),
-                           expression=expression)
+            elif isinstance(value, (list, np.ndarray)):
+                temporal_var_arr=np.vectorize(lambda f: cls.from_source(solver, f))(np.array(value))
+                return cls(solver, temporal_var_arr, expression=expression)
 
     def _reset(self):
         self._values = None
 
     def __call__(self, t: Union[float, np.ndarray], y: np.ndarray) -> T:
+        if isinstance(self.function, np.ndarray):
+            return np.vectorize(lambda f: f(t,y))(self.function)
         return self.function(t, y)
 
     def __add__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":

@@ -16,46 +16,16 @@ T = TypeVar('T')
 K = TypeVar("K")
 
 
-# TODO: Fix this typing as it does not handle the list of list possibility
-@overload
-def create_source(value: np.ndarray) -> List[TemporalVar[float]]: ...
 
-
-@overload
-def create_source(value: List[Union[Callable[[Union[float, np.ndarray]], T], T]]) -> List[TemporalVar[T]]: ...
-
-
-@overload
-def create_source(value: Dict[K, Union[Callable[[Union[float, np.ndarray]], T], T]]) -> Dict[K, TemporalVar[T]]: ...
-
-
-@overload
-def create_source(value: Union[Callable[[Union[float, np.ndarray]], T], T]) -> TemporalVar[T]: ...
-
-
-def create_source(value):
+def create_source(value: Union[Callable[[Union[float, np.ndarray]], T], T]) -> TemporalVar[T]:
     """
     Create a source signal from a temporal function or a scalar value.
 
     :param value: A function f(t) or a scalar value.
     :return: The created TemporalVar.
     """
-    if isinstance(value, dict):
-        return {k: create_source(v) for k, v in value.items()}
-    elif isinstance(value, np.ndarray):
-        return [create_source(v) for v in value.tolist()]
-    elif isinstance(value, list):
-        return [create_source(v) for v in value]
-    elif is_custom_class(value):
-        new_obj = value.__class__.__new__(value.__class__)
-        # Iterate over the object's attributes
-        for attr_name, attr_value in vars(value).items():
-            var = create_source(attr_value)  # Transform the attribute to TemporalVar
-            setattr(new_obj, attr_name, var)  # Set the transformed attribute on the new object
-        return new_obj
-    else:
-        solver = _get_current_solver()
-        return TemporalVar.from_source(solver, value)
+    solver = _get_current_solver()
+    return TemporalVar.from_source(solver, value)
 
 
 def create_scenario(scenario_table: Union[pd.DataFrame, str, dict], time_key: str, interpolation_kind="linear",
