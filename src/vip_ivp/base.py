@@ -343,12 +343,14 @@ class Solver:
 
 
 class TemporalVar(Generic[T]):
-    def __init__(self, solver: "Solver", fun: Callable[[Union[float, np.ndarray], np.ndarray], T] = None,
+    def __init__(self,
+                 solver: "Solver",
+                 fun: Union[Callable[[Union[float, np.ndarray], np.ndarray], T], np.ndarray] = None,
                  expression: str = None):
         self.solver = solver
 
         if isinstance(fun, TemporalVar):
-            self.function=fun.function
+            self.function = fun.function
         elif isinstance(fun, Callable):
             self.function = fun
         elif isinstance(fun, (list, np.ndarray)):
@@ -420,7 +422,7 @@ class TemporalVar(Generic[T]):
                 return cls(solver, lambda t, y: value if np.isscalar(t) else np.full_like(t, value),
                            expression=expression)
             elif isinstance(value, (list, np.ndarray)):
-                temporal_var_arr=np.vectorize(lambda f: cls.from_source(solver, f))(np.array(value))
+                temporal_var_arr = np.vectorize(lambda f: cls.from_source(solver, f))(np.array(value))
                 return cls(solver, temporal_var_arr, expression=expression)
 
     def _reset(self):
@@ -428,11 +430,13 @@ class TemporalVar(Generic[T]):
 
     def __call__(self, t: Union[float, np.ndarray], y: np.ndarray) -> T:
         if isinstance(self.function, np.ndarray):
-            return np.vectorize(lambda f: f(t,y))(self.function)
+            return np.vectorize(lambda f: f(t, y))(self.function)
         return self.function(t, y)
 
     def __add__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
         expression = f"{get_expression(self)} + {get_expression(other)}"
+        if isinstance(self.function, np.ndarray):
+            return TemporalVar(self.solver, self.function + other.function, expression=expression)
         if isinstance(other, TemporalVar):
             return TemporalVar(self.solver, lambda t, y: self(t, y) + other(t, y), expression=expression)
         else:
@@ -594,12 +598,12 @@ class TemporalVar(Generic[T]):
             expression=expression
         )
 
-    # def __getitem__(self, item):
-    #     expression = f"{add_necessary_brackets(get_expression(self))}[{item}]"
-    #     return TemporalVar(
-    #         self.solver,
-    #         lambda t, y: self(t, y)[item] if np.isscalar(t) else np.array([x[item] for x in self(t, y)]),
-    #         expression=expression)
+    def __getitem__(self, item):
+        expression = f"{add_necessary_brackets(get_expression(self))}[{item}]"
+        variable: TemporalVar = self.function[item]
+        variable._expression = expression
+        return variable
+
     #
     # def __getattr__(self, item):
     #     expression = f"{add_necessary_brackets(get_expression(self))}.{item}"
