@@ -644,8 +644,7 @@ class TemporalVar(Generic[T]):
 
     def __getitem__(self, item):
         expression = f"{add_necessary_brackets(get_expression(self))}[{item}]"
-        variable: TemporalVar = self.function[item]
-        variable._expression = expression
+        variable: TemporalVar = TemporalVar(self.solver, self.function[item], expression)
         return variable
 
     #
