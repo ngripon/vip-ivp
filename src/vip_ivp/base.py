@@ -68,13 +68,16 @@ class Solver:
 
         if is_scalar:
             integrated_structure = integrated_structure[0]
-        return integrated_structure
+        integrated_variable = TemporalVar(self, integrated_structure,
+                                          expression=f"#INTEGRATE {get_expression(input_value)}")
+        return integrated_variable
 
     def _get_integrated_structure(self, data, x0):
-        if isinstance(data, list):
-            return [self._get_integrated_structure(item, x) for item, x in zip(data, x0)]
+        if isinstance(data.function, np.ndarray):
+            x0 = np.array(x0)
+            return [self._get_integrated_structure(item, x) for item, x in zip(data.function.flat, x0.flat)]
 
-        elif isinstance(data, dict):
+        elif isinstance(data.function, dict):
             return {key: self._get_integrated_structure(value, x0[key]) for key, value in data.items()}
 
         # elif is_custom_class(data):
