@@ -355,8 +355,7 @@ class TemporalVar(Generic[T]):
             self.function = lambda t, y: fun
         self._values = None
         # Variable definition
-        self._expression = inspect.getsource(
-            fun) if expression is None else expression
+        self._expression = "Unknown" if expression is None else expression
         self.name = None
         self._inputs: list[TemporalVar] = []
 
