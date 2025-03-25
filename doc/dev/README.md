@@ -114,9 +114,15 @@ The responsibilities of the solver are:
 
 The `TemporalVar` class is the type of every variable composing the system.
 
-TemporalVar is a recursive class that contains a function $f(t,y)$ OR a collection of itself (dict or ndarray).
-
 TemporalVar implements all Python arithmetic magic methods. Therefore, algebra behaves as expected.
+
+#### Handling collections
+
+TemporalVar is a recursive class that contains a function $f(t,y)$ OR a collection of itself (dict or ndarray). 
+
+This structure offers the best of the both world for the user : it acts exactly as a collection of `TemporalVar` (useful for
+linear algebra with ndarrays) and allow to call specific methods on the whole collection (for example the `values`
+property method that get the collection of results).
 
 ### LoopNode
 
