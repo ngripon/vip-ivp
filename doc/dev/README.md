@@ -15,7 +15,8 @@ elements :
 
 ### What the solver do
 
-**The purpose of the solver is to compute $t_s$ and $y_s$**, which corresponds to the time and state vectors of the solved
+**The purpose of the solver is to compute $t_s$ and $y_s$**, which corresponds to the time and state vectors of the
+solved
 system.
 
 An integration scheme takes a point $t_i$ and $y_i$ and computes $t_{i+1}$ and $y_{i+i}$. For the first point, $t_0=0$
@@ -68,6 +69,30 @@ A particularity of ODEs is their circularity. Take the exponential decay ODE : $
 There is a cycle because both $n$ and $\dot{n}$ use the other as its input.
 
 ### Possible solutions for defining a system
+
+#### Graph approach
+
+Simulink, the main IVP solver on the market, use a graph approach to solve these problems :
+
+- The system is defined in a graph data structure, which allows to easily define cycles.
+- Each node of this graph contains a function. The function of the node is predefined, the user has to choose from a
+  library of available nodes called *blocks*.
+- When the simulation is launched, a compilation step is executed to build the equation from the graph.
+- Once the system is build, the integration scheme is applied.
+
+This approach is well adapted to a visual programming interface. However, defining a graph in a script is more
+cumbersome, because the data representation of a graph does not reflect its flow. A functional programming approach is
+more adapted.
+
+#### Functional Programming approach
+
+Functional programming languages like Haskell possess much of the properties we need: all variables are functions and
+lazy. All the math and freedom of code is available. The flow of the system become the flow of the script.
+
+However, there is no tool specific to Functional Programming to handle the circularity of ODEs. To create loops, we will
+use a trick with Object-Oriented Programming : create an empty variable that can be integrated, then set later.
+
+
 
 
 
