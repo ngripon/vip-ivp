@@ -92,7 +92,44 @@ lazy. All the math and freedom of code is available. The flow of the system beco
 However, there is no tool specific to Functional Programming to handle the circularity of ODEs. To create loops, we will
 use a trick with Object-Oriented Programming : create an empty variable that can be integrated, then set later.
 
+### Motivation of choosing the functional programming approach
 
+The functional programming approach has been chosen for the following reasons:
 
+- **Simple**: It preserves the natural flow of the script in the definition of variables. The boilerplate is minimal.
+- **Open**: It allows any function to be used. Therefore, the whole Python ecosystem is compatible with this approach.
 
+## Main Abstractions
+
+### Solver
+
+The responsibilities of the solver are:
+
+- To build the $\frac{dy}{dt}(t,y)$ function and $x_0$ vector by tracking which variables are integrated.
+- To manage events
+- To solve the system.
+- To propose any function relative to the whole system.
+
+### TemporalVar
+
+The `TemporalVar` class is the type of every variable composing the system.
+
+TemporalVar is a recursive class that contains a function $f(t,y)$ OR a collection of itself (dict or ndarray).
+
+TemporalVar implements all Python arithmetic magic methods. Therefore, algebra behaves as expected.
+
+### LoopNode
+
+The `LoopNode(TemporalVar)` class allows to define a loop. It is an empty variable that can be integrated, then set
+later.
+
+## Package structure
+
+The package is structured as follows:
+
+- `base.py` : Contains the base abstractions: `Solver`, `TemporalVar` and `LoopNode`. These abstractions should offer
+  the most freedom possible.
+- `api.py` : Contains functions to build the system that are user-friendly and opinionated.
+- `__init__.py`: Control the interface of the package. Export only the functions of the `api.py` file.
+- `utils.py`: Utility functions
 
