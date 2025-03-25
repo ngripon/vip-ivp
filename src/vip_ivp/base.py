@@ -444,6 +444,8 @@ class TemporalVar(Generic[T]):
 
     def __radd__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
         expression = f"{get_expression(other)} + {get_expression(self)}"
+        if isinstance(self.function, np.ndarray):
+            return TemporalVar(self.solver, other.function + self.function, expression=expression)
         if isinstance(other, TemporalVar):
             return TemporalVar(self.solver, lambda t, y: other(t, y) + self(t, y), expression=expression)
         else:
@@ -451,6 +453,8 @@ class TemporalVar(Generic[T]):
 
     def __sub__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
         expression = f"{get_expression(self)} - {add_necessary_brackets(get_expression(other))}"
+        if isinstance(self.function, np.ndarray):
+            return TemporalVar(self.solver, self.function - other.function, expression=expression)
         if isinstance(other, TemporalVar):
             return TemporalVar(self.solver, lambda t, y: self(t, y) - other(t, y), expression=expression)
         else:
@@ -458,6 +462,8 @@ class TemporalVar(Generic[T]):
 
     def __rsub__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
         expression = f"{get_expression(other)} - {add_necessary_brackets(get_expression(self))}"
+        if isinstance(self.function, np.ndarray):
+            return TemporalVar(self.solver, other.function - self.function, expression=expression)
         if isinstance(other, TemporalVar):
             return TemporalVar(self.solver, lambda t, y: other(t, y) - self(t, y), expression=expression)
         else:
@@ -465,6 +471,8 @@ class TemporalVar(Generic[T]):
 
     def __mul__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
         expression = f"{add_necessary_brackets(get_expression(self))} * {add_necessary_brackets(get_expression(other))}"
+        if isinstance(self.function, np.ndarray):
+            return TemporalVar(self.solver, self.function * other.function, expression=expression)
         if isinstance(other, TemporalVar):
             return TemporalVar(self.solver, lambda t, y: self(t, y) * other(t, y), expression=expression)
         else:
@@ -472,13 +480,17 @@ class TemporalVar(Generic[T]):
 
     def __rmul__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
         expression = f"{add_necessary_brackets(get_expression(other))} * {add_necessary_brackets(get_expression(self))}"
+        if isinstance(self.function, np.ndarray):
+            return TemporalVar(self.solver, other.function * self.function, expression=expression)
         if isinstance(other, TemporalVar):
-            return TemporalVar(self.solver, lambda t, y: self(t, y) * other(t, y), expression=expression)
+            return TemporalVar(self.solver, lambda t, y: other(t, y) * self(t, y), expression=expression)
         else:
             return TemporalVar(self.solver, lambda t, y: other * self(t, y), expression=expression)
 
     def __truediv__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
         expression = f"{add_necessary_brackets(get_expression(self))} / {add_necessary_brackets(get_expression(other))}"
+        if isinstance(self.function, np.ndarray):
+            return TemporalVar(self.solver, self.function / other.function, expression=expression)
         if isinstance(other, TemporalVar):
             return TemporalVar(self.solver, lambda t, y: self(t, y) / other(t, y), expression=expression)
         else:
@@ -486,6 +498,8 @@ class TemporalVar(Generic[T]):
 
     def __rtruediv__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
         expression = f"{add_necessary_brackets(get_expression(other))} / {add_necessary_brackets(get_expression(self))}"
+        if isinstance(self.function, np.ndarray):
+            return TemporalVar(self.solver, other.function / self.function, expression=expression)
         if isinstance(other, TemporalVar):
             return TemporalVar(self.solver, lambda t, y: other(t, y) / self(t, y), expression=expression)
         else:
@@ -493,6 +507,8 @@ class TemporalVar(Generic[T]):
 
     def __floordiv__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
         expression = f"{add_necessary_brackets(get_expression(self))} // {add_necessary_brackets(get_expression(other))}"
+        if isinstance(self.function, np.ndarray):
+            return TemporalVar(self.solver, self.function // other.function, expression=expression)
         if isinstance(other, TemporalVar):
             return TemporalVar(self.solver, lambda t, y: self(t, y) // other(t, y), expression=expression)
         else:
@@ -500,6 +516,8 @@ class TemporalVar(Generic[T]):
 
     def __rfloordiv__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
         expression = f"{add_necessary_brackets(get_expression(other))} // {add_necessary_brackets(get_expression(self))}"
+        if isinstance(self.function, np.ndarray):
+            return TemporalVar(self.solver, other.function // self.function, expression=expression)
         if isinstance(other, TemporalVar):
             return TemporalVar(self.solver, lambda t, y: other(t, y) // self(t, y), expression=expression)
         else:
@@ -507,6 +525,8 @@ class TemporalVar(Generic[T]):
 
     def __mod__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
         expression = f"{add_necessary_brackets(get_expression(self))} % {add_necessary_brackets(get_expression(other))}"
+        if isinstance(self.function, np.ndarray):
+            return TemporalVar(self.solver, self.function % other.function, expression=expression)
         if isinstance(other, TemporalVar):
             return TemporalVar(self.solver, lambda t, y: self(t, y) % other(t, y), expression=expression)
         else:
@@ -514,6 +534,8 @@ class TemporalVar(Generic[T]):
 
     def __rmod__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
         expression = f"{add_necessary_brackets(get_expression(other))} % {add_necessary_brackets(get_expression(self))}"
+        if isinstance(self.function, np.ndarray):
+            return TemporalVar(self.solver, other.function % self.function, expression=expression)
         if isinstance(other, TemporalVar):
             return TemporalVar(self.solver, lambda t, y: other(t, y) % self(t, y), expression=expression)
         else:
@@ -521,6 +543,8 @@ class TemporalVar(Generic[T]):
 
     def __pow__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
         expression = f"{add_necessary_brackets(get_expression(self))} ** {add_necessary_brackets(get_expression(other))}"
+        if isinstance(self.function, np.ndarray):
+            return TemporalVar(self.solver, self.function ** other.function, expression=expression)
         if isinstance(other, TemporalVar):
             return TemporalVar(self.solver, lambda t, y: self(t, y) ** other(t, y), expression=expression)
         else:
@@ -528,6 +552,8 @@ class TemporalVar(Generic[T]):
 
     def __rpow__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
         expression = f"{add_necessary_brackets(get_expression(other))} ** {add_necessary_brackets(get_expression(self))}"
+        if isinstance(self.function, np.ndarray):
+            return TemporalVar(self.solver, other.function ** self.function, expression=expression)
         if isinstance(other, TemporalVar):
             return TemporalVar(self.solver, lambda t, y: other(t, y) ** self(t, y), expression=expression)
         else:
@@ -546,6 +572,8 @@ class TemporalVar(Generic[T]):
 
     def __eq__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
         expression = f"{add_necessary_brackets(get_expression(self))} == {add_necessary_brackets(get_expression(other))}"
+        if isinstance(self.function, np.ndarray):
+            return TemporalVar(self.solver, self.function == other.function, expression=expression)
         return TemporalVar(
             self.solver,
             lambda t, y: self(t, y) == (
@@ -555,6 +583,8 @@ class TemporalVar(Generic[T]):
 
     def __ne__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
         expression = f"{add_necessary_brackets(get_expression(self))} != {add_necessary_brackets(get_expression(other))}"
+        if isinstance(self.function, np.ndarray):
+            return TemporalVar(self.solver, self.function != other.function, expression=expression)
         return TemporalVar(
             self.solver,
             lambda t, y: self(t, y) != (
@@ -564,6 +594,8 @@ class TemporalVar(Generic[T]):
 
     def __lt__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
         expression = f"{add_necessary_brackets(get_expression(self))} < {add_necessary_brackets(get_expression(other))}"
+        if isinstance(self.function, np.ndarray):
+            return TemporalVar(self.solver, self.function < other.function, expression=expression)
         return TemporalVar(
             self.solver,
             lambda t, y: self(t, y) < (
@@ -573,6 +605,8 @@ class TemporalVar(Generic[T]):
 
     def __le__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
         expression = f"{add_necessary_brackets(get_expression(self))} <= {add_necessary_brackets(get_expression(other))}"
+        if isinstance(self.function, np.ndarray):
+            return TemporalVar(self.solver, self.function <= other.function, expression=expression)
         return TemporalVar(
             self.solver,
             lambda t, y: self(t, y) <= (
@@ -582,6 +616,8 @@ class TemporalVar(Generic[T]):
 
     def __gt__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
         expression = f"{add_necessary_brackets(get_expression(self))} > {add_necessary_brackets(get_expression(other))}"
+        if isinstance(self.function, np.ndarray):
+            return TemporalVar(self.solver, self.function > other.function, expression=expression)
         return TemporalVar(
             self.solver,
             lambda t, y: self(t, y) > (
@@ -591,6 +627,8 @@ class TemporalVar(Generic[T]):
 
     def __ge__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
         expression = f"{add_necessary_brackets(get_expression(self))} >= {add_necessary_brackets(get_expression(other))}"
+        if isinstance(self.function, np.ndarray):
+            return TemporalVar(self.solver, self.function >= other.function, expression=expression)
         return TemporalVar(
             self.solver,
             lambda t, y: self(t, y) >= (
