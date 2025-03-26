@@ -80,8 +80,10 @@ def test_multidimensional_integration_source():
 
 def test_multidimensional_integration_loop_node():
     dx = vip.loop_node(shape=2)
+    dx[0].to_plot("Hey unset")
     x = vip.integrate(dx, [1, 2])
     dx.loop_into([-0.5 * x[0], -0.4 * x[1]])
+    dx[0].to_plot("Hey set")
 
 
     dx1=vip.loop_node()

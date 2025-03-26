@@ -408,19 +408,20 @@ class TemporalVar(Generic[T]):
         :return: The created TemporalVar.
         """
         expression = convert_to_string(value)
-        if callable(value):
+        if callable(value) and not isinstance(value,TemporalVar):
             return cls(solver, lambda t, y: value(t), expression=expression)
-        else:
-            if np.isscalar(value):
-                return cls(solver, lambda t, y: value if np.isscalar(t) else np.full_like(t, value),
-                           expression=expression)
-            elif isinstance(value, (list, np.ndarray)):
-                temporal_var_arr = np.vectorize(lambda f: cls.from_source(solver, f))(np.array(value))
-                return cls(solver, temporal_var_arr, expression=expression)
-            elif isinstance(value, dict):
-                temporal_var_dict = {key: cls.from_source(solver, val) for key, val in value.items()}
-                return cls(solver, temporal_var_dict, expression=expression)
-            raise ValueError(f"Unsupported type for 'value' argument: {type(value)}.")
+        elif np.isscalar(value):
+            return cls(solver, lambda t, y: value if np.isscalar(t) else np.full_like(t, value),
+                       expression=expression)
+        elif isinstance(value, (list, np.ndarray)):
+            temporal_var_arr = np.vectorize(lambda f: cls.from_source(solver, f))(np.array(value))
+            return cls(solver, temporal_var_arr, expression=expression)
+        elif isinstance(value, dict):
+            temporal_var_dict = {key: cls.from_source(solver, val) for key, val in value.items()}
+            return cls(solver, temporal_var_dict, expression=expression)
+        elif isinstance(value, TemporalVar):
+            return cls(solver, value, expression)
+        raise ValueError(f"Unsupported type for 'value' argument: {type(value)}.")
 
     def _reset(self):
         self._values = None
@@ -712,7 +713,7 @@ class LoopNode(TemporalVar[T]):
             self._input_var += value
         self._is_set = True
         self._expression = get_expression(self._input_var)
-        self.function=self._input_var.function
+        self.function = self._input_var.function
 
     def __call__(self, t: Union[float, np.ndarray], y: np.ndarray) -> T:
         return self._input_var(t, y)
