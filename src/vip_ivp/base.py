@@ -692,7 +692,7 @@ class TemporalVar(Generic[T]):
 
 class LoopNode(TemporalVar[T]):
     def __init__(self, solver: "Solver"):
-        self._input_vars: list[TemporalVar] = []
+        self._input_var: TemporalVar = TemporalVar.from_source(solver, 0)
         super().__init__(solver, lambda t, y: 0, expression="")
         self._is_set = False
 
@@ -713,13 +713,15 @@ class LoopNode(TemporalVar[T]):
             )
         if not isinstance(value, TemporalVar):
             value = TemporalVar.from_source(self.solver, value)
-        self._input_vars.append(value)
+        if not self._is_set:
+            self._input_var = value
+        else:
+            self._input_var += value
         self._is_set = True
-        self._expression = " + ".join(get_expression(var)
-                                      for var in self._input_vars)
+        self._expression = get_expression(self._input_var)
 
     def __call__(self, t: Union[float, np.ndarray], y: np.ndarray) -> T:
-        return np.sum(var(t, y) for var in self._input_vars)
+        return self._input_var(t, y)
 
 
 def create_scenario(solver: "Solver", scenario_table: pd.DataFrame, time_key: str, interpolation_kind="linear") -> Dict[

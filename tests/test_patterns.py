@@ -77,6 +77,17 @@ def test_multidimensional_integration_loop_node():
     ...
 
 
+def test_set_loop_node_multiple_times():
+    source1 = vip.create_source(lambda t: t)
+    source2 = vip.create_source(lambda t: 2 * t)
+    loop = vip.loop_node()
+    loop.loop_into(source1)
+    loop.loop_into(source2, force=True)
+    vip.solve(10, time_step=1)
+    assert np.allclose(loop.values, np.linspace(0,27,10))
+    assert loop.expression=="source1 + source2"
+
+
 def test_conditions():
     a = vip.create_source(lambda t: t)
     b = vip.create_source(5)
