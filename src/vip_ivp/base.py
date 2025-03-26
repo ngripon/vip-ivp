@@ -769,9 +769,7 @@ class TemporalVar(Generic[T]):
     def __eq__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
         expression = f"{add_necessary_brackets(get_expression(self))} == {add_necessary_brackets(get_expression(other))}"
         if isinstance(self.function, np.ndarray):
-            fun_arr = np.vectorize(
-                lambda f, o: TemporalVar(self.solver, f == o, expression=expression)
-            )(self.function, other.function)
+            fun_arr = np.vectorize(lambda f, o: f == o)(self.function, other.function)
             return TemporalVar(self.solver, fun_arr, expression=expression)
         return TemporalVar(
             self.solver,
@@ -789,9 +787,7 @@ class TemporalVar(Generic[T]):
     def __ne__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
         expression = f"{add_necessary_brackets(get_expression(self))} != {add_necessary_brackets(get_expression(other))}"
         if isinstance(self.function, np.ndarray):
-            fun_arr = np.vectorize(
-                lambda f, o: TemporalVar(self.solver, f != o, expression=expression)
-            )(self.function, other.function)
+            fun_arr = np.vectorize(lambda f, o: f != o)(self.function, other.function)
             return TemporalVar(self.solver, fun_arr, expression=expression)
         return TemporalVar(
             self.solver,
@@ -809,9 +805,7 @@ class TemporalVar(Generic[T]):
     def __lt__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
         expression = f"{add_necessary_brackets(get_expression(self))} < {add_necessary_brackets(get_expression(other))}"
         if isinstance(self.function, np.ndarray):
-            fun_arr = np.vectorize(
-                lambda f, o: TemporalVar(self.solver, f < o, expression=expression)
-            )(self.function, other.function)
+            fun_arr = np.vectorize(lambda f, o: f < o)(self.function, other.function)
             return TemporalVar(self.solver, fun_arr, expression=expression)
         return TemporalVar(
             self.solver,
@@ -829,9 +823,7 @@ class TemporalVar(Generic[T]):
     def __le__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
         expression = f"{add_necessary_brackets(get_expression(self))} <= {add_necessary_brackets(get_expression(other))}"
         if isinstance(self.function, np.ndarray):
-            fun_arr = np.vectorize(
-                lambda f, o: TemporalVar(self.solver, f <= o, expression=expression)
-            )(self.function, other.function)
+            fun_arr = np.vectorize(lambda f, o: f <= o)(self.function, other.function)
             return TemporalVar(self.solver, fun_arr, expression=expression)
         return TemporalVar(
             self.solver,
@@ -849,9 +841,7 @@ class TemporalVar(Generic[T]):
     def __gt__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
         expression = f"{add_necessary_brackets(get_expression(self))} > {add_necessary_brackets(get_expression(other))}"
         if isinstance(self.function, np.ndarray):
-            fun_arr = np.vectorize(
-                lambda f, o: TemporalVar(self.solver, f > o, expression=expression)
-            )(self.function, other.function)
+            fun_arr = np.vectorize(lambda f, o: f > o)(self.function, other.function)
             return TemporalVar(self.solver, fun_arr, expression=expression)
         return TemporalVar(
             self.solver,
@@ -869,9 +859,7 @@ class TemporalVar(Generic[T]):
     def __ge__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
         expression = f"{add_necessary_brackets(get_expression(self))} >= {add_necessary_brackets(get_expression(other))}"
         if isinstance(self.function, np.ndarray):
-            fun_arr = np.vectorize(
-                lambda f, o: TemporalVar(self.solver, f >= o, expression=expression)
-            )(self.function, other.function)
+            fun_arr = np.vectorize(lambda f, o: f >= o)(self.function, other.function)
             return TemporalVar(self.solver, fun_arr, expression=expression)
         return TemporalVar(
             self.solver,

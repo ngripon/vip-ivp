@@ -168,17 +168,64 @@ def test_plot_collections():
     vip.solve(10, 0.1)
 
 def test_array_comparisons_operators():
-    f1=lambda t:t
-    f2=lambda t:2.5*t
+    f1 = lambda t: t
+    f2 = lambda t: 2.5 * t
 
-    a=vip.create_source([5,5])
-    b=vip.create_source([f1,f2])
-    equ_arr=a==b
-    equ1=b[0]==a[0]
-    equ2=b[1]==a[1]
-    equ_arr.to_plot('Equality')
-    equ1.to_plot("Equ1")
-    vip.solve(10,1)
+    a = vip.create_source([5, 5])
+    b = vip.create_source([f1, f2])
 
+    # Equality
+    equ_arr = a == b
+    equ1 = b[0] == a[0]
+    equ2 = b[1] == a[1]
+
+    # Inequality
+    neq_arr = a != b
+    neq1 = b[0] != a[0]
+    neq2 = b[1] != a[1]
+
+    # Less than
+    lt_arr = b < a
+    lt1 = b[0] < a[0]
+    lt2 = b[1] < a[1]
+
+    # Greater than
+    gt_arr = b > a
+    gt1 = b[0] > a[0]
+    gt2 = b[1] > a[1]
+
+    # Less than or equal
+    le_arr = b <= a
+    le1 = b[0] <= a[0]
+    le2 = b[1] <= a[1]
+
+    # Greater than or equal
+    ge_arr = b >= a
+    ge1 = b[0] >= a[0]
+    ge2 = b[1] >= a[1]
+
+    vip.solve(10, 1)
+
+    # Assertions for equality
     assert np.array_equal(equ_arr[0].values, equ1.values)
     assert np.array_equal(equ_arr[1].values, equ2.values)
+
+    # Assertions for inequality
+    assert np.array_equal(neq_arr[0].values, neq1.values)
+    assert np.array_equal(neq_arr[1].values, neq2.values)
+
+    # Assertions for less than
+    assert np.array_equal(lt_arr[0].values, lt1.values)
+    assert np.array_equal(lt_arr[1].values, lt2.values)
+
+    # Assertions for greater than
+    assert np.array_equal(gt_arr[0].values, gt1.values)
+    assert np.array_equal(gt_arr[1].values, gt2.values)
+
+    # Assertions for less than or equal
+    assert np.array_equal(le_arr[0].values, le1.values)
+    assert np.array_equal(le_arr[1].values, le2.values)
+
+    # Assertions for greater than or equal
+    assert np.array_equal(ge_arr[0].values, ge1.values)
+    assert np.array_equal(ge_arr[1].values, ge2.values)
