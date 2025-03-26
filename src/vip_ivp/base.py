@@ -60,6 +60,8 @@ class Solver:
         :param x0: The initial condition for the integration.
         :return: The integrated TemporalVar.
         """
+        if isinstance(input_value, (dict, list, np.ndarray)):
+            input_value = TemporalVar.from_source(self, input_value)
         integrated_structure = self._get_integrated_structure(input_value, x0)
         integrated_variable = TemporalVar(self, integrated_structure,
                                           expression=f"#INTEGRATE {get_expression(input_value)}")
@@ -72,7 +74,7 @@ class Solver:
                 return [self._get_integrated_structure(item, x) for item, x in zip(data.function.flat, x0.flat)]
 
             elif isinstance(data.function, dict):
-                return {key: self._get_integrated_structure(value, x0[key]) for key, value in data.items()}
+                return {key: self._get_integrated_structure(value, x0[key]) for key, value in data.function.items()}
 
         return self._add_integration_variable(data, x0)
 

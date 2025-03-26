@@ -41,22 +41,40 @@ def test_use_numpy_function():
 
 
 def test_multidimensional_integration_source():
-    da = vip.create_source(np.array([5, 4]))
-    a = vip.integrate(da, np.array([1, 0]))
-    # d = vip.integrate({"a": 5, "b": 4}, {"a": 1, "b": 0})
+    arr = np.array([5, 4])
+    arr_x0 = np.array([1, 0])
+    dic = {"a": 5, "b": 4}
+    dic_x0 = {"a": 1, "b": 0}
+
+    # Integrate with sources
+    da = vip.create_source(arr)
+    a = vip.integrate(da, arr_x0)
+    dd = vip.create_source(dic)
+    d = vip.integrate(dd, dic_x0)
+
+    # Integrate with python variables
+    a2 = vip.integrate(arr, arr_x0)
+    d2 = vip.integrate(dic, dic_x0)
+
     vip.solve(10, time_step=1)
 
     a0_fun = lambda t: 5 * t + 1
     a1_fun = lambda t: 4 * t
-    print(a.values)
+
+    # Evaluate integration from source
     assert np.allclose(a[0].values, a0_fun(a[0].t))
     assert np.allclose(a[1].values, a1_fun(a[1].t))
-    # assert np.allclose(d["a"].values, a0_fun(a[0].t))
-    # assert np.allclose(d["b"].values, a1_fun(a[1].t))
+    assert np.allclose(d["a"].values, a0_fun(a[0].t))
+    assert np.allclose(d["b"].values, a1_fun(a[1].t))
+    # Evaluate integration from python variables
+    assert np.allclose(a2[0].values, a0_fun(a[0].t))
+    assert np.allclose(a2[1].values, a1_fun(a[1].t))
+    assert np.allclose(d2["a"].values, a0_fun(a[0].t))
+    assert np.allclose(d2["b"].values, a1_fun(a[1].t))
+
 
 def test_multidimensional_integration_loop_node():
     ...
-
 
 
 def test_conditions():
