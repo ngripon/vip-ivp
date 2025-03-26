@@ -64,6 +64,10 @@ def test_multidimensional_integration_source():
     a0_fun = lambda t: 5 * t + 1
     a1_fun = lambda t: 4 * t
 
+    # Get values
+    print(a.values)
+    print(d.values)
+
     # Evaluate integration from source
     assert np.allclose(a[0].values, a0_fun(a[0].t))
     assert np.allclose(a[1].values, a1_fun(a[1].t))

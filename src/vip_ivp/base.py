@@ -417,6 +417,8 @@ class TemporalVar(Generic[T]):
                 return np.stack(np.frompyfunc(lambda f: f(t, y), 1, 1)(self.function))
             return np.stack(np.frompyfunc(lambda f: f(t, y), 1, 1)(self.function.ravel())).reshape(
                 (*self.function.shape, *np.array(t).shape))
+        elif isinstance(self.function, dict):
+            return {key: val(t, y) for key, val in self.function.items()}
         return self.function(t, y)
 
     def __add__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
