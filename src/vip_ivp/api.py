@@ -28,8 +28,7 @@ def create_source(value: Union[Callable[[Union[float, np.ndarray]], T], T]) -> T
 
 
 def create_scenario(scenario_table: Union[pd.DataFrame, str, dict], time_key: str, interpolation_kind="linear",
-                    sep=',') -> Dict[
-    Any, TemporalVar]:
+                    sep=',') -> TemporalVar:
     """
     Creates a scenario from a given input table, which can be in various formats such as CSV, JSON, dictionary, or DataFrame.
     The maps in the scenario table are interpolated over time and converted into TemporalVar objects.
@@ -63,19 +62,19 @@ def create_scenario(scenario_table: Union[pd.DataFrame, str, dict], time_key: st
         if scenario_table.endswith(".csv"):
             input_data = pd.read_csv(scenario_table, sep=sep)
             print(input_data)
-            return base.create_scenario(solver, input_data, time_key, interpolation_kind)
+            return TemporalVar.from_scenario(solver, input_data, time_key, interpolation_kind)
         elif scenario_table.endswith(".json"):
             with open(scenario_table, "r") as f:
                 dict_data = json.load(f)
             input_data = pd.DataFrame(dict_data)
-            return base.create_scenario(solver, input_data, time_key, interpolation_kind)
+            return TemporalVar.from_scenario(solver, input_data, time_key, interpolation_kind)
         else:
             raise ValueError("Unsupported file type")
     elif isinstance(scenario_table, dict):
         input_data = pd.DataFrame(scenario_table)
-        return base.create_scenario(solver, input_data, time_key, interpolation_kind)
+        return TemporalVar.from_scenario(solver, input_data, time_key, interpolation_kind)
     elif isinstance(scenario_table, pd.DataFrame):
-        return base.create_scenario(solver, scenario_table, time_key, interpolation_kind)
+        return TemporalVar.from_scenario(solver, scenario_table, time_key, interpolation_kind)
     else:
         raise ValueError("Unsupported input type")
 
