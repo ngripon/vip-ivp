@@ -408,7 +408,7 @@ class TemporalVar(Generic[T]):
         :return: The created TemporalVar.
         """
         expression = convert_to_string(value)
-        if callable(value) and not isinstance(value,TemporalVar):
+        if callable(value) and not isinstance(value, TemporalVar):
             return cls(solver, lambda t, y: value(t), expression=expression)
         elif np.isscalar(value):
             return cls(solver, lambda t, y: value if np.isscalar(t) else np.full_like(t, value),
@@ -717,6 +717,11 @@ class LoopNode(TemporalVar[T]):
 
     def __call__(self, t: Union[float, np.ndarray], y: np.ndarray) -> T:
         return self._input_var(t, y)
+
+    def __getitem__(self, item):
+        expression = f"{add_necessary_brackets(get_expression(self))}[{item}]"
+        variable: TemporalVar = TemporalVar(self.solver, lambda t,y:self(t,y)[item], expression)
+        return variable
 
 
 def create_scenario(solver: "Solver", scenario_table: pd.DataFrame, time_key: str, interpolation_kind="linear") -> Dict[
