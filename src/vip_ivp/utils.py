@@ -23,7 +23,7 @@ def convert_to_string(content):
         if "create_source" in fun_string:
             lambda_content = fun_string.split("create_source")[1].strip()[1:-1]
             return lambda_content
-        fun_string = fun_string.split(" = ")[1]
+        fun_string = fun_string.split("=")[1].strip()
         return fun_string
     elif inspect.isclass(content):
         return content.__repr__()
