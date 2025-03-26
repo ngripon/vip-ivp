@@ -641,14 +641,6 @@ class TemporalVar(Generic[T]):
         variable: TemporalVar = TemporalVar(self.solver, self.function[item], expression)
         return variable
 
-    #
-    # def __getattr__(self, item):
-    #     expression = f"{add_necessary_brackets(get_expression(self))}.{item}"
-    #     return TemporalVar(
-    #         self.solver, lambda t, y: getattr(self(t, y), item) if np.isscalar(t) else np.array(
-    #             [getattr(x, item) for x in self(t, y)]),
-    #         expression=expression)
-
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs) -> "TemporalVar":
         inputs_expr = [get_expression(inp) if isinstance(inp, TemporalVar) else str(inp) for inp in inputs]
         kwargs_expr = [
@@ -675,9 +667,6 @@ class TemporalVar(Generic[T]):
             )
 
         return NotImplemented
-
-    # def __array__(self) -> np.ndarray:
-    #     return self.values
 
     @property
     def expression(self):
