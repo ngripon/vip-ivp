@@ -54,6 +54,7 @@ class Solver:
         self.y = None
         self.solved = False
         self.saved_vars = {}
+        self.named_vars = {}
         self.vars_to_plot = {}
 
     def integrate(self, input_value: "TemporalVar[T]", x0: T) -> "TemporalVar[T]":
@@ -122,6 +123,7 @@ class Solver:
         :param plot: Plot the variables that called the "to_plot()" method.
         :param options: Additional options for the solver. See https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html.
         """
+        self._get_remaining_named_variables()
         # Reinit values
         [var._reset() for var in self.vars]
         start = time.time()
@@ -222,6 +224,18 @@ class Solver:
             return outputs.t, outputs.values
         else:
             return list(map(self.unwrap_leaves, (el for el in outputs)))
+
+    def _get_remaining_named_variables(self):
+        frame = inspect.currentframe().f_back
+        while (frame.f_locals.get("self")
+               and (isinstance(frame.f_locals.get("self"), TemporalVar)
+                    or isinstance(frame.f_locals.get("self"), Solver))
+               or Path(frame.f_code.co_filename).as_posix().endswith("vip_ivp/api.py")):
+            frame = frame.f_back
+        local_variables = frame.f_locals
+        for key, value in local_variables.items():
+            if isinstance(value, TemporalVar) and key not in self.named_vars:
+                self.named_vars[key] = value
 
     def solve_ivp(
             self,
@@ -977,6 +991,7 @@ def get_expression(value) -> str:
         )
         if found_key is not None:
             value.name = found_key
+            value.solver.named_vars[found_key] = value
             return value.name
         return value.expression
     else:
