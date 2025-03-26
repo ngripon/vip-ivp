@@ -439,7 +439,10 @@ class TemporalVar(Generic[T]):
 
     def __call__(self, t: Union[float, np.ndarray], y: np.ndarray) -> T:
         if isinstance(self.function, np.ndarray):
-            return np.vectorize(lambda f: f(t, y))(self.function)
+            if np.isscalar(t):
+                return np.stack(np.frompyfunc(lambda f: f(t, y), 1, 1)(self.function))
+            return np.stack(np.frompyfunc(lambda f: f(t, y), 1, 1)(self.function.ravel())).reshape(
+                (*self.function.shape, *np.array(t).shape))
         return self.function(t, y)
 
     def __add__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":

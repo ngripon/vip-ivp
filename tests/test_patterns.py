@@ -44,14 +44,11 @@ def test_multidimensional_integration_source():
     da = vip.create_source(np.array([5, 4]))
     a = vip.integrate(da, np.array([1, 0]))
     # d = vip.integrate({"a": 5, "b": 4}, {"a": 1, "b": 0})
-    vip.solve(10)
-
-    print(da.solver.y)
-    print(da.solver.t)
+    vip.solve(10, time_step=1)
 
     a0_fun = lambda t: 5 * t + 1
     a1_fun = lambda t: 4 * t
-    print(da(da.t,da.solver.t))
+    print(a.values)
     assert np.allclose(a[0].values, a0_fun(a[0].t))
     assert np.allclose(a[1].values, a1_fun(a[1].t))
     # assert np.allclose(d["a"].values, a0_fun(a[0].t))
