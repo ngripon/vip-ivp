@@ -94,14 +94,14 @@ def integrate(input_value: Union[TemporalVar[T], T], x0: T) -> TemporalVar[T]:
     return integral_value
 
 
-def loop_node() -> LoopNode:
+def loop_node(shape: Union[int, tuple[int, ...]] = None) -> LoopNode:
     """
     Create a loop node. Loop node can accept new inputs through its "loop_into()" method after being instantiated.
 
     :return: The created LoopNode.
     """
     solver = _get_current_solver()
-    return LoopNode(solver)
+    return LoopNode(solver, shape)
 
 
 def where(condition, a, b) -> TemporalVar:

@@ -680,9 +680,13 @@ class TemporalVar(Generic[T]):
 
 
 class LoopNode(TemporalVar[T]):
-    def __init__(self, solver: "Solver"):
-        self._input_var: TemporalVar = TemporalVar.from_source(solver, 0)
-        super().__init__(solver, lambda t, y: 0, expression="")
+    def __init__(self, solver: "Solver", shape: Union[int, tuple[int, ...]] = None):
+        if shape is not None:
+            initial_value = np.zeros(shape)
+        else:
+            initial_value = 0
+        self._input_var: TemporalVar = TemporalVar.from_source(solver, initial_value)
+        super().__init__(solver, self._input_var, expression="")
         self._is_set = False
 
     def loop_into(
@@ -708,6 +712,7 @@ class LoopNode(TemporalVar[T]):
             self._input_var += value
         self._is_set = True
         self._expression = get_expression(self._input_var)
+        self.function=self._input_var.function
 
     def __call__(self, t: Union[float, np.ndarray], y: np.ndarray) -> T:
         return self._input_var(t, y)
