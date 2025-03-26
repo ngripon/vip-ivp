@@ -402,6 +402,9 @@ class TemporalVar(Generic[T]):
 
         :param name: Name of the variable in the legend of the plot.
         """
+        if isinstance(self.function, np.ndarray):
+            [self[idx].to_plot(f"{name}[{', '.join(str(i) for i in idx)}]") for idx in np.ndindex(self.function.shape)]
+            return
         self.solver.vars_to_plot[name] = self
 
     @classmethod
