@@ -1,7 +1,7 @@
 import functools
 import time
 import warnings
-from typing import Dict, Any, overload
+from typing import Dict, Any, overload, Literal
 from numbers import Number
 from pathlib import Path
 from typing import Callable, Union, TypeVar, Generic
@@ -23,6 +23,7 @@ class Solver:
         self.vars = []
         self.feed_vars = []
         self.x0 = []
+        self.events = []
         self.t = None
         self.y = None
         self.solved = False
@@ -109,7 +110,7 @@ class Solver:
             t_eval = np.arange(0, t_end, time_step)
         try:
             res = self.solve_ivp(
-                self._dy, (0, t_end), self.x0, method=method, t_eval=t_eval, **options
+                self._dy, (0, t_end), self.x0, method=method, t_eval=t_eval, events=self.events, **options
             )
             if not res.success:
                 raise Exception(res.message)
@@ -522,6 +523,9 @@ class TemporalVar(Generic[T]):
             )
             variables[col] = fun
         return cls(solver, variables)
+
+    def on_crossing(self, value: T, action=None, direction: Literal["rising", "falling", "both"] = "both") -> None:
+        event = Event(self.solver, self - value, direction)
 
     def _reset(self):
         self._values = None
@@ -1014,3 +1018,18 @@ def get_expression(value) -> str:
         return value.expression
     else:
         return str(value)
+
+
+class Event:
+    DIRECTION_MAP = {"rising": 1, "falling": -1, "both": 0}
+
+    def __init__(self, solver: Solver, fun: Callable, direction: Literal["rising", "falling", "both"] = "both"):
+        self.solver = solver
+        self.function = fun
+        self.terminal = True
+        self.direction = self.DIRECTION_MAP[direction]
+
+        self.solver.events.append(self)
+
+    def __call__(self, t, y) -> float:
+        return self.function(t, y)
