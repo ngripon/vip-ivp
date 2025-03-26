@@ -182,7 +182,8 @@ def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
     return wrapper
 
 
-def solve(t_end: Number, method='RK45', time_step=None, t_eval=None, **options) -> None:
+def solve(t_end: Number, time_step: Number = None, method='RK45', t_eval: Union[List, np.ndarray] = None,
+          **options) -> None:
     """
     Solve the equations of the dynamical system through an integration scheme.
 
