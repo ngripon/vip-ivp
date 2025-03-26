@@ -408,6 +408,18 @@ class TemporalVar(Generic[T]):
         """
         self.solver.vars_to_plot[name] = self
 
+    @classmethod
+    def from_scenario(cls, solver: "Solver", scenario_table: pd.DataFrame, time_key: str,
+                        interpolation_kind="linear") -> "TemporalVar":
+        variables = {}
+        for col in scenario_table.columns:
+            if col == time_key:
+                continue
+            fun = interp1d(scenario_table[time_key], scenario_table[col], kind=interpolation_kind, bounds_error=False,
+                           fill_value=(scenario_table[col].iat[0], scenario_table[col].iat[-1]))
+            variables[col] = fun
+        return cls(solver, variables)
+
     def _reset(self):
         self._values = None
 
@@ -709,19 +721,6 @@ class LoopNode(TemporalVar[T]):
         expression = f"{add_necessary_brackets(get_expression(self))}[{item}]"
         variable: TemporalVar = TemporalVar(self.solver, lambda t, y: self(t, y)[item], expression)
         return variable
-
-
-def create_scenario(solver: "Solver", scenario_table: pd.DataFrame, time_key: str, interpolation_kind="linear") -> Dict[
-    Any, TemporalVar]:
-    variables = {}
-    for col in scenario_table.columns:
-        if col == time_key:
-            continue
-        fun = interp1d(scenario_table[time_key], scenario_table[col], kind=interpolation_kind, bounds_error=False,
-                       fill_value=(scenario_table[col].iat[0], scenario_table[col].iat[-1]))
-        variable = TemporalVar(solver, fun)
-        variables[col] = variable
-    return variables
 
 
 def get_expression(value) -> str:
