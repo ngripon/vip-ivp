@@ -166,3 +166,21 @@ def test_plot_collections():
     d.to_plot("Dict")
 
     vip.solve(10, 0.1)
+
+def test_array_comparisons_operators():
+    f1=lambda t:t
+    f2=lambda t:2.5*t
+
+    f1_source=vip.create_source(f1)
+    f2_source=vip.create_source(f2)
+
+    a=vip.create_source([5,5])
+    b=vip.create_source([f1,f2])
+    equ_arr=a==b
+    equ1=b[0]==a[0]
+    # equ2=f2_source==5
+    equ_arr.to_plot('Equality')
+    equ1.to_plot("Equ1")
+    vip.solve(10,1)
+
+
