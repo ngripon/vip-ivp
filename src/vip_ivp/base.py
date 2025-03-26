@@ -377,13 +377,16 @@ class Solver:
                 ti.append(t)
 
         message = MESSAGES.get(status, message)
+        if t_events is not None:
+            t_events = np.array([np.asarray(te) for te in t_events])
+            y_events = np.array([np.asarray(ye) for ye in y_events])
+            min_t_idx = np.unravel_index(np.argmin(t_events), t_events.shape)
+            self.t.append(t_events[min_t_idx])
+            self.y.append(y_events[min_t_idx])
+
         if self.t:
             self.t = np.array(self.t)
             self.y = np.vstack(self.y).T
-
-        if t_events is not None:
-            t_events = [np.asarray(te) for te in t_events]
-            y_events = [np.asarray(ye) for ye in y_events]
 
         if dense_output:
             if t_eval is None:
