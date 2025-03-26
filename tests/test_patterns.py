@@ -143,3 +143,22 @@ def test_scenario_interpolation():
         assert b.values[0] == 0
         assert b.values[1] == 5
         assert b.values[3] == 0
+
+def test_plot_collections():
+    arr = np.array([5, 4])
+    arr_x0 = np.array([1, 0])
+    dic = {"a": 5, "b": 4}
+    dic_x0 = {"a": 1, "b": 0}
+
+    # Integrate with sources
+    da = vip.create_source(arr)
+    a = vip.integrate(da, arr_x0)
+    dd = vip.create_source(dic)
+    d = vip.integrate(dd, dic_x0)
+
+    a.to_plot("Array")
+    d.to_plot("Dict")
+
+    vip.solve(10,0.1)
+
+
