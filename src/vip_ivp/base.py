@@ -2,7 +2,7 @@ import functools
 import time
 import warnings
 import inspect
-from typing import Dict, Any
+from typing import Dict, Any, overload
 from numbers import Number
 from pathlib import Path
 from typing import Callable, Union, TypeVar, Generic
@@ -572,10 +572,17 @@ class TemporalVar(Generic[T]):
         expression = f"abs({get_expression(self)})"
         return TemporalVar(self.solver, lambda t, y: abs(self(t, y)), expression=expression)
 
+    @overload
+    def __eq__(self, other: "TemporalVar[np.ndarray[T]]") -> "TemporalVar[np.ndarray[bool]]":
+        ...
+
     def __eq__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
         expression = f"{add_necessary_brackets(get_expression(self))} == {add_necessary_brackets(get_expression(other))}"
         if isinstance(self.function, np.ndarray):
-            return TemporalVar(self.solver, self.function == other.function, expression=expression)
+            fun_arr = np.vectorize(lambda f, o: TemporalVar(self.solver, f == o, expression=expression))(
+                self.function, other.function
+            )
+            return TemporalVar(self.solver, fun_arr, expression=expression)
         return TemporalVar(
             self.solver,
             lambda t, y: self(t, y) == (
