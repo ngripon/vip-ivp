@@ -70,12 +70,8 @@ class Solver:
     def _get_integrated_structure(self, data, x0):
         if isinstance(data, TemporalVar):
             if isinstance(data.function, np.ndarray):
-                x0 = np.array(x0)
-                if isinstance(data, LoopNode):
-                    return [self._get_integrated_structure(data[idx], x0[idx]) for idx in
-                            np.ndindex(data.function.shape)]
-                else:
-                    return [self._get_integrated_structure(item, x) for item, x in zip(data.function.flat, x0.flat)]
+                return [self._get_integrated_structure(data[idx], np.array(x0)[idx]) for idx in
+                        np.ndindex(data.function.shape)]
 
             elif isinstance(data.function, dict):
                 return {key: self._get_integrated_structure(value, x0[key]) for key, value in data.function.items()}
@@ -410,7 +406,7 @@ class TemporalVar(Generic[T]):
 
     @classmethod
     def from_scenario(cls, solver: "Solver", scenario_table: pd.DataFrame, time_key: str,
-                        interpolation_kind="linear") -> "TemporalVar":
+                      interpolation_kind="linear") -> "TemporalVar":
         variables = {}
         for col in scenario_table.columns:
             if col == time_key:
