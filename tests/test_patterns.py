@@ -43,6 +43,8 @@ def test_use_numpy_function():
 def test_multidimensional_integration_source():
     arr = np.array([5, 4])
     arr_x0 = np.array([1, 0])
+    lis = [5, 4]
+    lis_x0 = [1, 0]
     dic = {"a": 5, "b": 4}
     dic_x0 = {"a": 1, "b": 0}
 
@@ -54,6 +56,7 @@ def test_multidimensional_integration_source():
 
     # Integrate with python variables
     a2 = vip.integrate(arr, arr_x0)
+    a3 = vip.integrate(lis, lis_x0)
     d2 = vip.integrate(dic, dic_x0)
 
     vip.solve(10, time_step=1)
@@ -69,12 +72,18 @@ def test_multidimensional_integration_source():
     # Evaluate integration from python variables
     assert np.allclose(a2[0].values, a0_fun(a[0].t))
     assert np.allclose(a2[1].values, a1_fun(a[1].t))
+    assert np.allclose(a3[0].values, a0_fun(a[0].t))
+    assert np.allclose(a3[1].values, a1_fun(a[1].t))
     assert np.allclose(d2["a"].values, a0_fun(a[0].t))
     assert np.allclose(d2["b"].values, a1_fun(a[1].t))
 
 
 def test_multidimensional_integration_loop_node():
-    ...
+    dx = vip.loop_node()
+    x = vip.integrate(dx, [0, 1])
+    dx.loop_into([-0.5 * x[0], -0.4 * x[1]])
+
+    vip.solve(10, time_step=1)
 
 
 def test_set_loop_node_multiple_times():
@@ -84,8 +93,8 @@ def test_set_loop_node_multiple_times():
     loop.loop_into(source1)
     loop.loop_into(source2, force=True)
     vip.solve(10, time_step=1)
-    assert np.allclose(loop.values, np.linspace(0,27,10))
-    assert loop.expression=="source1 + source2"
+    assert np.allclose(loop.values, np.linspace(0, 27, 10))
+    assert loop.expression == "source1 + source2"
 
 
 def test_conditions():
