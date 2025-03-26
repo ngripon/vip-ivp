@@ -1,7 +1,6 @@
 import functools
 import time
 import warnings
-import inspect
 from typing import Dict, Any, overload
 from numbers import Number
 from pathlib import Path
@@ -9,39 +8,13 @@ from typing import Callable, Union, TypeVar, Generic
 
 import matplotlib.pyplot as plt
 from sliderplot import sliderplot
-import numpy as np
 import pandas as pd
 from scipy.interpolate import interp1d
 
-from scipy.integrate._ivp.bdf import BDF
-from scipy.integrate._ivp.radau import Radau
-from scipy.integrate._ivp.rk import RK23, RK45, DOP853
-from scipy.integrate._ivp.lsoda import LSODA
-from scipy.optimize import OptimizeResult
-from scipy.integrate._ivp.common import EPS, OdeSolution
-from scipy.integrate._ivp.base import OdeSolver
-
+from .solver_utils import *
 from .utils import add_necessary_brackets, convert_to_string
 
 T = TypeVar("T")
-
-METHODS = {
-    "RK23": RK23,
-    "RK45": RK45,
-    "DOP853": DOP853,
-    "Radau": Radau,
-    "BDF": BDF,
-    "LSODA": LSODA,
-}
-
-MESSAGES = {
-    0: "The solver successfully reached the end of the integration interval.",
-    1: "A termination event occurred.",
-}
-
-
-class OdeResult(OptimizeResult):
-    pass
 
 
 class Solver:
@@ -312,6 +285,22 @@ class Solver:
             self.y = []
 
         solver = method(fun, t0, y0, tf, vectorized=vectorized, **options)
+        if events is not None:
+            events, max_events, event_dir = prepare_events(events)
+            event_count = np.zeros(len(events))
+            if args is not None:
+                # Wrap user functions in lambdas to hide the additional parameters.
+                # The original event function is passed as a keyword argument to the
+                # lambda to keep the original function in scope (i.e., avoid the
+                # late binding closure "gotcha").
+                events = [lambda t, x, event=event: event(t, x, *args)
+                          for event in events]
+            g = [event(t0, y0) for event in events]
+            t_events = [[] for _ in range(len(events))]
+            y_events = [[] for _ in range(len(events))]
+        else:
+            t_events = None
+            y_events = None
 
         interpolants = []
 
@@ -334,6 +323,29 @@ class Solver:
                 interpolants.append(sol)
             else:
                 sol = None
+
+            if events is not None:
+                g_new = [event(t, y) for event in events]
+                active_events = find_active_events(g, g_new, event_dir)
+                if active_events.size > 0:
+                    if sol is None:
+                        sol = solver.dense_output()
+
+                    event_count[active_events] += 1
+                    root_indices, roots, terminate = handle_events(
+                        sol, events, active_events, event_count, max_events,
+                        t_old, t)
+
+                    for e, te in zip(root_indices, roots):
+                        t_events[e].append(te)
+                        y_events[e].append(sol(te))
+
+                    if terminate:
+                        status = 1
+                        t = roots[-1]
+                        y = sol(t)
+
+                g = g_new
 
             if t_eval is None:
                 self.t.append(t)
@@ -368,6 +380,10 @@ class Solver:
             self.t = np.array(self.t)
             self.y = np.vstack(self.y).T
 
+        if t_events is not None:
+            t_events = [np.asarray(te) for te in t_events]
+            y_events = [np.asarray(ye) for ye in y_events]
+
         if dense_output:
             if t_eval is None:
                 sol = OdeSolution(
@@ -387,6 +403,8 @@ class Solver:
         return OdeResult(
             t=self.t,
             y=self.y,
+            t_events=t_events,
+            y_events=y_events,
             sol=sol,
             nfev=solver.nfev,
             njev=solver.njev,
