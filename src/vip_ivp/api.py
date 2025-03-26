@@ -234,8 +234,17 @@ def export_file(filename: str, variables: Iterable[TemporalVar] = None, file_for
             f"Unsupported file format: {file_format}. "
             f"The available file formats are {', '.join(AVAILABLE_EXPORT_FILE_FORMATS)}"
         )
+    variables_dict = {"Time (s)": solver.t}
     if variables is None:
-        variables = solver.named_vars
+        variable_dict = {**variables_dict, **{key: var.values for key, var in solver.named_vars.items()}}
+    else:
+        variable_dict = {**variables_dict, **{get_expression(var): var.values for var in variables}}
+    variable_dict["Time (s)"] = solver.t
+    df = pd.DataFrame(variable_dict)
+    if file_format == "csv":
+        df.to_csv(filename, index=False)
+    elif file_format == "json":
+        df.to_json(filename, orient="records")
 
 
 def clear() -> None:

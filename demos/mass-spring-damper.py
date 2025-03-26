@@ -10,7 +10,7 @@ displacement_x0 = 0.2  # Initial value of displacement (m)
 # System equation is : m * acc + c * vel + k * disp = 0 <=> acc = - 1 / m * (c * vel + k * disp)
 # We do not have access to velocity and displacement at this stage, so we create a loop node.
 acceleration = vip.loop_node()
-velocity = vip.integrate(acceleration, 0)
+velocity = vip.integrate(acceleration, 0.0)
 displacement = vip.integrate(velocity, displacement_x0)
 # Now we can set the acceleration
 acceleration.loop_into(-(c * velocity + k * displacement) / m)
