@@ -24,7 +24,7 @@ def create_source(value: Union[Callable[[Union[float, np.ndarray]], T], T]) -> T
     :return: The created TemporalVar.
     """
     solver = _get_current_solver()
-    return TemporalVar.from_source(solver, value)
+    return TemporalVar(solver, value)
 
 
 def create_scenario(scenario_table: Union[pd.DataFrame, str, dict], time_key: str, interpolation_kind="linear",

@@ -61,7 +61,7 @@ class Solver:
         :return: The integrated TemporalVar.
         """
         if isinstance(input_value, (dict, list, np.ndarray)):
-            input_value = TemporalVar.from_source(self, input_value)
+            input_value = TemporalVar(self, input_value)
         integrated_structure = self._get_integrated_structure(input_value, x0)
         integrated_variable = TemporalVar(self, integrated_structure,
                                           expression=f"#INTEGRATE {get_expression(input_value)}")
@@ -343,20 +343,26 @@ class TemporalVar(Generic[T]):
                  fun: Union[Callable[[Union[float, np.ndarray], np.ndarray], T], np.ndarray, dict] = None,
                  expression: str = None):
         self.solver = solver
-
-        if isinstance(fun, TemporalVar):
-            self.function = fun.function
-        elif isinstance(fun, Callable):
-            self.function = fun
+        if callable(fun) and not isinstance(fun, TemporalVar):
+            n_args = len(inspect.signature(fun).parameters)
+            if n_args == 1:
+                self.function = lambda t, y: fun(t)
+            else:
+                self.function = lambda t, y: fun(t, y)
+        elif np.isscalar(fun):
+            self.function = lambda t, y: fun if np.isscalar(t) else np.full_like(t, fun)
         elif isinstance(fun, (list, np.ndarray)):
             self.function = np.vectorize(lambda f: TemporalVar(solver, f))(np.array(fun))
+        elif isinstance(fun, TemporalVar):
+            self.function = fun.function
         elif isinstance(fun, dict):
             self.function = {key: TemporalVar(solver, val) for key, val in fun.items()}
         else:
-            self.function = lambda t, y: fun
+            raise ValueError(f"Unsupported type: {type(fun)}.")
+
         self._values = None
         # Variable definition
-        self._expression = "Unknown" if expression is None else expression
+        self._expression = convert_to_string(fun) if expression is None else expression
         self.name = None
         self._inputs: list[TemporalVar] = []
 
@@ -401,31 +407,6 @@ class TemporalVar(Generic[T]):
         :param name: Name of the variable in the legend of the plot.
         """
         self.solver.vars_to_plot[name] = self
-
-    @classmethod
-    def from_source(cls, solver: "Solver", value: Union[Callable[[Union[float, np.ndarray]], T], T]):
-        """
-        Create a source signal from a temporal function or a scalar value.
-
-        :param solver: Solver
-        :param value: A function f(t) or a scalar value.
-        :return: The created TemporalVar.
-        """
-        expression = convert_to_string(value)
-        if callable(value) and not isinstance(value, TemporalVar):
-            return cls(solver, lambda t, y: value(t), expression=expression)
-        elif np.isscalar(value):
-            return cls(solver, lambda t, y: value if np.isscalar(t) else np.full_like(t, value),
-                       expression=expression)
-        elif isinstance(value, (list, np.ndarray)):
-            temporal_var_arr = np.vectorize(lambda f: cls.from_source(solver, f))(np.array(value))
-            return cls(solver, temporal_var_arr, expression=expression)
-        elif isinstance(value, dict):
-            temporal_var_dict = {key: cls.from_source(solver, val) for key, val in value.items()}
-            return cls(solver, temporal_var_dict, expression=expression)
-        elif isinstance(value, TemporalVar):
-            return cls(solver, value, expression)
-        raise ValueError(f"Unsupported type for 'value' argument: {type(value)}.")
 
     def _reset(self):
         self._values = None
@@ -690,7 +671,7 @@ class LoopNode(TemporalVar[T]):
             initial_value = np.zeros(shape)
         else:
             initial_value = 0
-        self._input_var: TemporalVar = TemporalVar.from_source(solver, initial_value)
+        self._input_var: TemporalVar = TemporalVar(solver, initial_value)
         super().__init__(solver, self._input_var, expression="")
         self._is_set = False
 
@@ -710,7 +691,7 @@ class LoopNode(TemporalVar[T]):
                 "This Loop Node has already been set. If you want to add another value, use argument 'force = True'."
             )
         if not isinstance(value, TemporalVar):
-            value = TemporalVar.from_source(self.solver, value)
+            value = TemporalVar(self.solver, value)
         if not self._is_set:
             self._input_var = value
         else:
@@ -736,7 +717,7 @@ def create_scenario(solver: "Solver", scenario_table: pd.DataFrame, time_key: st
             continue
         fun = interp1d(scenario_table[time_key], scenario_table[col], kind=interpolation_kind, bounds_error=False,
                        fill_value=(scenario_table[col].iat[0], scenario_table[col].iat[-1]))
-        variable = TemporalVar.from_source(solver, fun)
+        variable = TemporalVar(solver, fun)
         variables[col] = variable
     return variables
 

@@ -22,6 +22,7 @@ acceleration.loop_into([-mu * velocity[0] * v_norm,
 
 vip.solve(10, time_step=0.1)
 
+
 # Plot results
 x, y = position.values
 plt.plot(x[y >= 0], y[y >= 0])
