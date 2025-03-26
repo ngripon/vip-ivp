@@ -1,5 +1,5 @@
 import json
-from typing import ParamSpec, overload, List, Dict, Union
+from typing import ParamSpec, overload, List, Dict, Union, Iterable, Literal
 
 import pandas as pd
 from varname import argname
@@ -218,6 +218,20 @@ def new_system() -> None:
     """
     new_solver = Solver()
     _solver_list.append(new_solver)
+
+
+AVAILABLE_EXPORT_FILE_FORMATS = ["csv", "json"]
+
+
+def export_file(filename: str, variables: Iterable[TemporalVar] = None, file_format: Literal["csv", "json"] = None):
+    if file_format is None:
+        file_format = Path(filename).suffix.lstrip(".")
+    if file_format not in AVAILABLE_EXPORT_FILE_FORMATS:
+        raise ValueError(
+            f"Unsupported file format: {file_format}. "
+            f"The available file formats are {', '.join(AVAILABLE_EXPORT_FILE_FORMATS)}"
+        )
+
 
 
 def clear() -> None:
