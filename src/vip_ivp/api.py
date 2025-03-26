@@ -1,13 +1,11 @@
 import json
-from typing import ParamSpec
+from typing import ParamSpec, overload, List, Dict, Union
 
-import numpy as np
 import pandas as pd
 from varname import argname
 
-from .solver import *
-from .temporal_var import *
-from . import temporal_var
+from .base import *
+from . import base
 from .utils import *
 
 warnings.simplefilter("once")
@@ -15,9 +13,10 @@ warnings.simplefilter("once")
 _solver_list = []
 
 T = TypeVar('T')
+K = TypeVar("K")
 
 
-def create_source(value: Union[Callable[[Union[float, np.ndarray]], T], T]) -> "TemporalVar[T]":
+def create_source(value: Union[Callable[[Union[float, np.ndarray]], T], T]) -> TemporalVar[T]:
     """
     Create a source signal from a temporal function or a scalar value.
 
@@ -25,7 +24,7 @@ def create_source(value: Union[Callable[[Union[float, np.ndarray]], T], T]) -> "
     :return: The created TemporalVar.
     """
     solver = _get_current_solver()
-    return temporal_var.create_source(solver, value)
+    return TemporalVar(solver, value)
 
 
 def create_scenario(scenario_table: Union[pd.DataFrame, str, dict], time_key: str, interpolation_kind="linear",
@@ -64,24 +63,24 @@ def create_scenario(scenario_table: Union[pd.DataFrame, str, dict], time_key: st
         if scenario_table.endswith(".csv"):
             input_data = pd.read_csv(scenario_table, sep=sep)
             print(input_data)
-            return temporal_var.create_scenario(solver, input_data, time_key, interpolation_kind)
+            return base.create_scenario(solver, input_data, time_key, interpolation_kind)
         elif scenario_table.endswith(".json"):
             with open(scenario_table, "r") as f:
                 dict_data = json.load(f)
             input_data = pd.DataFrame(dict_data)
-            return temporal_var.create_scenario(solver, input_data, time_key, interpolation_kind)
+            return base.create_scenario(solver, input_data, time_key, interpolation_kind)
         else:
             raise ValueError("Unsupported file type")
     elif isinstance(scenario_table, dict):
         input_data = pd.DataFrame(scenario_table)
-        return temporal_var.create_scenario(solver, input_data, time_key, interpolation_kind)
+        return base.create_scenario(solver, input_data, time_key, interpolation_kind)
     elif isinstance(scenario_table, pd.DataFrame):
-        return temporal_var.create_scenario(solver, scenario_table, time_key, interpolation_kind)
+        return base.create_scenario(solver, scenario_table, time_key, interpolation_kind)
     else:
         raise ValueError("Unsupported input type")
 
 
-def integrate(input_value: Union["TemporalVar[T]", Number], x0: Number) -> TemporalVar[float]:
+def integrate(input_value: Union[TemporalVar[T], T], x0: T) -> TemporalVar[T]:
     """
     Integrate the input value starting from the initial condition x0.
 
@@ -95,14 +94,14 @@ def integrate(input_value: Union["TemporalVar[T]", Number], x0: Number) -> Tempo
     return integral_value
 
 
-def loop_node() -> "LoopNode":
+def loop_node(shape: Union[int, tuple[int, ...]] = None) -> LoopNode:
     """
     Create a loop node. Loop node can accept new inputs through its "loop_into()" method after being instantiated.
 
     :return: The created LoopNode.
     """
     solver = _get_current_solver()
-    return LoopNode(solver)
+    return LoopNode(solver, shape)
 
 
 def where(condition, a, b) -> TemporalVar:
@@ -279,7 +278,7 @@ def _check_solver_discrepancy(input_value: Union["TemporalVar", Number], solver:
         raise Exception("Can not use a variable from a previous system.")
 
 
-def _convert_to_temporal_var(value: T | TemporalVar[T]) -> TemporalVar[T]:
+def _convert_to_temporal_var(value: Union[T, TemporalVar[T]]) -> TemporalVar[T]:
     if not isinstance(value, TemporalVar):
         value = create_source(value)
     return value

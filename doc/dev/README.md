@@ -139,3 +139,9 @@ The package is structured as follows:
 - `__init__.py`: Control the interface of the package. Export only the functions of the `api.py` file.
 - `utils.py`: Utility functions
 
+## User abstractions
+- Source: transform scalar, temporal functions and collections of them into a `TemporalVar` objects.
+- Scenario: Transform a map into an interpolated temporal function and put it into a `TemporalVar`.
+- `where`: Allow if-else conditions within a `TemporalVar`.
+- `f()`: Transform a function into another function that is compatible with `TemporalVar` inputs. 
+
