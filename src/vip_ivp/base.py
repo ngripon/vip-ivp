@@ -405,6 +405,9 @@ class TemporalVar(Generic[T]):
         if isinstance(self.function, np.ndarray):
             [self[idx].to_plot(f"{name}[{', '.join(str(i) for i in idx)}]") for idx in np.ndindex(self.function.shape)]
             return
+        elif isinstance(self.function, dict):
+            [self[key].to_plot(f"{name}[{key}]") for key in self.function.keys()]
+            return
         self.solver.vars_to_plot[name] = self
 
     @classmethod
