@@ -1023,10 +1023,12 @@ def get_expression(value) -> str:
 class Event:
     DIRECTION_MAP = {"rising": 1, "falling": -1, "both": 0}
 
-    def __init__(self, solver: Solver, fun: Callable, direction: Literal["rising", "falling", "both"] = "both"):
+    def __init__(self, solver: Solver, fun: Callable, direction: Literal["rising", "falling", "both"] = "both",
+                 end_simulation: bool = False):
         self.solver = solver
         self.function = fun
-        self.terminal = True
+        self.end_simulation = end_simulation
+        self.terminal=True # This is required by scipy for the moment
         self.direction = self.DIRECTION_MAP[direction]
 
         self.solver.events.append(self)
