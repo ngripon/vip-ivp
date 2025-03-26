@@ -16,7 +16,6 @@ T = TypeVar('T')
 K = TypeVar("K")
 
 
-
 def create_source(value: Union[Callable[[Union[float, np.ndarray]], T], T]) -> TemporalVar[T]:
     """
     Create a source signal from a temporal function or a scalar value.
@@ -79,14 +78,6 @@ def create_scenario(scenario_table: Union[pd.DataFrame, str, dict], time_key: st
         return base.create_scenario(solver, scenario_table, time_key, interpolation_kind)
     else:
         raise ValueError("Unsupported input type")
-
-
-@overload
-def integrate(input_value: List[Union[TemporalVar[T], T]], x0: List[T]) -> List[TemporalVar[T]]: ...
-
-
-@overload
-def integrate(input_value: Dict[K, Union[TemporalVar[T], T]], x0: Dict[K, T]) -> Dict[K, TemporalVar[T]]: ...
 
 
 def integrate(input_value: Union[TemporalVar[T], T], x0: T) -> TemporalVar[T]:

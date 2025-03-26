@@ -60,37 +60,23 @@ class Solver:
         :param x0: The initial condition for the integration.
         :return: The integrated TemporalVar.
         """
-        is_scalar = np.isscalar(input_value)
-        if is_scalar:
-            input_value = [input_value]
-            x0 = [x0]
         integrated_structure = self._get_integrated_structure(input_value, x0)
-
-        if is_scalar:
-            integrated_structure = integrated_structure[0]
         integrated_variable = TemporalVar(self, integrated_structure,
                                           expression=f"#INTEGRATE {get_expression(input_value)}")
         return integrated_variable
 
     def _get_integrated_structure(self, data, x0):
-        if isinstance(data.function, np.ndarray):
-            x0 = np.array(x0)
-            return [self._get_integrated_structure(item, x) for item, x in zip(data.function.flat, x0.flat)]
+        if isinstance(data, TemporalVar):
+            if isinstance(data.function, np.ndarray):
+                x0 = np.array(x0)
+                return [self._get_integrated_structure(item, x) for item, x in zip(data.function.flat, x0.flat)]
 
-        elif isinstance(data.function, dict):
-            return {key: self._get_integrated_structure(value, x0[key]) for key, value in data.items()}
+            elif isinstance(data.function, dict):
+                return {key: self._get_integrated_structure(value, x0[key]) for key, value in data.items()}
 
-        # elif is_custom_class(data):
-        #     # Create a new instance of the same class
-        #     new_obj = type(data)()
-        #     for key, value in vars(data).items():
-        #         setattr(new_obj, key, self._get_integrated_structure(value, getattr(x0, key)))
-        #     return new_obj
+        return self._add_integration_variable(data, x0)
 
-        else:
-            return self._add_integration_variable(data, x0)
-
-    def _add_integration_variable(self, var: "TemporalVar[T]", x0) -> "TemporalVar[T]":
+    def _add_integration_variable(self, var: Union["TemporalVar[T]", T], x0: T) -> "TemporalVar[T]":
         self.feed_vars.append(var)
         integrated_variable = TemporalVar(
             self, lambda t, y, idx=self.dim: y[idx], expression=f"#INTEGRATE {get_expression(var)}")
