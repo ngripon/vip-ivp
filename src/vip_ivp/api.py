@@ -223,10 +223,21 @@ def new_system() -> None:
 AVAILABLE_EXPORT_FILE_FORMATS = ["csv", "json"]
 
 
-def export_file(filename: str, variables: Iterable[TemporalVar] = None, file_format: Literal["csv", "json"] = None):
+def export_to_df(variables: Iterable[TemporalVar] = None) -> pd.DataFrame:
     solver = _get_current_solver()
     if not solver.solved:
         raise Exception("System must be solved before exporting the results. Please call 'vip.solve(t_end)'.")
+    variables_dict = {"Time (s)": solver.t}
+    if variables is None:
+        variable_dict = {**variables_dict, **{key: var.values for key, var in solver.named_vars.items()}}
+    else:
+        variable_dict = {**variables_dict, **{get_expression(var): var.values for var in variables}}
+    variable_dict["Time (s)"] = solver.t
+    return pd.DataFrame(variable_dict)
+
+
+def export_file(filename: str, variables: Iterable[TemporalVar] = None,
+                file_format: Literal["csv", "json"] = None) -> None:
     if file_format is None:
         file_format = Path(filename).suffix.lstrip(".")
     if file_format not in AVAILABLE_EXPORT_FILE_FORMATS:
@@ -234,13 +245,7 @@ def export_file(filename: str, variables: Iterable[TemporalVar] = None, file_for
             f"Unsupported file format: {file_format}. "
             f"The available file formats are {', '.join(AVAILABLE_EXPORT_FILE_FORMATS)}"
         )
-    variables_dict = {"Time (s)": solver.t}
-    if variables is None:
-        variable_dict = {**variables_dict, **{key: var.values for key, var in solver.named_vars.items()}}
-    else:
-        variable_dict = {**variables_dict, **{get_expression(var): var.values for var in variables}}
-    variable_dict["Time (s)"] = solver.t
-    df = pd.DataFrame(variable_dict)
+    df = export_to_df(variables)
     if file_format == "csv":
         df.to_csv(filename, index=False)
     elif file_format == "json":
