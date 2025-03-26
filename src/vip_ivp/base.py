@@ -54,6 +54,7 @@ class Solver:
         self.y = None
         self.solved = False
         self.saved_vars = {}
+        self.named_vars = []
         self.vars_to_plot = {}
 
     def integrate(self, input_value: "TemporalVar[T]", x0: T) -> "TemporalVar[T]":
@@ -977,6 +978,8 @@ def get_expression(value) -> str:
         )
         if found_key is not None:
             value.name = found_key
+            if value not in value.solver.named_vars:
+                value.solver.named_vars.append(value)
             return value.name
         return value.expression
     else:
