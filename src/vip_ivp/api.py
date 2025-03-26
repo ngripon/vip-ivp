@@ -224,6 +224,9 @@ AVAILABLE_EXPORT_FILE_FORMATS = ["csv", "json"]
 
 
 def export_file(filename: str, variables: Iterable[TemporalVar] = None, file_format: Literal["csv", "json"] = None):
+    solver = _get_current_solver()
+    if not solver.solved:
+        raise Exception("System must be solved before exporting the results. Please call 'vip.solve(t_end)'.")
     if file_format is None:
         file_format = Path(filename).suffix.lstrip(".")
     if file_format not in AVAILABLE_EXPORT_FILE_FORMATS:
@@ -231,7 +234,8 @@ def export_file(filename: str, variables: Iterable[TemporalVar] = None, file_for
             f"Unsupported file format: {file_format}. "
             f"The available file formats are {', '.join(AVAILABLE_EXPORT_FILE_FORMATS)}"
         )
-
+    if variables is None:
+        variables = solver.named_vars
 
 
 def clear() -> None:
