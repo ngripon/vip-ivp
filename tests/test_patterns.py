@@ -80,29 +80,21 @@ def test_multidimensional_integration_source():
 
 def test_multidimensional_integration_loop_node():
     dx = vip.loop_node(shape=2)
-    # dx[0].to_plot("Hey unset")
     x = vip.integrate(dx, [1, 2])
     dx.loop_into([-0.5 * x[0], -0.4 * x[1]])
-    # dx[0].to_plot("Hey set")
 
+    dx1 = vip.loop_node()
+    x1 = vip.integrate(dx1, 1.0)
+    dx1.loop_into(-0.5 * x1)
 
-    dx1=vip.loop_node()
-    x1=vip.integrate(dx1,1.0)
-    dx1.loop_into(-0.5*x1)
-
-    dx2=vip.loop_node()
-    x2=vip.integrate(dx2,2.0)
-    dx2.loop_into(-0.4*x2)
-
-    x1.to_plot("x1")
-    x[0].to_plot("x1 multi")
+    dx2 = vip.loop_node()
+    x2 = vip.integrate(dx2, 2.0)
+    dx2.loop_into(-0.4 * x2)
 
     vip.solve(10, time_step=1)
 
-    assert np.array_equal(x[0].values,x1)
-    assert np.array_equal(x[1].values,x2)
-
-
+    assert np.array_equal(x[0].values, x1.values)
+    assert np.array_equal(x[1].values, x2.values)
 
 
 def test_set_loop_node_multiple_times():

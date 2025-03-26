@@ -71,7 +71,11 @@ class Solver:
         if isinstance(data, TemporalVar):
             if isinstance(data.function, np.ndarray):
                 x0 = np.array(x0)
-                return [self._get_integrated_structure(item, x) for item, x in zip(data.function.flat, x0.flat)]
+                if isinstance(data, LoopNode):
+                    return [self._get_integrated_structure(data[idx], x0[idx]) for idx in
+                            np.ndindex(data.function.shape)]
+                else:
+                    return [self._get_integrated_structure(item, x) for item, x in zip(data.function.flat, x0.flat)]
 
             elif isinstance(data.function, dict):
                 return {key: self._get_integrated_structure(value, x0[key]) for key, value in data.function.items()}
@@ -720,7 +724,7 @@ class LoopNode(TemporalVar[T]):
 
     def __getitem__(self, item):
         expression = f"{add_necessary_brackets(get_expression(self))}[{item}]"
-        variable: TemporalVar = TemporalVar(self.solver, lambda t,y:self(t,y)[item], expression)
+        variable: TemporalVar = TemporalVar(self.solver, lambda t, y: self(t, y)[item], expression)
         return variable
 
 
