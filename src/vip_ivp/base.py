@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Callable, Union, TypeVar, Generic
 
 import matplotlib.pyplot as plt
+import numpy as np
 from sliderplot import sliderplot
 import pandas as pd
 from scipy.interpolate import interp1d
@@ -1031,8 +1032,26 @@ class IntegratedVar(TemporalVar[T]):
             return self._y_idx
         raise ValueError("The argument 'y_idx' should be set for IntegratedVar containing a single value.")
 
-    def change_value(self, value) -> EventAction:
-        ...
+    def set_value(self, value: Union[TemporalVar[T], T]) -> EventAction:
+        if not isinstance(value, TemporalVar):
+            value = TemporalVar(self.solver, value)
+
+        def action(t, y):
+            def set_y0(idx, subvalue):
+                if isinstance(idx, np.ndarray):
+                    for arr_idx in np.ndindex(idx.shape):
+                        y_idx = idx[arr_idx]
+                        set_y0(y_idx, value[y_idx])
+                elif isinstance(idx, dict):
+                    for key, idx in idx.items():
+                        y[idx] = value[key]
+                        set_y0(idx, value[key])
+                else:
+                    y[idx] = subvalue(t, y)
+
+            set_y0(self.y_idx, value)
+
+        return action
 
 
 def get_expression(value) -> str:
