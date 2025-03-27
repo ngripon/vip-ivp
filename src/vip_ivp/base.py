@@ -363,8 +363,8 @@ class Solver:
 
         message = MESSAGES.get(status, message)
         if t_events is not None:
-            t_events = np.array([np.asarray(te) for te in t_events])
-            y_events = np.array([np.asarray(ye) for ye in y_events])
+            t_events = [np.asarray(te) for te in t_events]
+            y_events = [np.asarray(ye) for ye in y_events]
 
         if self.t:
             self.t = np.array(self.t)
@@ -911,7 +911,12 @@ class TemporalVar(Generic[T]):
 
     def __getitem__(self, item):
         expression = f"{add_necessary_brackets(get_expression(self))}[{item}]"
-        variable: TemporalVar = TemporalVar(
+        # Ensure that childs of IntegratedVar and LoopNodes are of the same type.
+        if isinstance(self.function[item], TemporalVar):
+            item_cls = type(self.function[item])
+        else:
+            item_cls = TemporalVar
+        variable: TemporalVar = item_cls(
             self.solver, self.function[item], expression
         )
         return variable
