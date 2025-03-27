@@ -126,7 +126,7 @@ def test_differentiate():
     errors = d_n.values - d_n2.values
     assert all(errors[1:] < 0.001)
 
-def test_event1():
+def test_bouncing_projectile():
     # Parameters
     GRAVITY = -9.81
     v0 = 20
