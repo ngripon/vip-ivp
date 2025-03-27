@@ -111,7 +111,7 @@ class Solver:
                 )
             t_eval = np.arange(0, t_end, time_step)
         try:
-            res = self.solve_ivp((0, t_end), self.x0, method=method, t_eval=t_eval, events=self.events, **options)
+            res = self._solve_ivp((0, t_end), self.x0, method=method, t_eval=t_eval, events=self.events, **options)
             if not res.success:
                 raise Exception(res.message)
         except RecursionError:
@@ -211,7 +211,7 @@ class Solver:
             if isinstance(value, TemporalVar) and key not in self.named_vars:
                 self.named_vars[key] = value
 
-    def solve_ivp(
+    def _solve_ivp(
             self,
             t_span,
             y0,
@@ -302,6 +302,7 @@ class Solver:
                         sol, events, active_events, event_count, max_events,
                         t_old, t)
 
+                    # Get the first event, execute its action and relaunch the solver to begin at te.
                     e=root_indices[0]
                     te=roots[0]
                     ye=sol(te)
@@ -1000,6 +1001,10 @@ class LoopNode(TemporalVar[T]):
             self.solver, lambda t, y: self(t, y)[item], expression
         )
         return variable
+
+class IntegratedVar(TemporalVar):
+    def change_value(self,value)->EventAction:
+        ...
 
 
 def get_expression(value) -> str:
