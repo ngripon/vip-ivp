@@ -280,12 +280,6 @@ class Solver:
         while status is None:
             message = solver.step()
 
-            if solver.status == "finished":
-                status = 0
-            elif solver.status == "failed":
-                status = -1
-                break
-
             t_old = solver.t_old
             t = solver.t
             y = solver.y
@@ -308,11 +302,21 @@ class Solver:
                         sol, events, active_events, event_count, max_events,
                         t_old, t)
 
-                    for e, te in zip(root_indices, roots):
-                        t_events[e].append(te)
-                        ye = sol(te)
-                        y_events[e].append(ye)
-                        events[e].execute_action(te, ye)
+                    e=root_indices[0]
+                    te=roots[0]
+                    ye=sol(te)
+                    t_events[e].append(te)
+                    y_events[e].append(ye)
+                    events[e].execute_action(te,ye)
+                    t=te
+                    y=ye
+                    solver = method(self._dy, t, y, tf, vectorized=vectorized, **options)
+
+                    # for e, te in zip(root_indices, roots):
+                    #     t_events[e].append(te)
+                    #     ye = sol(te)
+                    #     y_events[e].append(ye)
+                    #     events[e].execute_action(te, ye)
 
                     if terminate:
                         status = 1
@@ -349,6 +353,12 @@ class Solver:
 
             if t_eval is not None and dense_output:
                 ti.append(t)
+
+            if solver.status == "finished":
+                status = 0
+            elif solver.status == "failed":
+                status = -1
+                break
 
         message = MESSAGES.get(status, message)
         if t_events is not None:
