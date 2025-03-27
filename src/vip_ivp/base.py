@@ -290,13 +290,13 @@ class Solver:
         if events is not None:
             events, max_events, event_dir = prepare_events(events)
             event_count = np.zeros(len(events))
-            if args is not None:
-                # Wrap user functions in lambdas to hide the additional parameters.
-                # The original event function is passed as a keyword argument to the
-                # lambda to keep the original function in scope (i.e., avoid the
-                # late binding closure "gotcha").
-                events = [lambda t, x, event=event: event(t, x, *args)
-                          for event in events]
+            # if args is not None:
+            #     # Wrap user functions in lambdas to hide the additional parameters.
+            #     # The original event function is passed as a keyword argument to the
+            #     # lambda to keep the original function in scope (i.e., avoid the
+            #     # late binding closure "gotcha").
+            #     events = [lambda t, x, event=event: event(t, x, *args)
+            #               for event in events]
             g = [event(t0, y0) for event in events]
             t_events = [[] for _ in range(len(events))]
             y_events = [[] for _ in range(len(events))]
@@ -341,6 +341,7 @@ class Solver:
                     for e, te in zip(root_indices, roots):
                         t_events[e].append(te)
                         y_events[e].append(sol(te))
+                        events[e].execute_action()
 
                     if terminate:
                         status = 1
@@ -1044,3 +1045,7 @@ class Event:
 
     def get_delete_from_simulation_action(self) -> EventAction:
         return lambda: self.solver.events.remove(self)
+
+    def execute_action(self):
+        if self.action is not None:
+            self.action()

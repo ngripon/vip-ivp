@@ -1,4 +1,6 @@
 import inspect
+from typing import TYPE_CHECKING
+
 import numpy as np
 from scipy.integrate._ivp.bdf import BDF
 from scipy.integrate._ivp.radau import Radau
@@ -7,6 +9,9 @@ from scipy.integrate._ivp.lsoda import LSODA
 from scipy.optimize import OptimizeResult
 from scipy.integrate._ivp.common import EPS, OdeSolution
 from scipy.integrate._ivp.base import OdeSolver
+
+if TYPE_CHECKING:
+    from src.vip_ivp.base import Event
 
 METHODS = {'RK23': RK23,
            'RK45': RK45,
@@ -23,7 +28,7 @@ class OdeResult(OptimizeResult):
     pass
 
 
-def prepare_events(events):
+def prepare_events(events) -> ("Event", np.ndarray[int], np.ndarray[float]):
     """Standardize event functions and extract attributes."""
     if callable(events):
         events = (events,)
