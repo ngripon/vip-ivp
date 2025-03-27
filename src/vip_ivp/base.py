@@ -2,7 +2,7 @@ import functools
 import time
 import warnings
 from copy import copy
-from typing import  overload, Literal, TypeAlias
+from typing import overload, Literal, TypeAlias, Type
 from numbers import Number
 from pathlib import Path
 from typing import Callable, Union, TypeVar, Generic
@@ -33,7 +33,7 @@ class Solver:
         self.named_vars = {}
         self.vars_to_plot = {}
 
-    def integrate(self, input_value: "TemporalVar[T]", x0: T) -> "TemporalVar[T]":
+    def integrate(self, input_value: "TemporalVar[T]", x0: T) -> "IntegratedVar[T]":
         """
         Integrate the input value starting from the initial condition x0.
 
@@ -44,7 +44,7 @@ class Solver:
         if isinstance(input_value, (dict, list, np.ndarray)):
             input_value = TemporalVar(self, input_value)
         integrated_structure = self._get_integrated_structure(input_value, x0)
-        integrated_variable = TemporalVar(
+        integrated_variable = IntegratedVar(
             self,
             integrated_structure,
             expression=f"#INTEGRATE {get_expression(input_value)}",
@@ -67,14 +67,13 @@ class Solver:
 
         return self._add_integration_variable(data, x0)
 
-    def _add_integration_variable(
-            self, var: Union["TemporalVar[T]", T], x0: T
-    ) -> "TemporalVar[T]":
+    def _add_integration_variable(self, var: Union["TemporalVar[T]", T], x0: T) -> "IntegratedVar[T]":
         self.feed_vars.append(var)
-        integrated_variable = TemporalVar(
+        integrated_variable = IntegratedVar(
             self,
             lambda t, y, idx=self.dim: y[idx],
-            expression=f"#INTEGRATE {get_expression(var)}",
+            f"#INTEGRATE {get_expression(var)}",
+            self.dim
         )
         self.x0.append(x0)
         self.dim += 1
@@ -303,14 +302,14 @@ class Solver:
                         t_old, t)
 
                     # Get the first event, execute its action and relaunch the solver to begin at te.
-                    e=root_indices[0]
-                    te=roots[0]
-                    ye=sol(te)
+                    e = root_indices[0]
+                    te = roots[0]
+                    ye = sol(te)
                     t_events[e].append(te)
                     y_events[e].append(ye)
-                    events[e].execute_action(te,ye)
-                    t=te
-                    y=ye
+                    events[e].execute_action(te, ye)
+                    t = te
+                    y = ye
                     solver = method(self._dy, t, y, tf, vectorized=vectorized, **options)
 
                     # for e, te in zip(root_indices, roots):
@@ -409,9 +408,13 @@ class TemporalVar(Generic[T]):
                 Callable[[Union[float, np.ndarray], np.ndarray], T], np.ndarray, dict
             ] = None,
             expression: str = None,
+            child_cls=None
     ):
         self.solver = solver
-        if callable(fun) and not isinstance(fun, TemporalVar):
+
+        # Recursive building
+        child_cls = child_cls or type(self)
+        if callable(fun) and not isinstance(fun, child_cls):
             n_args = len(inspect.signature(fun).parameters)
             if n_args == 1:
                 self.function = lambda t, y: fun(t)
@@ -420,13 +423,13 @@ class TemporalVar(Generic[T]):
         elif np.isscalar(fun):
             self.function = lambda t, y: fun if np.isscalar(t) else np.full_like(t, fun)
         elif isinstance(fun, (list, np.ndarray)):
-            self.function = np.vectorize(lambda f: TemporalVar(solver, f))(
+            self.function = np.vectorize(lambda f: child_cls(solver, f))(
                 np.array(fun)
             )
         elif isinstance(fun, TemporalVar):
-            self.function = fun.function
+            vars(self).update(vars(fun))
         elif isinstance(fun, dict):
-            self.function = {key: TemporalVar(solver, val) for key, val in fun.items()}
+            self.function = {key: child_cls(solver, val) for key, val in fun.items()}
         else:
             raise ValueError(f"Unsupported type: {type(fun)}.")
 
@@ -968,7 +971,7 @@ class LoopNode(TemporalVar[T]):
         else:
             initial_value = 0
         self._input_var: TemporalVar = TemporalVar(solver, initial_value)
-        super().__init__(solver, self._input_var, expression="")
+        super().__init__(solver, self._input_var, expression="", child_cls=TemporalVar)
         self._is_set = False
 
     def loop_into(self, value: Union[TemporalVar[T], T], force: bool = False):
@@ -1002,8 +1005,33 @@ class LoopNode(TemporalVar[T]):
         )
         return variable
 
-class IntegratedVar(TemporalVar):
-    def change_value(self,value)->EventAction:
+
+class IntegratedVar(TemporalVar[T]):
+    def __init__(
+            self,
+            solver: "Solver",
+            fun: Union[
+                Callable[[Union[float, np.ndarray], np.ndarray], T], np.ndarray, dict
+            ] = None,
+            expression: str = None,
+            y_idx: int = None
+    ):
+        self._y_idx = y_idx
+        if isinstance(fun, IntegratedVar):
+            self._y_idx = IntegratedVar.y_idx
+        super().__init__(solver, fun, expression)
+
+    @property
+    def y_idx(self):
+        if isinstance(self.function, np.ndarray):
+            return np.vectorize(lambda v: v.y_idx)(self.function)
+        elif isinstance(self.function, dict):
+            return {key: value.y_idx for key, value in self.function.items()}
+        elif self._y_idx is not None:
+            return self._y_idx
+        raise ValueError("The argument 'y_idx' should be set for IntegratedVar containing a single value.")
+
+    def change_value(self, value) -> EventAction:
         ...
 
 
