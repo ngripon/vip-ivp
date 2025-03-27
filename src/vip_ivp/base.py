@@ -346,7 +346,7 @@ class Solver:
                         status = 1
                         t = roots[-1]
                         y = sol(t)
-                        t_eval=None
+                        t_eval = None
 
                 g = g_new
 
@@ -527,7 +527,8 @@ class TemporalVar(Generic[T]):
         return cls(solver, variables)
 
     def on_crossing(self, value: T, action: "EventAction" = None,
-                    direction: Literal["rising", "falling", "both"] = "both", terminal: bool = False) -> "EventAction":
+                    direction: Literal["rising", "falling", "both"] = "both",
+                    terminal: Union[bool, int] = False) -> "EventAction":
         event = Event(self.solver, self - value, action, direction, terminal)
         return event.get_delete_from_simulation_action()
 
@@ -1029,7 +1030,7 @@ class Event:
 
     def __init__(self, solver: Solver, fun: Callable, action: Union[EventAction, None],
                  direction: Literal["rising", "falling", "both"] = "both",
-                 terminal: bool = False):
+                 terminal: Union[bool, int] = False):
         self.solver = solver
         self.function = fun
         self.action = action
