@@ -1,7 +1,8 @@
 import functools
 import time
 import warnings
-from typing import Dict, Any, overload, Literal, TypeAlias
+from copy import copy
+from typing import  overload, Literal, TypeAlias
 from numbers import Number
 from pathlib import Path
 from typing import Callable, Union, TypeVar, Generic
@@ -15,7 +16,7 @@ from .solver_utils import *
 from .utils import add_necessary_brackets, convert_to_string
 
 T = TypeVar("T")
-EventAction: TypeAlias = Callable[[], None]
+EventAction: TypeAlias = Callable[[float, np.ndarray], None]
 
 
 class Solver:
@@ -100,7 +101,7 @@ class Solver:
         """
         self._get_remaining_named_variables()
         # Reinit values
-        [var._reset() for var in self.vars]
+        [var.reset() for var in self.vars]
         start = time.time()
         # Set t_eval
         if time_step is not None:
@@ -110,9 +111,7 @@ class Solver:
                 )
             t_eval = np.arange(0, t_end, time_step)
         try:
-            res = self.solve_ivp(
-                self._dy, (0, t_end), self.x0, method=method, t_eval=t_eval, events=self.events, **options
-            )
+            res = self.solve_ivp((0, t_end), self.x0, method=method, t_eval=t_eval, events=self.events, **options)
             if not res.success:
                 raise Exception(res.message)
         except RecursionError:
@@ -214,7 +213,6 @@ class Solver:
 
     def solve_ivp(
             self,
-            fun,
             t_span,
             y0,
             method="RK45",
@@ -222,7 +220,6 @@ class Solver:
             dense_output=False,
             events=None,
             vectorized=False,
-            args=None,
             **options,
     ):
         if method not in METHODS and not (
@@ -231,26 +228,6 @@ class Solver:
             raise ValueError(f"`method` must be one of {METHODS} or OdeSolver class.")
 
         t0, tf = map(float, t_span)
-
-        if args is not None:
-            # Wrap the user's fun (and jac, if given) in lambdas to hide the
-            # additional parameters.  Pass in the original fun as a keyword
-            # argument to keep it in the scope of the lambda.
-            try:
-                _ = [*(args)]
-            except TypeError as exp:
-                suggestion_tuple = (
-                    "Supplied 'args' cannot be unpacked. Please supply `args`"
-                    f" as a tuple (e.g. `args=({args},)`)"
-                )
-                raise TypeError(suggestion_tuple) from exp
-
-            def fun(t, x, fun=fun):
-                return fun(t, x, *args)
-
-            jac = options.get("jac")
-            if callable(jac):
-                options["jac"] = lambda t, x: jac(t, x, *args)
 
         if t_eval is not None:
             t_eval = np.asarray(t_eval)
@@ -286,17 +263,10 @@ class Solver:
             self.t = []
             self.y = []
 
-        solver = method(fun, t0, y0, tf, vectorized=vectorized, **options)
+        solver = method(self._dy, t0, y0, tf, vectorized=vectorized, **options)
         if events is not None:
             events, max_events, event_dir = prepare_events(events)
             event_count = np.zeros(len(events))
-            # if args is not None:
-            #     # Wrap user functions in lambdas to hide the additional parameters.
-            #     # The original event function is passed as a keyword argument to the
-            #     # lambda to keep the original function in scope (i.e., avoid the
-            #     # late binding closure "gotcha").
-            #     events = [lambda t, x, event=event: event(t, x, *args)
-            #               for event in events]
             g = [event(t0, y0) for event in events]
             t_events = [[] for _ in range(len(events))]
             y_events = [[] for _ in range(len(events))]
@@ -340,8 +310,9 @@ class Solver:
 
                     for e, te in zip(root_indices, roots):
                         t_events[e].append(te)
-                        y_events[e].append(sol(te))
-                        events[e].execute_action()
+                        ye = sol(te)
+                        y_events[e].append(ye)
+                        events[e].execute_action(te, ye)
 
                     if terminate:
                         status = 1
@@ -533,7 +504,17 @@ class TemporalVar(Generic[T]):
         event = Event(self.solver, self - value, action, direction, terminal)
         return event.get_delete_from_simulation_action()
 
-    def _reset(self):
+    def change_behavior(self, value: T) -> EventAction:
+        def change_value(t):
+            time = TemporalVar(self.solver, lambda t: t)
+            new_value = TemporalVar(self.solver, value)
+            new_var = where(self.solver, time < t, copy(self), new_value)
+            self.function = new_var.function
+            self._expression = new_var.expression
+
+        return lambda t, y: change_value(t)
+
+    def reset(self):
         self._values = None
 
     def __call__(self, t: Union[float, np.ndarray], y: np.ndarray) -> T:
@@ -546,6 +527,9 @@ class TemporalVar(Generic[T]):
         elif isinstance(self.function, dict):
             return {key: val(t, y) for key, val in self.function.items()}
         return self.function(t, y)
+
+    def __copy__(self):
+        return TemporalVar(self.solver, self.function, self.expression)
 
     def __add__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
         expression = f"{get_expression(self)} + {get_expression(other)}"
@@ -959,6 +943,13 @@ class TemporalVar(Generic[T]):
             return f"{self._expression}"
 
 
+def where(solver, condition: TemporalVar, a: TemporalVar, b: TemporalVar) -> TemporalVar:
+    return TemporalVar(solver,
+                       lambda t, y: (a(t, y) if condition(t, y) else b(t, y)) if np.isscalar(t) else np.where(
+                           condition(t, y), a(t, y), b(t, y)),
+                       expression=f"({get_expression(a)} if {get_expression(condition)} else {get_expression(b)})")
+
+
 class LoopNode(TemporalVar[T]):
     def __init__(self, solver: "Solver", shape: Union[int, tuple[int, ...]] = None):
         if shape is not None:
@@ -1044,8 +1035,8 @@ class Event:
         return self.function(t, y)
 
     def get_delete_from_simulation_action(self) -> EventAction:
-        return lambda: self.solver.events.remove(self)
+        return lambda t, y: self.solver.events.remove(self)
 
-    def execute_action(self):
+    def execute_action(self, t, y):
         if self.action is not None:
-            self.action()
+            self.action(t, y)

@@ -108,10 +108,7 @@ def where(condition, a, b) -> TemporalVar:
     condition = _convert_to_temporal_var(condition)
     a = _convert_to_temporal_var(a)
     b = _convert_to_temporal_var(b)
-    return TemporalVar(solver,
-                       lambda t, y: (a(t, y) if condition(t, y) else b(t, y)) if np.isscalar(t) else np.where(
-                           condition(t, y), a(t, y), b(t, y)),
-                       expression=f"({get_expression(a)} if {get_expression(condition)} else {get_expression(b)})")
+    return base.where(solver, condition, a, b)
 
 
 def delay(input_value: TemporalVar[T], n_steps: int, initial_value: T = 0) -> TemporalVar[T]:
