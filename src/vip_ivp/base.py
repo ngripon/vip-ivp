@@ -523,6 +523,7 @@ class TemporalVar(Generic[T]):
     def on_crossing(self, value: T, action: "EventAction" = None,
                     direction: Literal["rising", "falling", "both"] = "both",
                     terminal: Union[bool, int] = False) -> "EventAction":
+
         event = Event(self.solver, self - value, action, direction, terminal)
         return event.get_delete_from_simulation_action()
 

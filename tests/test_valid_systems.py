@@ -163,3 +163,17 @@ def test_bouncing_projectile():
     )
 
     vip.solve(20, time_step=0.1)
+
+
+def test_boolean_crossing_event():
+    a=vip.create_source(lambda t:t)
+    cond=a<5
+    cond2=a<3
+    test=cond2-cond
+
+    # cond.on_crossing(True,terminal=True)
+
+    a.to_plot("A")
+    test.to_plot("Condition")
+    vip.solve(10)
+    print(cond.t)
