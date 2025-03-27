@@ -162,6 +162,4 @@ def test_bouncing_projectile():
         terminal=True
     )
 
-    stopped.to_plot("Hey")
-
     vip.solve(20, time_step=0.1)

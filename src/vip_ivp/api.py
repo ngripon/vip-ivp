@@ -180,10 +180,11 @@ def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
 
 
 def solve(t_end: Number, time_step: Number = None, method='RK45', t_eval: Union[List, np.ndarray] = None,
-          **options) -> None:
+          include_events_times: bool = True, **options) -> None:
     """
     Solve the equations of the dynamical system through an integration scheme.
 
+    :param include_events_times: If true, include time points at which events are triggered.
     :param t_end: Time at which the integration stops.
     :param method: Integration method to use. Default is 'RK45'.
     :param time_step: Time step for the integration. If None, use points selected by the solver.
@@ -191,7 +192,7 @@ def solve(t_end: Number, time_step: Number = None, method='RK45', t_eval: Union[
     :param options: Additional options for the solver.
     """
     solver = _get_current_solver()
-    solver.solve(t_end, method, time_step, t_eval, **options)
+    solver.solve(t_end, method, time_step, t_eval, include_events_times=include_events_times, **options)
 
 
 def explore(fun: Callable[..., T], t_end: Number, bounds=(), time_step: float = None, title: str = "") -> None:

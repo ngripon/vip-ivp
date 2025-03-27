@@ -86,6 +86,7 @@ class Solver:
             method="RK45",
             time_step=None,
             t_eval=None,
+            include_events_times: bool = True,
             plot: bool = True,
             **options,
     ) -> None:
@@ -111,7 +112,8 @@ class Solver:
                 )
             t_eval = np.arange(0, t_end, time_step)
         try:
-            res = self._solve_ivp((0, t_end), self.x0, method=method, t_eval=t_eval, events=self.events, **options)
+            res = self._solve_ivp((0, t_end), self.x0, method=method, t_eval=t_eval, events=self.events,
+                                  include_events_times=include_events_times, **options)
             if not res.success:
                 raise Exception(res.message)
         except RecursionError:
@@ -220,6 +222,7 @@ class Solver:
             dense_output=False,
             events=None,
             vectorized=False,
+            include_events_times=True,
             **options,
     ):
         if method not in METHODS and not (
@@ -324,7 +327,6 @@ class Solver:
                         status = 1
                         t = roots[-1]
                         y = sol(t)
-                        t_eval = None
 
                 g = g_new
 
@@ -352,6 +354,10 @@ class Solver:
                     else:
                         self.y.extend([0] * len(t_eval_step))
                     t_eval_i = t_eval_i_new
+                if events is not None and include_events_times:
+                    if active_events.size > 0:
+                        self.t.append(te)
+                        self.y.append(ye)
 
             if t_eval is not None and dense_output:
                 ti.append(t)
