@@ -346,6 +346,7 @@ class Solver:
                         status = 1
                         t = roots[-1]
                         y = sol(t)
+                        t_eval=None
 
                 g = g_new
 
@@ -381,10 +382,6 @@ class Solver:
         if t_events is not None:
             t_events = np.array([np.asarray(te) for te in t_events])
             y_events = np.array([np.asarray(ye) for ye in y_events])
-            if len(t_events):
-                min_t_idx = np.unravel_index(np.argmin(t_events), t_events.shape)
-                self.t.append(t_events[min_t_idx])
-                self.y.append(y_events[min_t_idx])
 
         if self.t:
             self.t = np.array(self.t)
