@@ -528,8 +528,9 @@ class TemporalVar(Generic[T]):
             variables[col] = fun
         return cls(solver, variables)
 
-    def on_crossing(self, value: T, action=None, direction: Literal["rising", "falling", "both"] = "both") -> None:
+    def on_crossing(self, value: T, action=None, direction: Literal["rising", "falling", "both"] = "both") -> Callable:
         event = Event(self.solver, self - value, direction)
+        return event.delete_from_simulation
 
     def _reset(self):
         self._values = None
@@ -1032,10 +1033,13 @@ class Event:
         self.solver = solver
         self.function = fun
         self.end_simulation = end_simulation
-        self.terminal=True # This is required by scipy for the moment
+        self.terminal = True  # This is required by scipy for the moment
         self.direction = self.DIRECTION_MAP[direction]
 
         self.solver.events.append(self)
 
     def __call__(self, t, y) -> float:
         return self.function(t, y)
+
+    def delete_from_simulation(self):
+        self.solver.events.remove(self)
