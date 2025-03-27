@@ -79,7 +79,7 @@ def create_scenario(scenario_table: Union[pd.DataFrame, str, dict], time_key: st
         raise ValueError("Unsupported input type")
 
 
-def integrate(input_value: Union[TemporalVar[T], T], x0: T) -> TemporalVar[T]:
+def integrate(input_value: Union[TemporalVar[T], T], x0: T) -> IntegratedVar:
     """
     Integrate the input value starting from the initial condition x0.
 
@@ -108,10 +108,7 @@ def where(condition, a, b) -> TemporalVar:
     condition = _convert_to_temporal_var(condition)
     a = _convert_to_temporal_var(a)
     b = _convert_to_temporal_var(b)
-    return TemporalVar(solver,
-                       lambda t, y: (a(t, y) if condition(t, y) else b(t, y)) if np.isscalar(t) else np.where(
-                           condition(t, y), a(t, y), b(t, y)),
-                       expression=f"({get_expression(a)} if {get_expression(condition)} else {get_expression(b)})")
+    return base.where(solver, condition, a, b)
 
 
 def delay(input_value: TemporalVar[T], n_steps: int, initial_value: T = 0) -> TemporalVar[T]:
@@ -183,10 +180,11 @@ def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
 
 
 def solve(t_end: Number, time_step: Number = None, method='RK45', t_eval: Union[List, np.ndarray] = None,
-          **options) -> None:
+          include_events_times: bool = True, **options) -> None:
     """
     Solve the equations of the dynamical system through an integration scheme.
 
+    :param include_events_times: If true, include time points at which events are triggered.
     :param t_end: Time at which the integration stops.
     :param method: Integration method to use. Default is 'RK45'.
     :param time_step: Time step for the integration. If None, use points selected by the solver.
@@ -194,7 +192,7 @@ def solve(t_end: Number, time_step: Number = None, method='RK45', t_eval: Union[
     :param options: Additional options for the solver.
     """
     solver = _get_current_solver()
-    solver.solve(t_end, method, time_step, t_eval, **options)
+    solver.solve(t_end, method, time_step, t_eval, include_events_times=include_events_times, **options)
 
 
 def explore(fun: Callable[..., T], t_end: Number, bounds=(), time_step: float = None, title: str = "") -> None:
