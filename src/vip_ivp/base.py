@@ -530,8 +530,8 @@ class TemporalVar(Generic[T]):
         return cls(solver, variables)
 
     def on_crossing(self, value: T, action: "EventAction" = None,
-                    direction: Literal["rising", "falling", "both"] = "both") -> "EventAction":
-        event = Event(self.solver, self - value, direction)
+                    direction: Literal["rising", "falling", "both"] = "both", terminal: bool = False) -> "EventAction":
+        event = Event(self.solver, self - value, action, direction, terminal)
         return event.get_delete_from_simulation_action()
 
     def _reset(self):
@@ -1030,12 +1030,13 @@ def get_expression(value) -> str:
 class Event:
     DIRECTION_MAP = {"rising": 1, "falling": -1, "both": 0}
 
-    def __init__(self, solver: Solver, fun: Callable, direction: Literal["rising", "falling", "both"] = "both",
-                 end_simulation: bool = False):
+    def __init__(self, solver: Solver, fun: Callable, action: Union[EventAction, None],
+                 direction: Literal["rising", "falling", "both"] = "both",
+                 terminal: bool = False):
         self.solver = solver
         self.function = fun
-        self.end_simulation = end_simulation
-        self.terminal = True  # This is required by scipy for the moment
+        self.action = action
+        self.terminal = terminal
         self.direction = self.DIRECTION_MAP[direction]
 
         self.solver.events.append(self)
@@ -1045,4 +1046,3 @@ class Event:
 
     def get_delete_from_simulation_action(self) -> EventAction:
         return lambda: self.solver.events.remove(self)
-
