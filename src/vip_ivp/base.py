@@ -311,6 +311,7 @@ class Solver:
                     events[e].execute_action(te, ye)
                     t = te
                     y = ye
+                    g_new = [event(t, y) for event in events]
                     solver = method(self._dy, t, y, tf, vectorized=vectorized, **options)
 
                     # for e, te in zip(root_indices, roots):
@@ -1057,6 +1058,13 @@ class IntegratedVar(TemporalVar[T]):
             set_y0(self.y_idx, value)
 
         return action
+
+    def change_behavior(self, value: T) -> EventAction:
+        raise NotImplementedError(
+            "This method is irrelevant for an integrated variable. "
+            "If you want really want to change the behavior of an integrated variable, create a new variable by doing "
+            "'new_var = 1*integrated_variable'."
+        )
 
 
 def get_expression(value) -> str:
