@@ -1,7 +1,7 @@
 import functools
 import time
 import warnings
-from typing import Dict, Any, overload, Literal
+from typing import Dict, Any, overload, Literal, TypeAlias
 from numbers import Number
 from pathlib import Path
 from typing import Callable, Union, TypeVar, Generic
@@ -15,6 +15,7 @@ from .solver_utils import *
 from .utils import add_necessary_brackets, convert_to_string
 
 T = TypeVar("T")
+EventAction: TypeAlias = Callable[[], None]
 
 
 class Solver:
@@ -1042,13 +1043,6 @@ class Event:
     def __call__(self, t, y) -> float:
         return self.function(t, y)
 
-    def get_delete_from_simulation_action(self) -> "EventAction":
-        return EventAction(lambda: self.solver.events.remove(self))
+    def get_delete_from_simulation_action(self) -> EventAction:
+        return lambda: self.solver.events.remove(self)
 
-
-class EventAction:
-    def __init__(self, fun: Callable):
-        self.function = fun
-
-    def __call__(self, *args, **kwargs):
-        self.function(*args, **kwargs)
