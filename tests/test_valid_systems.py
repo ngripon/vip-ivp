@@ -174,6 +174,7 @@ def test_float_crossing_event():
     vip.solve(10, time_step=1)
     print(a.values)
     print(a.t)
+    assert len(a.t)==6
     assert a.values[-1]==5
 
 
@@ -186,3 +187,5 @@ def test_boolean_crossing_event():
     vip.solve(10, time_step=1)
     print(cond.values)
     print(cond.t)
+    assert len(a.t)==6
+    assert a.values[-1]==True
