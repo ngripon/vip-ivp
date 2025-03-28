@@ -180,7 +180,7 @@ def test_float_crossing_event():
 
 def test_boolean_crossing_event():
     a = vip.create_source(lambda t: t)
-    cond = a > 5
+    cond = a >= 5
 
     cond.on_crossing(True, terminal=True)
 
@@ -188,4 +188,4 @@ def test_boolean_crossing_event():
     print(cond.values)
     print(cond.t)
     assert len(a.t)==6
-    assert a.values[-1]==True
+    assert cond.values[-1]==True

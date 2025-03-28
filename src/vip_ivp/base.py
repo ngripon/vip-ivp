@@ -303,7 +303,7 @@ class Solver:
                     event_count[active_events] += 1
                     root_indices, roots, terminate = handle_events(
                         sol, events, active_events, event_count, max_events,
-                        t_old, t)
+                        t_old, t, t_eval)
 
                     # Get the first event, execute its action and relaunch the solver to begin at te.
                     e = root_indices[0]
@@ -355,7 +355,7 @@ class Solver:
                         self.y.extend([0] * len(t_eval_step))
                     t_eval_i = t_eval_i_new
                 if events is not None and include_events_times:
-                    if active_events.size > 0 and status!=1:
+                    if active_events.size > 0 and status != 1:
                         self.t.append(te)
                         self.y.append(ye)
 
@@ -528,8 +528,8 @@ class TemporalVar(Generic[T]):
     def on_crossing(self, value: T, action: "EventAction" = None,
                     direction: Literal["rising", "falling", "both"] = "both",
                     terminal: Union[bool, int] = False) -> "EventAction":
-        if self.output_type in (bool, np.bool):
-            crossed_variable = where(self.solver, self, 1, 0) - where(self.solver, value, 1, 0)
+        if self.output_type in (bool, np.bool, str):
+            crossed_variable = self == value
         else:
             crossed_variable = self - value
         event = Event(self.solver, crossed_variable, action, direction, terminal)
@@ -1121,11 +1121,11 @@ def get_expression(value) -> str:
 class Event:
     DIRECTION_MAP = {"rising": 1, "falling": -1, "both": 0}
 
-    def __init__(self, solver: Solver, fun: Callable, action: Union[EventAction, None],
+    def __init__(self, solver: Solver, fun, action: Union[EventAction, None],
                  direction: Literal["rising", "falling", "both"] = "both",
                  terminal: Union[bool, int] = False):
         self.solver = solver
-        self.function = fun
+        self.function: TemporalVar = convert_args_to_temporal_var(self.solver, [fun])[0]
         self.action = action
         self.terminal = terminal
         self.direction = self.DIRECTION_MAP[direction]

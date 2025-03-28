@@ -51,7 +51,7 @@ def prepare_events(events) -> ("Event", np.ndarray[int], np.ndarray[float]):
     return events, max_events, direction
 
 
-def solve_event_equation(event, sol, t_old, t):
+def solve_event_equation(event, sol, t_old, t, is_discrete: bool = False, t_eval: float = None):
     """Solve an equation corresponding to an ODE event.
 
     The equation is ``event(t, y(t)) = 0``, here ``y(t)`` is known from an
@@ -75,12 +75,26 @@ def solve_event_equation(event, sol, t_old, t):
         Found solution.
     """
     from scipy.optimize import brentq
-    return brentq(lambda t: event(t, sol(t)), t_old, t,
-                  xtol=4 * EPS, rtol=4 * EPS)
+    if is_discrete:
+        if t_eval is None:
+            return t
+        else:
+            t_eval_i_new = np.searchsorted(t_eval, t, side="right")
+            t_eval_step = t_eval[:t_eval_i_new]
+            t_eval_step = t_eval_step[t_eval_step > t_old]
+            initial_state = event(t_old,sol(t_old))
+            return next(t for t in t_eval_step if event(t,sol(t)) != initial_state)
+    else:
+        return brentq(lambda t: event(t, sol(t)), t_old, t,
+                      xtol=4 * EPS, rtol=4 * EPS)
+
+
+def is_discrete(event: "Event") -> bool:
+    return event.function.output_type in (str, bool, np.bool)
 
 
 def handle_events(sol, events, active_events, event_count, max_events,
-                  t_old, t):
+                  t_old, t, t_eval):
     """Helper function to handle events.
 
     Parameters
@@ -110,7 +124,7 @@ def handle_events(sol, events, active_events, event_count, max_events,
     terminate : bool
         Whether a terminal event occurred.
     """
-    roots = [solve_event_equation(events[event_index], sol, t_old, t)
+    roots = [solve_event_equation(events[event_index], sol, t_old, t, is_discrete(events[event_index]), t_eval)
              for event_index in active_events]
 
     roots = np.asarray(roots)
