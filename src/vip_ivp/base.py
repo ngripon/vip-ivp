@@ -430,7 +430,7 @@ class TemporalVar(Generic[T]):
                 self.function = lambda t, y: fun(t, y)
             self.output_type = type(self.function(0, solver.x0))
         elif np.isscalar(fun):
-            self.function = lambda t, y: fun if np.isscalar(t) else np.full_like(t, fun)
+            self.function = lambda t, y: fun if np.isscalar(t) else np.full(t.shape, fun)
             self.output_type = type(fun)
         elif isinstance(fun, (list, np.ndarray)):
             self.output_type = np.ndarray

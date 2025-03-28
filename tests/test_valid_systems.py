@@ -189,3 +189,15 @@ def test_boolean_crossing_event():
     print(cond.t)
     assert len(a.t)==6
     assert cond.values[-1]==True
+
+def test_string_crossing_event():
+    a = vip.create_source(lambda t: t)
+    string = vip.where(a>=5, "A", "B")
+
+    string.on_crossing("A", terminal=True)
+
+    vip.solve(10, time_step=1)
+    print(string.values)
+    print(string.t)
+    assert len(a.t)==6
+    assert string.values[-1]=="A"
