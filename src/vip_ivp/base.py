@@ -70,13 +70,13 @@ class Solver:
 
     def _add_integration_variable(self, var: Union["TemporalVar[T]", T], x0: T) -> "IntegratedVar[T]":
         self.feed_vars.append(var)
+        self.x0.append(x0)
         integrated_variable = IntegratedVar(
             self,
             lambda t, y, idx=self.dim: y[idx],
             f"#INTEGRATE {get_expression(var)}",
             self.dim
         )
-        self.x0.append(x0)
         self.dim += 1
         return integrated_variable
 
@@ -428,15 +428,20 @@ class TemporalVar(Generic[T]):
                 self.function = lambda t, y: fun(t)
             else:
                 self.function = lambda t, y: fun(t, y)
+            self.output_type = type(self.function(0, solver.x0))
         elif np.isscalar(fun):
             self.function = lambda t, y: fun if np.isscalar(t) else np.full_like(t, fun)
+            self.output_type = type(fun)
         elif isinstance(fun, (list, np.ndarray)):
+            self.output_type = np.ndarray
             self.function = np.vectorize(lambda f: child_cls(solver, f))(
                 np.array(fun)
             )
         elif isinstance(fun, TemporalVar):
+            self.output_type = fun.output_type
             vars(self).update(vars(fun))
         elif isinstance(fun, dict):
+            self.output_type = dict
             self.function = {key: child_cls(solver, val) for key, val in fun.items()}
         else:
             raise ValueError(f"Unsupported type: {type(fun)}.")
@@ -523,8 +528,11 @@ class TemporalVar(Generic[T]):
     def on_crossing(self, value: T, action: "EventAction" = None,
                     direction: Literal["rising", "falling", "both"] = "both",
                     terminal: Union[bool, int] = False) -> "EventAction":
-
-        event = Event(self.solver, self - value, action, direction, terminal)
+        if self.output_type in (bool, np.bool):
+            crossed_variable = where(self.solver, self, 1, 0) - where(self.solver, value, 1, 0)
+        else:
+            crossed_variable = self - value
+        event = Event(self.solver, crossed_variable, action, direction, terminal)
         return event.get_delete_from_simulation_action()
 
     def change_behavior(self, value: T) -> EventAction:
