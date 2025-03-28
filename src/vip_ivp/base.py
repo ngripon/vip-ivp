@@ -2,7 +2,7 @@ import functools
 import time
 import warnings
 from copy import copy
-from typing import overload, Literal, TypeAlias, Type
+from typing import overload, Literal, TypeAlias, Type, ParamSpec
 from numbers import Number
 from pathlib import Path
 from typing import Callable, Union, TypeVar, Generic
@@ -979,7 +979,17 @@ class TemporalVar(Generic[T]):
             return f"{self._expression}"
 
 
-def where(solver, condition: TemporalVar, a: TemporalVar, b: TemporalVar) -> TemporalVar:
+def convert_to_temporal_var(solver: Solver, arg: T) -> TemporalVar[T]:
+    if not isinstance(arg, TemporalVar):
+        arg = TemporalVar(solver, arg)
+    return arg
+
+
+def where(solver, condition: TemporalVar[bool], a: Union[T, TemporalVar[T]], b: Union[T, TemporalVar[T]]) -> \
+        TemporalVar[T]:
+    condition = convert_to_temporal_var(solver, condition)
+    a = convert_to_temporal_var(solver, a)
+    b = convert_to_temporal_var(solver, b)
     return TemporalVar(solver,
                        lambda t, y: (a(t, y) if condition(t, y) else b(t, y)) if np.isscalar(t) else np.where(
                            condition(t, y), a(t, y), b(t, y)),
