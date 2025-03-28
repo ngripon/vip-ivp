@@ -82,8 +82,10 @@ def solve_event_equation(event, sol, t_old, t, is_discrete: bool = False, t_eval
             t_eval_i_new = np.searchsorted(t_eval, t, side="right")
             t_eval_step = t_eval[:t_eval_i_new]
             t_eval_step = t_eval_step[t_eval_step > t_old]
-            initial_state = event(t_old,sol(t_old))
-            return next(t for t in t_eval_step if event(t,sol(t)) != initial_state)
+            initial_state = event(t_old, sol(t_old))
+            new_state = event(t, sol(t))
+            assert initial_state != new_state
+            return next((t for t in t_eval_step if event(t, sol(t)) != initial_state), t)
     else:
         return brentq(lambda t: event(t, sol(t)), t_old, t,
                       xtol=4 * EPS, rtol=4 * EPS)
@@ -162,6 +164,10 @@ def find_active_events(g, g_new, direction):
     active_events : ndarray
         Indices of events which occurred during the step.
     """
+    # replace False values by -1 because False being equal 0 breaks the 0 crossing detection.
+    g = [x if not isinstance(x, (bool, np.bool)) or x == True else -1 for x in g]
+    g_new = [x if not isinstance(x, (bool, np.bool)) or x == True else -1 for x in g_new]
+
     g, g_new = np.asarray(g), np.asarray(g_new)
     up = (g <= 0) & (g_new >= 0)
     down = (g >= 0) & (g_new <= 0)
