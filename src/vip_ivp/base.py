@@ -27,7 +27,7 @@ class Solver:
         self.feed_vars = []
         self.x0 = []
         self.events = []
-        self.t = None
+        self.t = []
         self.y = None
         self.solved = False
         self.saved_vars = {}
