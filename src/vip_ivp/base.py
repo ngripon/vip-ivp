@@ -1,6 +1,7 @@
 import functools
 import time
 import warnings
+from collections import abc
 from copy import copy
 from typing import overload, Literal, TypeAlias, Type, ParamSpec, List, Iterable
 from numbers import Number
@@ -530,6 +531,10 @@ class TemporalVar(Generic[T]):
                     terminal: Union[bool, int] = False) -> "EventAction":
         if self.output_type in (bool, np.bool, str):
             crossed_variable = self == value
+        elif issubclass(self.output_type, abc.Iterable):
+            raise ValueError(
+                "Can not apply crossing detection to a variable containing a collection of values because it is ambiguous."
+            )
         else:
             crossed_variable = self - value
         event = Event(self.solver, crossed_variable, action, direction, terminal)
