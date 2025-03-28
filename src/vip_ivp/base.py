@@ -355,7 +355,7 @@ class Solver:
                         self.y.extend([0] * len(t_eval_step))
                     t_eval_i = t_eval_i_new
                 if events is not None and include_events_times:
-                    if active_events.size > 0:
+                    if active_events.size > 0 and status!=1:
                         self.t.append(te)
                         self.y.append(ye)
 

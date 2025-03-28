@@ -126,6 +126,7 @@ def test_differentiate():
     errors = d_n.values - d_n2.values
     assert all(errors[1:] < 0.001)
 
+
 def test_bouncing_projectile():
     # Parameters
     GRAVITY = -9.81
@@ -165,15 +166,23 @@ def test_bouncing_projectile():
     vip.solve(20, time_step=0.1)
 
 
+def test_float_crossing_event():
+    a = vip.create_source(lambda t: t)
+
+    a.on_crossing(5, terminal=True)
+
+    vip.solve(10, time_step=1)
+    print(a.values)
+    print(a.t)
+    assert a.values[-1]==5
+
+
 def test_boolean_crossing_event():
-    a=vip.create_source(lambda t:t)
-    cond=a<5
-    cond2=a<3
-    test=cond2-cond
+    a = vip.create_source(lambda t: t)
+    cond = a > 5
 
-    # cond.on_crossing(True,terminal=True)
+    cond.on_crossing(True, terminal=True)
 
-    a.to_plot("A")
-    test.to_plot("Condition")
-    vip.solve(10)
+    vip.solve(10, time_step=1)
+    print(cond.values)
     print(cond.t)
