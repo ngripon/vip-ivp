@@ -24,9 +24,12 @@ EventAction: TypeAlias = Callable[[float, np.ndarray], None]
 class Solver:
     def __init__(self):
         self.dim = 0
-        self.vars = []
-        self.feed_vars = []
-        self.x0 = []
+        self.vars: List[TemporalVar] = []
+        # All the scalars variables that are an input of an integrate function
+        self.feed_vars: List[TemporalVar] = []
+        # All the scalars variables that are an output of an integrate function
+        self.integrated_vars: List[IntegratedVar] = []
+
         self.max = []
         self.min = []
         self.events = []
@@ -53,7 +56,8 @@ class Solver:
         integrated_variable = IntegratedVar(
             self,
             integrated_structure,
-            expression=f"#INTEGRATE {get_expression(input_value)}",
+            f"#INTEGRATE {get_expression(input_value)}",
+            x0
         )
         return integrated_variable
 
@@ -83,7 +87,6 @@ class Solver:
 
     def _add_integration_variable(self, var: Union["TemporalVar[T]", T], x0: T, max: T, min: T) -> "IntegratedVar[T]":
         self.feed_vars.append(var)
-        self.x0.append(x0)
         # Manage min and max
         if max is None:
             max = np.inf
@@ -103,8 +106,10 @@ class Solver:
             self,
             lambda t, y, idx=self.dim: y[idx],
             f"#INTEGRATE {get_expression(var)}",
-            self.dim
+            x0,
+            self.dim,
         )
+        self.integrated_vars.append(integrated_variable)
         self.dim += 1
         return integrated_variable
 
@@ -158,6 +163,10 @@ class Solver:
         self.solved = True
         if plot:
             self.plot()
+
+    @property
+    def x0(self):
+        return np.array([v.x0 for v in self.integrated_vars])
 
     def plot(self):
         """
@@ -461,7 +470,7 @@ class TemporalVar(Generic[T]):
             child_cls=None
     ):
         self.solver = solver
-
+        self._output_type = None
         # Recursive building
         child_cls = child_cls or type(self)
         if callable(fun) and not isinstance(fun, child_cls):
@@ -470,20 +479,18 @@ class TemporalVar(Generic[T]):
                 self.function = lambda t, y: fun(t)
             else:
                 self.function = lambda t, y: fun(t, y)
-            self.output_type = type(self.function(0, solver.x0))
         elif np.isscalar(fun):
             self.function = lambda t, y: fun if np.isscalar(t) else np.full(t.shape, fun)
-            self.output_type = type(fun)
+            self._output_type = type(fun)
         elif isinstance(fun, (list, np.ndarray)):
-            self.output_type = np.ndarray
+            self._output_type = np.ndarray
             self.function = np.vectorize(lambda f: child_cls(solver, f))(
                 np.array(fun)
             )
         elif isinstance(fun, TemporalVar):
-            self.output_type = fun.output_type
             vars(self).update(vars(fun))
         elif isinstance(fun, dict):
-            self.output_type = dict
+            self._output_type = dict
             self.function = {key: child_cls(solver, val) for key, val in fun.items()}
         else:
             raise ValueError(f"Unsupported type: {type(fun)}.")
@@ -514,7 +521,13 @@ class TemporalVar(Generic[T]):
                 "The differential system has not been solved. "
                 "Call the solve() method before inquiring the time variable."
             )
-        return self.solver.t
+        return np.asarray(self.solver.t)
+
+    @property
+    def output_type(self):
+        if self._output_type is None:
+            self._output_type = type(self(0, self.solver.x0))
+        return self._output_type
 
     def save(self, name: str) -> None:
         """
@@ -1093,8 +1106,10 @@ class IntegratedVar(TemporalVar[T]):
                 Callable[[Union[float, np.ndarray], np.ndarray], T], np.ndarray, dict
             ] = None,
             expression: str = None,
+            x0: T = None,
             y_idx: int = None
     ):
+        self.x0 = x0
         self._y_idx = y_idx
         if isinstance(fun, IntegratedVar):
             self._y_idx = IntegratedVar.y_idx
