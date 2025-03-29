@@ -246,3 +246,20 @@ def test_bounded_integration_by_constant():
     assert ia_inc.values[0] == 2
     assert ia_dec.values[0] == 5
     assert ia_dec.values[-1] == 2
+
+
+def test_bounded_integration_by_variable():
+    a = vip.create_source(1)
+    signal=vip.create_source(lambda t:6-t)
+    ia_inc = vip.integrate(a, 0, max=signal)
+    ia_dec = vip.integrate(-a, 0, min=-signal)
+
+    ia_inc.to_plot("Integral")
+    ia_dec.to_plot("Decreasing integral")
+
+    vip.solve(10, time_step=1)
+
+    assert ia_inc.values[3] == 3
+    assert ia_inc.values[-1] == -3
+    assert ia_dec.values[3] == -3
+    assert ia_dec.values[-1] == 3

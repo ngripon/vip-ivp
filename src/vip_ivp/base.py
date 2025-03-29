@@ -82,23 +82,23 @@ class Solver:
         return self._add_integration_variable(data, x0, max, min)
 
     def _add_integration_variable(self, var: Union["TemporalVar[T]", T], x0: T, max: T, min: T) -> "IntegratedVar[T]":
+        self.feed_vars.append(var)
+        self.x0.append(x0)
         # Manage min and max
         if max is None:
             max = np.inf
         if min is None:
             min = -np.inf
-        if min > max:
-            raise ValueError(f"Min value {min} is strictly greater than max value {max}.")
-        if not min <= x0 <= max:
+        max = TemporalVar(self, max)
+        min = TemporalVar(self, min)
+        if not min(0, self.x0) <= x0 <= max(0, self.x0):
             warnings.warn(
                 f"x0 value {x0} is outside the range of [min, max] = [{min}, {max}]. It will be constrained during the solving."
             )
 
         # Add integration value
-        self.feed_vars.append(var)
-        self.x0.append(x0)
-        self.max.append(TemporalVar(self, max))
-        self.min.append(TemporalVar(self, min))
+        self.max.append(max)
+        self.min.append(min)
         integrated_variable = IntegratedVar(
             self,
             lambda t, y, idx=self.dim: y[idx],
@@ -440,6 +440,8 @@ class Solver:
     def _bound_sol(self, t, y: np.ndarray):
         max_bounds = np.array([x(t, y) for x in self.max])
         min_bounds = np.array([x(t, y) for x in self.min])
+        if np.any(min_bounds>max_bounds):
+            raise Exception(f"Minimum bound is greater than maxium bound a time {t} s.")
         y_bounded_max = np.where(y < max_bounds, y, max_bounds)
         y_bounded = np.where(y_bounded_max > min_bounds, y_bounded_max, min_bounds)
         return y_bounded
