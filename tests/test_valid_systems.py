@@ -48,7 +48,7 @@ def test_loop():
 def test_integrate_scalar():
     x = vip.integrate(5, 1)
     vip.solve(10, time_step=1)
-    assert np.allclose(x.values, np.linspace(1, 46, 10))
+    assert np.allclose(x.values, np.linspace(1, 51, 11))
 
 
 def test_system_without_integration():
