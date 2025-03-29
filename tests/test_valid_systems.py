@@ -126,6 +126,7 @@ def test_differentiate():
     errors = d_n.values - d_n2.values
     assert all(errors[1:] < 0.001)
 
+
 def test_bouncing_projectile():
     # Parameters
     GRAVITY = -9.81
@@ -165,15 +166,79 @@ def test_bouncing_projectile():
     vip.solve(20, time_step=0.1)
 
 
+def test_float_crossing_event():
+    a = vip.create_source(lambda t: t)
+
+    a.on_crossing(5, terminal=True)
+
+    vip.solve(10, time_step=1)
+    print(a.values)
+    print(a.t)
+    assert len(a.t) == 6
+    assert a.values[-1] == 5
+
+
 def test_boolean_crossing_event():
-    a=vip.create_source(lambda t:t)
-    cond=a<5
-    cond2=a<3
-    test=cond2-cond
+    a = vip.create_source(lambda t: t)
+    cond = a >= 5
 
-    # cond.on_crossing(True,terminal=True)
+    cond.on_crossing(True, terminal=True)
 
-    a.to_plot("A")
-    test.to_plot("Condition")
-    vip.solve(10)
+    vip.solve(10, time_step=1)
+    print(cond.values)
     print(cond.t)
+    assert len(a.t) == 6
+    assert cond.values[-1] == True
+
+
+def test_string_crossing_event():
+    a = vip.create_source(lambda t: t)
+    string = vip.where(a >= 5, "A", "B")
+
+    string.on_crossing("A", terminal=True)
+
+    vip.solve(10, time_step=1)
+    print(string.values)
+    print(string.t)
+    assert len(a.t) == 6
+    assert string.values[-1] == "A"
+
+
+def test_bouncing_projectile_motion():
+    # Parameters
+    GRAVITY = -9.81
+    v0 = 20
+    th0 = np.radians(45)
+    mu = 0.1  # Coefficient of air drag
+
+    # Compute initial condition
+    v0 = [v0 * np.cos(th0), v0 * np.sin(th0)]
+    x0 = [0, 0]
+
+    k = 0.7  # Bouncing coefficients
+    v_min = 0.01
+
+    # Create system
+    acceleration = vip.loop_node(2)
+    velocity = vip.integrate(acceleration, v0)
+    position = vip.integrate(velocity, x0)
+    v_norm = np.sqrt(velocity[0] ** 2 + velocity[1] ** 2)
+    acceleration.loop_into([-mu * velocity[0] * v_norm,
+                            GRAVITY - mu * velocity[1] * v_norm])
+
+    def bounce(t, y):
+        if abs(velocity[1](t, y)) > v_min:
+            velocity[1].set_value(-k * velocity[1])(t, y)
+        else:
+            vip.terminate(t, y)
+
+    position[1].on_crossing(
+        0,
+        bounce,
+        terminal=False, direction="falling"
+    )
+
+    position.to_plot("Position")
+
+    vip.solve(20, time_step=0.2)
+    print(position.t)

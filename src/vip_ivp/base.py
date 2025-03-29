@@ -1,8 +1,9 @@
 import functools
 import time
 import warnings
+from collections import abc
 from copy import copy
-from typing import overload, Literal, TypeAlias, Type
+from typing import overload, Literal, TypeAlias, Type, ParamSpec, List, Iterable
 from numbers import Number
 from pathlib import Path
 from typing import Callable, Union, TypeVar, Generic
@@ -27,12 +28,13 @@ class Solver:
         self.feed_vars = []
         self.x0 = []
         self.events = []
-        self.t = None
+        self.t = []
         self.y = None
         self.solved = False
         self.saved_vars = {}
         self.named_vars = {}
         self.vars_to_plot = {}
+        self.status=None
 
     def integrate(self, input_value: "TemporalVar[T]", x0: T) -> "IntegratedVar[T]":
         """
@@ -70,13 +72,13 @@ class Solver:
 
     def _add_integration_variable(self, var: Union["TemporalVar[T]", T], x0: T) -> "IntegratedVar[T]":
         self.feed_vars.append(var)
+        self.x0.append(x0)
         integrated_variable = IntegratedVar(
             self,
             lambda t, y, idx=self.dim: y[idx],
             f"#INTEGRATE {get_expression(var)}",
             self.dim
         )
-        self.x0.append(x0)
         self.dim += 1
         return integrated_variable
 
@@ -279,8 +281,8 @@ class Solver:
 
         interpolants = []
 
-        status = None
-        while status is None:
+        self.status = None
+        while self.status is None:
             message = solver.step()
 
             t_old = solver.t_old
@@ -303,7 +305,7 @@ class Solver:
                     event_count[active_events] += 1
                     root_indices, roots, terminate = handle_events(
                         sol, events, active_events, event_count, max_events,
-                        t_old, t)
+                        t_old, t, t_eval)
 
                     # Get the first event, execute its action and relaunch the solver to begin at te.
                     e = root_indices[0]
@@ -324,7 +326,7 @@ class Solver:
                     #     events[e].execute_action(te, ye)
 
                     if terminate:
-                        status = 1
+                        self.status = 1
                         t = roots[-1]
                         y = sol(t)
 
@@ -355,7 +357,7 @@ class Solver:
                         self.y.extend([0] * len(t_eval_step))
                     t_eval_i = t_eval_i_new
                 if events is not None and include_events_times:
-                    if active_events.size > 0:
+                    if active_events.size > 0 and self.status != 1:
                         self.t.append(te)
                         self.y.append(ye)
 
@@ -363,12 +365,12 @@ class Solver:
                 ti.append(t)
 
             if solver.status == "finished":
-                status = 0
+                self.status = 0
             elif solver.status == "failed":
-                status = -1
+                self.status = -1
                 break
 
-        message = MESSAGES.get(status, message)
+        message = MESSAGES.get(self.status, message)
         if t_events is not None:
             t_events = [np.asarray(te) for te in t_events]
             y_events = [np.asarray(ye) for ye in y_events]
@@ -402,9 +404,9 @@ class Solver:
             nfev=solver.nfev,
             njev=solver.njev,
             nlu=solver.nlu,
-            status=status,
+            status=self.status,
             message=message,
-            success=status >= 0,
+            success=self.status >= 0,
         )
 
 
@@ -428,15 +430,20 @@ class TemporalVar(Generic[T]):
                 self.function = lambda t, y: fun(t)
             else:
                 self.function = lambda t, y: fun(t, y)
+            self.output_type = type(self.function(0, solver.x0))
         elif np.isscalar(fun):
-            self.function = lambda t, y: fun if np.isscalar(t) else np.full_like(t, fun)
+            self.function = lambda t, y: fun if np.isscalar(t) else np.full(t.shape, fun)
+            self.output_type = type(fun)
         elif isinstance(fun, (list, np.ndarray)):
+            self.output_type = np.ndarray
             self.function = np.vectorize(lambda f: child_cls(solver, f))(
                 np.array(fun)
             )
         elif isinstance(fun, TemporalVar):
+            self.output_type = fun.output_type
             vars(self).update(vars(fun))
         elif isinstance(fun, dict):
+            self.output_type = dict
             self.function = {key: child_cls(solver, val) for key, val in fun.items()}
         else:
             raise ValueError(f"Unsupported type: {type(fun)}.")
@@ -523,8 +530,15 @@ class TemporalVar(Generic[T]):
     def on_crossing(self, value: T, action: "EventAction" = None,
                     direction: Literal["rising", "falling", "both"] = "both",
                     terminal: Union[bool, int] = False) -> "EventAction":
-
-        event = Event(self.solver, self - value, action, direction, terminal)
+        if self.output_type in (bool, np.bool, str):
+            crossed_variable = self == value
+        elif issubclass(self.output_type, abc.Iterable):
+            raise ValueError(
+                "Can not apply crossing detection to a variable containing a collection of values because it is ambiguous."
+            )
+        else:
+            crossed_variable = self - value
+        event = Event(self.solver, crossed_variable, action, direction, terminal)
         return event.get_delete_from_simulation_action()
 
     def change_behavior(self, value: T) -> EventAction:
@@ -971,7 +985,18 @@ class TemporalVar(Generic[T]):
             return f"{self._expression}"
 
 
-def where(solver, condition: TemporalVar, a: TemporalVar, b: TemporalVar) -> TemporalVar:
+def convert_args_to_temporal_var(solver: Solver, arg_list: Iterable) -> List[TemporalVar]:
+    def convert(arg):
+        if not isinstance(arg, TemporalVar):
+            arg = TemporalVar(solver, arg)
+        return arg
+
+    return [convert(a) for a in arg_list]
+
+
+def where(solver, condition: TemporalVar[bool], a: Union[T, TemporalVar[T]], b: Union[T, TemporalVar[T]]) -> \
+        TemporalVar[T]:
+    condition, a, b = convert_args_to_temporal_var(solver, (condition, a, b))
     return TemporalVar(solver,
                        lambda t, y: (a(t, y) if condition(t, y) else b(t, y)) if np.isscalar(t) else np.where(
                            condition(t, y), a(t, y), b(t, y)),
@@ -1102,11 +1127,11 @@ def get_expression(value) -> str:
 class Event:
     DIRECTION_MAP = {"rising": 1, "falling": -1, "both": 0}
 
-    def __init__(self, solver: Solver, fun: Callable, action: Union[EventAction, None],
+    def __init__(self, solver: Solver, fun, action: Union[EventAction, None],
                  direction: Literal["rising", "falling", "both"] = "both",
                  terminal: Union[bool, int] = False):
         self.solver = solver
-        self.function = fun
+        self.function: TemporalVar = convert_args_to_temporal_var(self.solver, [fun])[0]
         self.action = action
         self.terminal = terminal
         self.direction = self.DIRECTION_MAP[direction]
@@ -1122,3 +1147,5 @@ class Event:
     def execute_action(self, t, y):
         if self.action is not None:
             self.action(t, y)
+
+
