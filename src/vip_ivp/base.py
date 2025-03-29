@@ -441,7 +441,7 @@ class Solver:
         max_bounds = np.array([x(t, y) for x in self.max])
         min_bounds = np.array([x(t, y) for x in self.min])
         if np.any(min_bounds>max_bounds):
-            raise Exception(f"Minimum bound is greater than maxium bound a time {t} s.")
+            raise ValueError(f"Minimum bound is greater than maximum bound a time {t} s.")
         y_bounded_max = np.where(y < max_bounds, y, max_bounds)
         y_bounded = np.where(y_bounded_max > min_bounds, y_bounded_max, min_bounds)
         return y_bounded

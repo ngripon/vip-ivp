@@ -17,3 +17,14 @@ def test_set_loop_node_two_times():
     x.loop_into(6)
     with pytest.raises(Exception):
         x.loop_into(5)
+
+
+def test_crossing_integration_bounds():
+    a = vip.create_source(1)
+    signal=vip.create_source(lambda t:6-t)
+    ia = vip.integrate(a, 0, max=signal, min=-1)
+
+    ia.to_plot("Integral")
+
+    with pytest.raises(ValueError):
+        vip.solve(10, time_step=1)
