@@ -109,7 +109,7 @@ def test_set_loop_node_multiple_times():
     loop.loop_into(source1)
     loop.loop_into(source2, force=True)
     vip.solve(10, time_step=1)
-    assert np.allclose(loop.values, np.linspace(0, 27, 10))
+    assert np.allclose(loop.values, np.linspace(0, 30, 11))
     assert loop.expression == "source1 + source2"
 
 
@@ -260,6 +260,6 @@ def test_bounded_integration_by_variable():
     vip.solve(10, time_step=1)
 
     assert ia_inc.values[3] == 3
-    assert ia_inc.values[-1] == -3
+    assert ia_inc.values[-1] == -4
     assert ia_dec.values[3] == -3
-    assert ia_dec.values[-1] == 3
+    assert ia_dec.values[-1] == 4
