@@ -239,6 +239,6 @@ def test_bounded_integration():
 
     ia.to_plot("Integral")
 
-    vip.solve(10)
+    vip.solve(10, time_step=0.1)
 
     assert ia.values[-1] == 5

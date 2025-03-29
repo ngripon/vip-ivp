@@ -260,9 +260,7 @@ class Solver:
 
         t0, tf = map(float, t_span)
 
-        self.max = np.array(self.max)
-        self.min = np.array(self.min)
-        y0 = self._bound_sol(y0)
+        y0 = self._bound_sol(t0, y0)
 
         if t_eval is not None:
             t_eval = np.asarray(t_eval)
@@ -317,10 +315,10 @@ class Solver:
 
             t_old = solver.t_old
             t = solver.t
-            y = solver.y
+            y = self._bound_sol(t, solver.y)
 
             if dense_output:
-                sol = solver.dense_output()
+                sol = lambda t: self._bound_sol(t, solver.dense_output()(t))
                 interpolants.append(sol)
             else:
                 sol = None
@@ -330,7 +328,7 @@ class Solver:
                 active_events = find_active_events(g, g_new, event_dir)
                 if active_events.size > 0:
                     if sol is None:
-                        sol = solver.dense_output()
+                        sol = lambda t: self._bound_sol(t, solver.dense_output()(t))
 
                     event_count[active_events] += 1
                     root_indices, roots, terminate = handle_events(
@@ -379,7 +377,7 @@ class Solver:
 
                 if t_eval_step.size > 0:
                     if sol is None:
-                        sol = solver.dense_output()
+                        sol = lambda t: self._bound_sol(t, solver.dense_output()(t))
                     self.t.extend(t_eval_step)
                     if self.dim != 0:
                         self.y.extend(np.vstack(sol(t_eval_step)).T)
@@ -425,10 +423,6 @@ class Solver:
         else:
             sol = None
 
-        # Transform back attributes to list
-        self.max = self.max.tolist()
-        self.min = self.min.tolist()
-
         return OdeResult(
             t=self.t,
             y=self.y,
@@ -443,9 +437,11 @@ class Solver:
             success=self.status >= 0,
         )
 
-    def _bound_sol(self, y: np.ndarray):
-        y_bounded_max = np.where(y < self.max, y, self.max)
-        y_bounded = np.where(y_bounded_max > self.min, y_bounded_max, self.min)
+    def _bound_sol(self, t, y: np.ndarray):
+        max_bounds = np.array([x(t, y) for x in self.max])
+        min_bounds = np.array([x(t, y) for x in self.min])
+        y_bounded_max = np.where(y < max_bounds, y, max_bounds)
+        y_bounded = np.where(y_bounded_max > min_bounds, y_bounded_max, min_bounds)
         return y_bounded
 
 
