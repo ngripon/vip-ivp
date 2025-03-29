@@ -82,10 +82,23 @@ class Solver:
         return self._add_integration_variable(data, x0, max, min)
 
     def _add_integration_variable(self, var: Union["TemporalVar[T]", T], x0: T, max: T, min: T) -> "IntegratedVar[T]":
+        # Manage min and max
+        if max is None:
+            max = np.inf
+        if min is None:
+            min = -np.inf
+        if min > max:
+            raise ValueError(f"Min value {min} is strictly greater than max value {max}.")
+        if not min <= x0 <= max:
+            warnings.warn(
+                f"x0 value {x0} is outside the range of [min, max] = [{min}, {max}]. It will be constrained during the solving."
+            )
+
+        # Add integration value
         self.feed_vars.append(var)
         self.x0.append(x0)
-        self.max.append(TemporalVar(self, max) if max is not None else None)
-        self.min.append(TemporalVar(self, min) if min is not None else None)
+        self.max.append(TemporalVar(self, max))
+        self.min.append(TemporalVar(self, min))
         integrated_variable = IntegratedVar(
             self,
             lambda t, y, idx=self.dim: y[idx],
@@ -246,6 +259,10 @@ class Solver:
             raise ValueError(f"`method` must be one of {METHODS} or OdeSolver class.")
 
         t0, tf = map(float, t_span)
+
+        self.max = np.array(self.max)
+        self.min = np.array(self.min)
+        y0 = self._bound_sol(y0)
 
         if t_eval is not None:
             t_eval = np.asarray(t_eval)
@@ -408,6 +425,10 @@ class Solver:
         else:
             sol = None
 
+        # Transform back attributes to list
+        self.max = self.max.tolist()
+        self.min = self.min.tolist()
+
         return OdeResult(
             t=self.t,
             y=self.y,
@@ -421,6 +442,11 @@ class Solver:
             message=message,
             success=self.status >= 0,
         )
+
+    def _bound_sol(self, y: np.ndarray):
+        y_bounded_max = np.where(y < self.max, y, self.max)
+        y_bounded = np.where(y_bounded_max > self.min, y_bounded_max, self.min)
+        return y_bounded
 
 
 class TemporalVar(Generic[T]):
