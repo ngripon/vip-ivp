@@ -110,7 +110,7 @@ class Solver:
 
     def solve(
             self,
-            t_end: Number,
+            t_end: float,
             method="RK45",
             time_step=None,
             t_eval=None,
@@ -138,9 +138,9 @@ class Solver:
                 warnings.warn(
                     "The value of t_eval has been overridden because time_step parameter is not None."
                 )
-            t_eval = np.arange(0, t_end+time_step, time_step)
+            t_eval = np.arange(0, t_end + time_step, time_step)
         elif t_eval is None:
-            t_eval = np.arange(0, t_end+time_step, self.DEFAULT_TIME_STEP)
+            t_eval = np.arange(0, t_end + self.DEFAULT_TIME_STEP, self.DEFAULT_TIME_STEP)
         try:
             res = self._solve_ivp((0, t_end), self.x0, method=method, t_eval=t_eval, events=self.events,
                                   include_events_times=include_events_times, **options)
