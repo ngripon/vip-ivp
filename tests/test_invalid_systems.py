@@ -22,7 +22,7 @@ def test_set_loop_node_two_times():
 def test_crossing_integration_bounds():
     a = vip.create_source(1)
     signal=vip.create_source(lambda t:6-t)
-    ia = vip.integrate(a, 0, max=signal, min=-1)
+    ia = vip.integrate(a, 0, maximum=signal, minimum=-1)
 
     ia.to_plot("Integral")
 

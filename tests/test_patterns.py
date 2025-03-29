@@ -234,8 +234,8 @@ def test_array_comparisons_operators():
 
 def test_bounded_integration_by_constant():
     a = vip.create_source(1)
-    ia_inc = vip.integrate(a, 0, max=5, min=2)
-    ia_dec = vip.integrate(-a, 10, max=5, min=2)
+    ia_inc = vip.integrate(a, 0, maximum=5, minimum=2)
+    ia_dec = vip.integrate(-a, 10, maximum=5, minimum=2)
 
     ia_inc.to_plot("Integral")
     ia_dec.to_plot("Decreasing integral")
@@ -251,8 +251,8 @@ def test_bounded_integration_by_constant():
 def test_bounded_integration_by_variable():
     a = vip.create_source(1)
     signal=vip.create_source(lambda t:6-t)
-    ia_inc = vip.integrate(a, 0, max=signal)
-    ia_dec = vip.integrate(-a, 0, min=-signal)
+    ia_inc = vip.integrate(a, 0, maximum=signal)
+    ia_dec = vip.integrate(-a, 0, minimum=-signal)
 
     ia_inc.to_plot("Integral")
     ia_dec.to_plot("Decreasing integral")
