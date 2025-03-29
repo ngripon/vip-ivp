@@ -73,7 +73,7 @@ class Solver:
 
             elif isinstance(data.function, dict):
                 if not isinstance(maximum, dict):
-                    maximum = {key: max for key in data.function.keys()}
+                    maximum = {key: maximum for key in data.function.keys()}
                 if not isinstance(minimum, dict):
                     minimum = {key: minimum for key in data.function.keys()}
                 return {
@@ -1121,10 +1121,7 @@ class IntegratedVar(TemporalVar[T]):
         self.x0 = x0
         self.maximum = convert_args_to_temporal_var(solver, (maximum,))[0]
         self.minimum = convert_args_to_temporal_var(solver, (minimum,))[0]
-        if not self.minimum(0, solver.x0) <= x0 <= self.maximum(0, solver.x0):
-            warnings.warn(
-                f"x0 value {x0} is outside the range of [min, max] = [{min}, {max}]. It will be constrained during the solving."
-            )
+
         self._y_idx = y_idx
         if isinstance(fun, IntegratedVar):
             self._y_idx = IntegratedVar.y_idx
