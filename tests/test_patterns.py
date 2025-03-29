@@ -232,13 +232,17 @@ def test_array_comparisons_operators():
     assert np.array_equal(ge_arr[1].values, ge2.values)
 
 
-def test_bounded_integration():
+def test_bounded_integration_by_constant():
     a = vip.create_source(1)
-    # Bounded by constant
-    ia = vip.integrate(a, 0, max=5)
+    ia_inc = vip.integrate(a, 0, max=5, min=2)
+    ia_dec = vip.integrate(-a, 10, max=5, min=2)
 
-    ia.to_plot("Integral")
+    ia_inc.to_plot("Integral")
+    ia_dec.to_plot("Decreasing integral")
 
-    vip.solve(10, time_step=0.1)
+    vip.solve(10)
 
-    assert ia.values[-1] == 5
+    assert ia_inc.values[-1] == 5
+    assert ia_inc.values[0] == 2
+    assert ia_dec.values[0] == 5
+    assert ia_dec.values[-1] == 2
