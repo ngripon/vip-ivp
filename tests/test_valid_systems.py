@@ -204,7 +204,7 @@ def test_string_crossing_event():
     assert string.values[-1] == "A"
 
 
-def bouncing_projectile_motion():
+def test_bouncing_projectile_motion():
     # Parameters
     GRAVITY = -9.81
     v0 = 20
@@ -226,9 +226,11 @@ def bouncing_projectile_motion():
     acceleration.loop_into([-mu * velocity[0] * v_norm,
                             GRAVITY - mu * velocity[1] * v_norm])
 
-    stopped = abs(velocity[1]) < v_min
-
-    bounce = velocity[1].set_value(-k * velocity[-1])
+    def bounce(t, y):
+        if abs(velocity[1](t, y)) > v_min:
+            velocity[1].set_value(-k * velocity[1])(t, y)
+        else:
+            vip.terminate(t, y)
 
     position[1].on_crossing(
         0,
@@ -236,13 +238,7 @@ def bouncing_projectile_motion():
         terminal=False, direction="falling"
     )
 
-    stopped.on_crossing(
-        True,
-        terminal=True
-    )
-
     position.to_plot("Position")
 
     vip.solve(20, time_step=0.2)
     print(position.t)
-    print(stopped.values)
