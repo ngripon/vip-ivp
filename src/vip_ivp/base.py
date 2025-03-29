@@ -332,7 +332,7 @@ class Solver:
                 active_events = find_active_events(g, g_new, event_dir)
                 if active_events.size > 0:
                     if sol is None:
-                        sol = lambda t: self._bound_sol(t, solver.dense_output()(t))
+                        sol = self._sol_wrapper(solver.dense_output())
 
                     event_count[active_events] += 1
                     root_indices, roots, _ = handle_events(
@@ -374,7 +374,7 @@ class Solver:
 
                 if t_eval_step.size > 0:
                     if sol is None:
-                        sol = lambda t: self._bound_sol(t, solver.dense_output()(t))
+                        sol = self._sol_wrapper(solver.dense_output())
                     self.t.extend(t_eval_step)
                     if self.dim != 0:
                         self.y.extend(np.vstack(sol(t_eval_step)).T)
@@ -442,6 +442,12 @@ class Solver:
         y_bounded_max = np.where(y < max_bounds, y, max_bounds)
         y_bounded = np.where(y_bounded_max > min_bounds, y_bounded_max, min_bounds)
         return y_bounded
+
+    def _sol_wrapper(self, sol):
+        def output_fun(t: Union[float, np.ndarray]):
+            return self._bound_sol(t, sol(t))
+
+        return output_fun
 
 
 class TemporalVar(Generic[T]):
