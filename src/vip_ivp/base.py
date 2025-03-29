@@ -108,7 +108,8 @@ class Solver:
         self.dim += 1
         return integrated_variable
 
-    DEFAULT_TIME_STEP=0.1
+    DEFAULT_TIME_STEP = 0.1
+
     def solve(
             self,
             t_end: Number,
@@ -334,32 +335,25 @@ class Solver:
                         sol = lambda t: self._bound_sol(t, solver.dense_output()(t))
 
                     event_count[active_events] += 1
-                    root_indices, roots, terminate = handle_events(
+                    root_indices, roots, _ = handle_events(
                         sol, events, active_events, event_count, max_events,
                         t_old, t, t_eval)
 
                     # Get the first event, execute its action and relaunch the solver to begin at te.
-                    e = root_indices[0]
+                    e_idx = root_indices[0]
+                    active_event: Event = events[e_idx]
                     te = roots[0]
                     ye = sol(te)
-                    t_events[e].append(te)
-                    y_events[e].append(ye)
-                    events[e].execute_action(te, ye)
+                    t_events[e_idx].append(te)
+                    y_events[e_idx].append(ye)
+                    active_event.execute_action(te, ye)
                     t = te
                     y = ye
                     g_new = [event(t, y) for event in events]
                     solver = method(self._dy, t, y, tf, vectorized=vectorized, **options)
 
-                    # for e, te in zip(root_indices, roots):
-                    #     t_events[e].append(te)
-                    #     ye = sol(te)
-                    #     y_events[e].append(ye)
-                    #     events[e].execute_action(te, ye)
-
-                    if terminate:
+                    if active_event.terminal:
                         self.status = 1
-                        t = roots[-1]
-                        y = sol(t)
 
                 g = g_new
 
@@ -443,7 +437,7 @@ class Solver:
     def _bound_sol(self, t, y: np.ndarray):
         max_bounds = np.array([x(t, y) for x in self.max])
         min_bounds = np.array([x(t, y) for x in self.min])
-        if np.any(min_bounds>max_bounds):
+        if np.any(min_bounds > max_bounds):
             raise ValueError(f"Minimum bound is greater than maximum bound a time {t} s.")
         y_bounded_max = np.where(y < max_bounds, y, max_bounds)
         y_bounded = np.where(y_bounded_max > min_bounds, y_bounded_max, min_bounds)
