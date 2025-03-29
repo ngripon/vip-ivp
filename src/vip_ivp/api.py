@@ -105,9 +105,6 @@ def loop_node(shape: Union[int, tuple[int, ...]] = None) -> LoopNode:
 
 def where(condition, a, b) -> TemporalVar:
     solver = _get_current_solver()
-    condition = _convert_to_temporal_var(condition)
-    a = _convert_to_temporal_var(a)
-    b = _convert_to_temporal_var(b)
     return base.where(solver, condition, a, b)
 
 
@@ -177,6 +174,11 @@ def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
 
     functools.update_wrapper(wrapper, func)
     return wrapper
+
+
+def terminate(t, y):
+    solver = _get_current_solver()
+    solver.status = 1
 
 
 def solve(t_end: Number, time_step: Number = None, method='RK45', t_eval: Union[List, np.ndarray] = None,

@@ -34,6 +34,7 @@ class Solver:
         self.saved_vars = {}
         self.named_vars = {}
         self.vars_to_plot = {}
+        self.status=None
 
     def integrate(self, input_value: "TemporalVar[T]", x0: T) -> "IntegratedVar[T]":
         """
@@ -280,8 +281,8 @@ class Solver:
 
         interpolants = []
 
-        status = None
-        while status is None:
+        self.status = None
+        while self.status is None:
             message = solver.step()
 
             t_old = solver.t_old
@@ -325,7 +326,7 @@ class Solver:
                     #     events[e].execute_action(te, ye)
 
                     if terminate:
-                        status = 1
+                        self.status = 1
                         t = roots[-1]
                         y = sol(t)
 
@@ -356,7 +357,7 @@ class Solver:
                         self.y.extend([0] * len(t_eval_step))
                     t_eval_i = t_eval_i_new
                 if events is not None and include_events_times:
-                    if active_events.size > 0 and status != 1:
+                    if active_events.size > 0 and self.status != 1:
                         self.t.append(te)
                         self.y.append(ye)
 
@@ -364,12 +365,12 @@ class Solver:
                 ti.append(t)
 
             if solver.status == "finished":
-                status = 0
+                self.status = 0
             elif solver.status == "failed":
-                status = -1
+                self.status = -1
                 break
 
-        message = MESSAGES.get(status, message)
+        message = MESSAGES.get(self.status, message)
         if t_events is not None:
             t_events = [np.asarray(te) for te in t_events]
             y_events = [np.asarray(ye) for ye in y_events]
@@ -403,9 +404,9 @@ class Solver:
             nfev=solver.nfev,
             njev=solver.njev,
             nlu=solver.nlu,
-            status=status,
+            status=self.status,
             message=message,
-            success=status >= 0,
+            success=self.status >= 0,
         )
 
 
@@ -1146,3 +1147,5 @@ class Event:
     def execute_action(self, t, y):
         if self.action is not None:
             self.action(t, y)
+
+
