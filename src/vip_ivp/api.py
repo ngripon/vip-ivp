@@ -92,7 +92,7 @@ def integrate(input_value: Union[TemporalVar[T], T], x0: T, minimum: Union[Tempo
     """
     solver = _get_current_solver()
     _check_solver_discrepancy(input_value, solver)
-    integral_value = solver.integrate(input_value, x0, maximum, minimum)
+    integral_value = solver.integrate(input_value, x0, minimum, maximum)
     return integral_value
 
 

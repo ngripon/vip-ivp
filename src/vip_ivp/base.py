@@ -30,8 +30,6 @@ class Solver:
         # All the scalars variables that are an output of an integrate function
         self.integrated_vars: List[IntegratedVar] = []
 
-        self.max = []
-        self.min = []
         self.events = []
         self.t = []
         self.y = None
@@ -41,8 +39,8 @@ class Solver:
         self.vars_to_plot = {}
         self.status = None
 
-    def integrate(self, input_value: "TemporalVar[T]", x0: T, max: Union[T, "TemporalVar[T]"] = None,
-                  min: Union[T, "TemporalVar[T]"] = None) -> "IntegratedVar[T]":
+    def integrate(self, input_value: "TemporalVar[T]", x0: T, minimum: Union[T, "TemporalVar[T]"] = None,
+                  maximum: Union[T, "TemporalVar[T]"] = None) -> "IntegratedVar[T]":
         """
         Integrate the input value starting from the initial condition x0.
 
@@ -52,7 +50,7 @@ class Solver:
         """
         if isinstance(input_value, (dict, list, np.ndarray)):
             input_value = TemporalVar(self, input_value)
-        integrated_structure = self._get_integrated_structure(input_value, x0, max, min)
+        integrated_structure = self._get_integrated_structure(input_value, x0, minimum, maximum)
         integrated_variable = IntegratedVar(
             self,
             integrated_structure,
@@ -61,52 +59,47 @@ class Solver:
         )
         return integrated_variable
 
-    def _get_integrated_structure(self, data, x0, max, min):
+    def _get_integrated_structure(self, data, x0, minimum, maximum):
         if isinstance(data, TemporalVar):
             if isinstance(data.function, np.ndarray):
-                if not isinstance(max, np.ndarray):
-                    max = np.full(data.function.shape, max)
-                if not isinstance(min, np.ndarray):
-                    min = np.full(data.function.shape, min)
+                if not isinstance(maximum, np.ndarray):
+                    maximum = np.full(data.function.shape, maximum)
+                if not isinstance(minimum, np.ndarray):
+                    minimum = np.full(data.function.shape, minimum)
                 return [
-                    self._get_integrated_structure(data[idx], np.array(x0)[idx], max[idx], min[idx])
+                    self._get_integrated_structure(data[idx], np.array(x0)[idx], minimum[idx], maximum[idx])
                     for idx in np.ndindex(data.function.shape)
                 ]
 
             elif isinstance(data.function, dict):
-                if not isinstance(max, dict):
-                    max = {key: max for key in data.function.keys()}
-                if not isinstance(min, dict):
-                    min = {key: min for key in data.function.keys()}
+                if not isinstance(maximum, dict):
+                    maximum = {key: max for key in data.function.keys()}
+                if not isinstance(minimum, dict):
+                    minimum = {key: minimum for key in data.function.keys()}
                 return {
-                    key: self._get_integrated_structure(value, x0[key], max[key], min[key])
+                    key: self._get_integrated_structure(value, x0[key], minimum[key], maximum[key])
                     for key, value in data.function.items()
                 }
 
-        return self._add_integration_variable(data, x0, max, min)
+        return self._add_integration_variable(data, x0, minimum, maximum)
 
-    def _add_integration_variable(self, var: Union["TemporalVar[T]", T], x0: T, max: T, min: T) -> "IntegratedVar[T]":
+    def _add_integration_variable(self, var: Union["TemporalVar[T]", T], x0: T, minimum: T,
+                                  maximum: T) -> "IntegratedVar[T]":
         self.feed_vars.append(var)
         # Manage min and max
-        if max is None:
-            max = np.inf
-        if min is None:
-            min = -np.inf
-        max = TemporalVar(self, max)
-        min = TemporalVar(self, min)
-        if not min(0, self.x0) <= x0 <= max(0, self.x0):
-            warnings.warn(
-                f"x0 value {x0} is outside the range of [min, max] = [{min}, {max}]. It will be constrained during the solving."
-            )
+        if maximum is None:
+            maximum = np.inf
+        if minimum is None:
+            minimum = -np.inf
 
         # Add integration value
-        self.max.append(max)
-        self.min.append(min)
         integrated_variable = IntegratedVar(
             self,
             lambda t, y, idx=self.dim: y[idx],
             f"#INTEGRATE {get_expression(var)}",
             x0,
+            minimum,
+            maximum,
             self.dim,
         )
         self.integrated_vars.append(integrated_variable)
@@ -444,13 +437,27 @@ class Solver:
         )
 
     def _bound_sol(self, t, y: np.ndarray):
-        max_bounds = np.array([x(t, y) for x in self.max])
-        min_bounds = np.array([x(t, y) for x in self.min])
-        if np.any(min_bounds > max_bounds):
-            raise ValueError(f"Minimum bound is greater than maximum bound a time {t} s.")
-        y_bounded_max = np.where(y < max_bounds, y, max_bounds)
-        y_bounded = np.where(y_bounded_max > min_bounds, y_bounded_max, min_bounds)
+        upper, lower = self._get_bounds(t, y)
+        y_bounded_max = np.where(y < upper, y, upper)
+        y_bounded = np.where(y_bounded_max > lower, y_bounded_max, lower)
         return y_bounded
+
+    def _get_bounds(self, t, y):
+        upper = []
+        lower = []
+        for var in self.integrated_vars:
+            maximum = var.maximum(t, y)
+            minimum = var.minimum(t, y)
+            if np.any(minimum > maximum):
+                raise ValueError(
+                    f"Lower bound {minimum} is greater than upper bound {maximum} a time {t} s "
+                    f"for variable {var.name or var.expression}."
+                )
+            upper.append(maximum)
+            lower.append(minimum)
+        upper = np.array(upper)
+        lower = np.array(lower)
+        return upper, lower
 
     def _sol_wrapper(self, sol):
         def output_fun(t: Union[float, np.ndarray]):
@@ -1107,9 +1114,17 @@ class IntegratedVar(TemporalVar[T]):
             ] = None,
             expression: str = None,
             x0: T = None,
+            minimum: Union[TemporalVar[T], T] = -np.inf,
+            maximum: Union[TemporalVar[T], T] = np.inf,
             y_idx: int = None
     ):
         self.x0 = x0
+        self.maximum = convert_args_to_temporal_var(solver, (maximum,))[0]
+        self.minimum = convert_args_to_temporal_var(solver, (minimum,))[0]
+        if not self.minimum(0, solver.x0) <= x0 <= self.maximum(0, solver.x0):
+            warnings.warn(
+                f"x0 value {x0} is outside the range of [min, max] = [{min}, {max}]. It will be constrained during the solving."
+            )
         self._y_idx = y_idx
         if isinstance(fun, IntegratedVar):
             self._y_idx = IntegratedVar.y_idx

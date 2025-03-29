@@ -27,4 +27,8 @@ def test_crossing_integration_bounds():
     ia.to_plot("Integral")
 
     with pytest.raises(ValueError):
-        vip.solve(10, time_step=1)
+        try:
+            vip.solve(10, time_step=1)
+        except Exception as e:
+            print(e)
+            raise e
