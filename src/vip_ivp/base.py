@@ -27,6 +27,8 @@ class Solver:
         self.vars = []
         self.feed_vars = []
         self.x0 = []
+        self.max = []
+        self.min = []
         self.events = []
         self.t = []
         self.y = None
@@ -34,9 +36,10 @@ class Solver:
         self.saved_vars = {}
         self.named_vars = {}
         self.vars_to_plot = {}
-        self.status=None
+        self.status = None
 
-    def integrate(self, input_value: "TemporalVar[T]", x0: T) -> "IntegratedVar[T]":
+    def integrate(self, input_value: "TemporalVar[T]", x0: T, max: Union[T, "TemporalVar[T]"] = None,
+                  min: Union[T, "TemporalVar[T]"] = None) -> "IntegratedVar[T]":
         """
         Integrate the input value starting from the initial condition x0.
 
@@ -46,7 +49,7 @@ class Solver:
         """
         if isinstance(input_value, (dict, list, np.ndarray)):
             input_value = TemporalVar(self, input_value)
-        integrated_structure = self._get_integrated_structure(input_value, x0)
+        integrated_structure = self._get_integrated_structure(input_value, x0, max, min)
         integrated_variable = IntegratedVar(
             self,
             integrated_structure,
@@ -54,25 +57,35 @@ class Solver:
         )
         return integrated_variable
 
-    def _get_integrated_structure(self, data, x0):
+    def _get_integrated_structure(self, data, x0, max, min):
         if isinstance(data, TemporalVar):
             if isinstance(data.function, np.ndarray):
+                if not isinstance(max, np.ndarray):
+                    max = np.full(data.function.shape, max)
+                if not isinstance(min, np.ndarray):
+                    min = np.full(data.function.shape, min)
                 return [
-                    self._get_integrated_structure(data[idx], np.array(x0)[idx])
+                    self._get_integrated_structure(data[idx], np.array(x0)[idx], max[idx], min[idx])
                     for idx in np.ndindex(data.function.shape)
                 ]
 
             elif isinstance(data.function, dict):
+                if not isinstance(max, dict):
+                    max = {key: max for key in data.function.keys()}
+                if not isinstance(min, dict):
+                    min = {key: min for key in data.function.keys()}
                 return {
-                    key: self._get_integrated_structure(value, x0[key])
+                    key: self._get_integrated_structure(value, x0[key], max[key], min[key])
                     for key, value in data.function.items()
                 }
 
-        return self._add_integration_variable(data, x0)
+        return self._add_integration_variable(data, x0, max, min)
 
-    def _add_integration_variable(self, var: Union["TemporalVar[T]", T], x0: T) -> "IntegratedVar[T]":
+    def _add_integration_variable(self, var: Union["TemporalVar[T]", T], x0: T, max: T, min: T) -> "IntegratedVar[T]":
         self.feed_vars.append(var)
         self.x0.append(x0)
+        self.max.append(TemporalVar(self, max) if max is not None else None)
+        self.min.append(TemporalVar(self, min) if min is not None else None)
         integrated_variable = IntegratedVar(
             self,
             lambda t, y, idx=self.dim: y[idx],
@@ -1147,5 +1160,3 @@ class Event:
     def execute_action(self, t, y):
         if self.action is not None:
             self.action(t, y)
-
-

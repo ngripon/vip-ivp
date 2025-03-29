@@ -229,3 +229,6 @@ def test_array_comparisons_operators():
     # Assertions for greater than or equal
     assert np.array_equal(ge_arr[0].values, ge1.values)
     assert np.array_equal(ge_arr[1].values, ge2.values)
+
+def test_bounded_integration():
+    ...

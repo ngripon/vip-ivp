@@ -79,7 +79,7 @@ def create_scenario(scenario_table: Union[pd.DataFrame, str, dict], time_key: st
         raise ValueError("Unsupported input type")
 
 
-def integrate(input_value: Union[TemporalVar[T], T], x0: T) -> IntegratedVar:
+def integrate(input_value: Union[TemporalVar[T], T], x0: T, max: T = None, min: T = None) -> IntegratedVar:
     """
     Integrate the input value starting from the initial condition x0.
 
@@ -89,7 +89,7 @@ def integrate(input_value: Union[TemporalVar[T], T], x0: T) -> IntegratedVar:
     """
     solver = _get_current_solver()
     _check_solver_discrepancy(input_value, solver)
-    integral_value = solver.integrate(input_value, x0)
+    integral_value = solver.integrate(input_value, x0, max, min)
     return integral_value
 
 
