@@ -167,6 +167,7 @@ def test_plot_collections():
 
     vip.solve(10, 0.1)
 
+
 def test_array_comparisons_operators():
     f1 = lambda t: t
     f2 = lambda t: 2.5 * t
@@ -229,3 +230,36 @@ def test_array_comparisons_operators():
     # Assertions for greater than or equal
     assert np.array_equal(ge_arr[0].values, ge1.values)
     assert np.array_equal(ge_arr[1].values, ge2.values)
+
+
+def test_bounded_integration_by_constant():
+    a = vip.create_source(1)
+    ia_inc = vip.integrate(a, 0, maximum=5, minimum=2)
+    ia_dec = vip.integrate(-a, 10, maximum=5, minimum=2)
+
+    ia_inc.to_plot("Integral")
+    ia_dec.to_plot("Decreasing integral")
+
+    vip.solve(10)
+
+    assert ia_inc.values[-1] == 5
+    assert ia_inc.values[0] == 2
+    assert ia_dec.values[0] == 5
+    assert ia_dec.values[-1] == 2
+
+
+def test_bounded_integration_by_variable():
+    a = vip.create_source(1)
+    signal=vip.create_source(lambda t:6-t)
+    ia_inc = vip.integrate(a, 0, maximum=signal)
+    ia_dec = vip.integrate(-a, 0, minimum=-signal)
+
+    ia_inc.to_plot("Integral")
+    ia_dec.to_plot("Decreasing integral")
+
+    vip.solve(10, time_step=1)
+
+    assert ia_inc.values[3] == 3
+    assert ia_inc.values[-1] == -3
+    assert ia_dec.values[3] == -3
+    assert ia_dec.values[-1] == 3

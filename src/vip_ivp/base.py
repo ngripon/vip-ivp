@@ -24,9 +24,12 @@ EventAction: TypeAlias = Callable[[float, np.ndarray], None]
 class Solver:
     def __init__(self):
         self.dim = 0
-        self.vars = []
-        self.feed_vars = []
-        self.x0 = []
+        self.vars: List[TemporalVar] = []
+        # All the scalars variables that are an input of an integrate function
+        self.feed_vars: List[TemporalVar] = []
+        # All the scalars variables that are an output of an integrate function
+        self.integrated_vars: List[IntegratedVar] = []
+
         self.events = []
         self.t = []
         self.y = None
@@ -34,9 +37,10 @@ class Solver:
         self.saved_vars = {}
         self.named_vars = {}
         self.vars_to_plot = {}
-        self.status=None
+        self.status = None
 
-    def integrate(self, input_value: "TemporalVar[T]", x0: T) -> "IntegratedVar[T]":
+    def integrate(self, input_value: "TemporalVar[T]", x0: T, minimum: Union[T, "TemporalVar[T]"] = None,
+                  maximum: Union[T, "TemporalVar[T]"] = None) -> "IntegratedVar[T]":
         """
         Integrate the input value starting from the initial condition x0.
 
@@ -46,41 +50,63 @@ class Solver:
         """
         if isinstance(input_value, (dict, list, np.ndarray)):
             input_value = TemporalVar(self, input_value)
-        integrated_structure = self._get_integrated_structure(input_value, x0)
+        integrated_structure = self._get_integrated_structure(input_value, x0, minimum, maximum)
         integrated_variable = IntegratedVar(
             self,
             integrated_structure,
-            expression=f"#INTEGRATE {get_expression(input_value)}",
+            f"#INTEGRATE {get_expression(input_value)}",
+            x0
         )
         return integrated_variable
 
-    def _get_integrated_structure(self, data, x0):
+    def _get_integrated_structure(self, data, x0, minimum, maximum):
         if isinstance(data, TemporalVar):
             if isinstance(data.function, np.ndarray):
+                if not isinstance(maximum, np.ndarray):
+                    maximum = np.full(data.function.shape, maximum)
+                if not isinstance(minimum, np.ndarray):
+                    minimum = np.full(data.function.shape, minimum)
                 return [
-                    self._get_integrated_structure(data[idx], np.array(x0)[idx])
+                    self._get_integrated_structure(data[idx], np.array(x0)[idx], minimum[idx], maximum[idx])
                     for idx in np.ndindex(data.function.shape)
                 ]
 
             elif isinstance(data.function, dict):
+                if not isinstance(maximum, dict):
+                    maximum = {key: maximum for key in data.function.keys()}
+                if not isinstance(minimum, dict):
+                    minimum = {key: minimum for key in data.function.keys()}
                 return {
-                    key: self._get_integrated_structure(value, x0[key])
+                    key: self._get_integrated_structure(value, x0[key], minimum[key], maximum[key])
                     for key, value in data.function.items()
                 }
 
-        return self._add_integration_variable(data, x0)
+        return self._add_integration_variable(data, x0, minimum, maximum)
 
-    def _add_integration_variable(self, var: Union["TemporalVar[T]", T], x0: T) -> "IntegratedVar[T]":
+    def _add_integration_variable(self, var: Union["TemporalVar[T]", T], x0: T, minimum: T,
+                                  maximum: T) -> "IntegratedVar[T]":
         self.feed_vars.append(var)
-        self.x0.append(x0)
+        # Manage min and max
+        if maximum is None:
+            maximum = np.inf
+        if minimum is None:
+            minimum = -np.inf
+
+        # Add integration value
         integrated_variable = IntegratedVar(
             self,
             lambda t, y, idx=self.dim: y[idx],
             f"#INTEGRATE {get_expression(var)}",
-            self.dim
+            x0,
+            minimum,
+            maximum,
+            self.dim,
         )
+        self.integrated_vars.append(integrated_variable)
         self.dim += 1
         return integrated_variable
+
+    DEFAULT_TIME_STEP = 0.1
 
     def solve(
             self,
@@ -113,6 +139,8 @@ class Solver:
                     "The value of t_eval has been overridden because time_step parameter is not None."
                 )
             t_eval = np.arange(0, t_end, time_step)
+        elif t_eval is None:
+            t_eval = np.arange(0, t_end, self.DEFAULT_TIME_STEP)
         try:
             res = self._solve_ivp((0, t_end), self.x0, method=method, t_eval=t_eval, events=self.events,
                                   include_events_times=include_events_times, **options)
@@ -128,6 +156,10 @@ class Solver:
         self.solved = True
         if plot:
             self.plot()
+
+    @property
+    def x0(self):
+        return np.array([v.x0 for v in self.integrated_vars])
 
     def plot(self):
         """
@@ -234,6 +266,8 @@ class Solver:
 
         t0, tf = map(float, t_span)
 
+        y0 = self._bound_sol(t0, y0)
+
         if t_eval is not None:
             t_eval = np.asarray(t_eval)
             if t_eval.ndim != 1:
@@ -287,10 +321,10 @@ class Solver:
 
             t_old = solver.t_old
             t = solver.t
-            y = solver.y
+            y = self._bound_sol(t, solver.y)
 
             if dense_output:
-                sol = solver.dense_output()
+                sol = lambda t: self._bound_sol(t, solver.dense_output()(t))
                 interpolants.append(sol)
             else:
                 sol = None
@@ -300,35 +334,28 @@ class Solver:
                 active_events = find_active_events(g, g_new, event_dir)
                 if active_events.size > 0:
                     if sol is None:
-                        sol = solver.dense_output()
+                        sol = self._sol_wrapper(solver.dense_output())
 
                     event_count[active_events] += 1
-                    root_indices, roots, terminate = handle_events(
+                    root_indices, roots, _ = handle_events(
                         sol, events, active_events, event_count, max_events,
                         t_old, t, t_eval)
 
                     # Get the first event, execute its action and relaunch the solver to begin at te.
-                    e = root_indices[0]
+                    e_idx = root_indices[0]
+                    active_event: Event = events[e_idx]
                     te = roots[0]
                     ye = sol(te)
-                    t_events[e].append(te)
-                    y_events[e].append(ye)
-                    events[e].execute_action(te, ye)
+                    t_events[e_idx].append(te)
+                    y_events[e_idx].append(ye)
+                    active_event.execute_action(te, ye)
                     t = te
                     y = ye
                     g_new = [event(t, y) for event in events]
                     solver = method(self._dy, t, y, tf, vectorized=vectorized, **options)
 
-                    # for e, te in zip(root_indices, roots):
-                    #     t_events[e].append(te)
-                    #     ye = sol(te)
-                    #     y_events[e].append(ye)
-                    #     events[e].execute_action(te, ye)
-
-                    if terminate:
+                    if active_event.terminal:
                         self.status = 1
-                        t = roots[-1]
-                        y = sol(t)
 
                 g = g_new
 
@@ -349,7 +376,7 @@ class Solver:
 
                 if t_eval_step.size > 0:
                     if sol is None:
-                        sol = solver.dense_output()
+                        sol = self._sol_wrapper(solver.dense_output())
                     self.t.extend(t_eval_step)
                     if self.dim != 0:
                         self.y.extend(np.vstack(sol(t_eval_step)).T)
@@ -409,6 +436,35 @@ class Solver:
             success=self.status >= 0,
         )
 
+    def _bound_sol(self, t, y: np.ndarray):
+        upper, lower = self._get_bounds(t, y)
+        y_bounded_max = np.where(y < upper, y, upper)
+        y_bounded = np.where(y_bounded_max > lower, y_bounded_max, lower)
+        return y_bounded
+
+    def _get_bounds(self, t, y):
+        upper = []
+        lower = []
+        for var in self.integrated_vars:
+            maximum = var.maximum(t, y)
+            minimum = var.minimum(t, y)
+            if np.any(minimum > maximum):
+                raise ValueError(
+                    f"Lower bound {minimum} is greater than upper bound {maximum} a time {t} s "
+                    f"for variable {var.name or var.expression}."
+                )
+            upper.append(maximum)
+            lower.append(minimum)
+        upper = np.array(upper)
+        lower = np.array(lower)
+        return upper, lower
+
+    def _sol_wrapper(self, sol):
+        def output_fun(t: Union[float, np.ndarray]):
+            return self._bound_sol(t, sol(t))
+
+        return output_fun
+
 
 class TemporalVar(Generic[T]):
     def __init__(
@@ -421,7 +477,7 @@ class TemporalVar(Generic[T]):
             child_cls=None
     ):
         self.solver = solver
-
+        self._output_type = None
         # Recursive building
         child_cls = child_cls or type(self)
         if callable(fun) and not isinstance(fun, child_cls):
@@ -430,20 +486,18 @@ class TemporalVar(Generic[T]):
                 self.function = lambda t, y: fun(t)
             else:
                 self.function = lambda t, y: fun(t, y)
-            self.output_type = type(self.function(0, solver.x0))
         elif np.isscalar(fun):
             self.function = lambda t, y: fun if np.isscalar(t) else np.full(t.shape, fun)
-            self.output_type = type(fun)
+            self._output_type = type(fun)
         elif isinstance(fun, (list, np.ndarray)):
-            self.output_type = np.ndarray
+            self._output_type = np.ndarray
             self.function = np.vectorize(lambda f: child_cls(solver, f))(
                 np.array(fun)
             )
         elif isinstance(fun, TemporalVar):
-            self.output_type = fun.output_type
             vars(self).update(vars(fun))
         elif isinstance(fun, dict):
-            self.output_type = dict
+            self._output_type = dict
             self.function = {key: child_cls(solver, val) for key, val in fun.items()}
         else:
             raise ValueError(f"Unsupported type: {type(fun)}.")
@@ -474,7 +528,13 @@ class TemporalVar(Generic[T]):
                 "The differential system has not been solved. "
                 "Call the solve() method before inquiring the time variable."
             )
-        return self.solver.t
+        return np.asarray(self.solver.t)
+
+    @property
+    def output_type(self):
+        if self._output_type is None:
+            self._output_type = type(self(0, self.solver.x0))
+        return self._output_type
 
     def save(self, name: str) -> None:
         """
@@ -1053,8 +1113,15 @@ class IntegratedVar(TemporalVar[T]):
                 Callable[[Union[float, np.ndarray], np.ndarray], T], np.ndarray, dict
             ] = None,
             expression: str = None,
+            x0: T = None,
+            minimum: Union[TemporalVar[T], T] = -np.inf,
+            maximum: Union[TemporalVar[T], T] = np.inf,
             y_idx: int = None
     ):
+        self.x0 = x0
+        self.maximum = convert_args_to_temporal_var(solver, (maximum,))[0]
+        self.minimum = convert_args_to_temporal_var(solver, (minimum,))[0]
+
         self._y_idx = y_idx
         if isinstance(fun, IntegratedVar):
             self._y_idx = IntegratedVar.y_idx
@@ -1147,5 +1214,3 @@ class Event:
     def execute_action(self, t, y):
         if self.action is not None:
             self.action(t, y)
-
-
