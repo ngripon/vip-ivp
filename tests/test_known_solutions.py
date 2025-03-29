@@ -7,7 +7,7 @@ ABSOLUTE_TOLERANCE = 0.01
 
 def test_t_end():
     a=vip.create_source(lambda t:t)
-    vip.solve(10,1)
+    vip.solve(10,2)
     assert a.t[-1]==10
 
 
