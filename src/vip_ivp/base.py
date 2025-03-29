@@ -108,6 +108,7 @@ class Solver:
         self.dim += 1
         return integrated_variable
 
+    DEFAULT_TIME_STEP=0.1
     def solve(
             self,
             t_end: Number,
@@ -139,6 +140,8 @@ class Solver:
                     "The value of t_eval has been overridden because time_step parameter is not None."
                 )
             t_eval = np.arange(0, t_end, time_step)
+        elif t_eval is None:
+            t_eval = np.arange(0, t_end, self.DEFAULT_TIME_STEP)
         try:
             res = self._solve_ivp((0, t_end), self.x0, method=method, t_eval=t_eval, events=self.events,
                                   include_events_times=include_events_times, **options)

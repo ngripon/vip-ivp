@@ -184,7 +184,7 @@ def terminate(t, y):
     solver.status = 1
 
 
-def solve(t_end: Number, time_step: Number = 0.1, method='RK45', t_eval: Union[List, np.ndarray] = None,
+def solve(t_end: Number, time_step: Number = None, method='RK45', t_eval: Union[List, np.ndarray] = None,
           include_events_times: bool = True, **options) -> None:
     """
     Solve the equations of the dynamical system through an integration scheme.
