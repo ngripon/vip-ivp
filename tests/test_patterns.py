@@ -167,6 +167,7 @@ def test_plot_collections():
 
     vip.solve(10, 0.1)
 
+
 def test_array_comparisons_operators():
     f1 = lambda t: t
     f2 = lambda t: 2.5 * t
@@ -230,5 +231,14 @@ def test_array_comparisons_operators():
     assert np.array_equal(ge_arr[0].values, ge1.values)
     assert np.array_equal(ge_arr[1].values, ge2.values)
 
+
 def test_bounded_integration():
-    ...
+    a = vip.create_source(1)
+    # Bounded by constant
+    ia = vip.integrate(a, 0, max=5)
+
+    ia.to_plot("Integral")
+
+    vip.solve(10)
+
+    assert ia.values[-1] == 5
