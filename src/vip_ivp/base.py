@@ -142,7 +142,7 @@ class Solver:
         elif t_eval is None:
             t_eval = np.arange(0, t_end + self.DEFAULT_TIME_STEP, self.DEFAULT_TIME_STEP)
         try:
-            res = self._solve_ivp((0, t_end), self.x0, method=method, t_eval=t_eval, events=self.events,
+            res = self._solve_ivp((0, t_end), self.x0, method=method, t_eval=t_eval,
                                   include_events_times=include_events_times, **options)
             if not res.success:
                 raise Exception(res.message)
@@ -254,7 +254,6 @@ class Solver:
             method="RK45",
             t_eval=None,
             dense_output=False,
-            events=None,
             vectorized=False,
             include_events_times=True,
             **options,
@@ -267,8 +266,6 @@ class Solver:
         t0, tf = map(float, t_span)
 
         y0 = self._bound_sol(t0, y0)
-        if not events:
-            events = None
 
         if t_eval is not None:
             t_eval = np.asarray(t_eval)
@@ -305,10 +302,9 @@ class Solver:
             self.y = []
 
         solver = method(self._dy, t0, y0, tf, vectorized=vectorized, **options)
-        if events is not None:
-            [event.evaluate(t0, y0) for event in events]
-            t_events = []
-            t_events = []
+        if self.get_events(t0) is not None:
+            [event.evaluate(t0, y0) for event in self.get_events(t0)]
+            t_events=[]
         else:
             t_events = None
             y_events = None
@@ -322,6 +318,8 @@ class Solver:
             t_old = solver.t_old
             t = solver.t
             y = self._bound_sol(t, solver.y)
+
+            events=self.get_events(t)
 
             if dense_output:
                 sol = lambda t: self._bound_sol(t, solver.dense_output()(t))
@@ -349,9 +347,9 @@ class Solver:
                     active_event.execute_action(te, ye)
                     t = te
                     y = ye
+                    events=self.get_events(te)
                     [event.evaluate(t, y) for event in events]
                     solver = method(self._dy, t, y, tf, vectorized=vectorized, **options)
-
 
                     if active_event.terminal:
                         self.status = 1
@@ -462,6 +460,12 @@ class Solver:
             return self._bound_sol(t, sol(t))
 
         return output_fun
+
+    def get_events(self, t):
+        event_list = [e for e in self.events if e.deletion_time is None or e.deletion_time < t]
+        if not event_list:
+            return None
+        return event_list
 
 
 class TemporalVar(Generic[T]):
@@ -1218,6 +1222,8 @@ class Event:
         self.t_events = []
         self.y_events = []
 
+        self.deletion_time = None  # Time at which the event has been deleted from the simulation.
+
         self.solver.events.append(self)
 
     def __call__(self, t, y) -> float:
@@ -1228,7 +1234,10 @@ class Event:
         self.value_new = self(t, y)
 
     def get_delete_from_simulation_action(self) -> EventAction:
-        return lambda t, y: self.solver.events.remove(self)
+        def delete_event(t, y):
+            self.deletion_time = t
+
+        return delete_event
 
     def execute_action(self, t, y):
         if self.action is not None:

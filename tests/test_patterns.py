@@ -271,8 +271,9 @@ def test_delete_event():
     del_event = a.on_crossing(6, terminal=True)
     a.on_crossing(3, del_event)
 
-    a.to_plot("Hey")
+    # a.to_plot("Hey")
 
     vip.solve(10)
+    print(a.solver.events)
 
     assert a.t[-1] == 10
