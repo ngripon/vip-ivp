@@ -140,7 +140,6 @@ def find_active_events(events, sol, t_eval, t, t_old):
         g_new = [e(t_ev, sol(t_ev)) for e in events]
         active_events_indices = find_active_events_in_step(g, g_new, direction)
         if active_events_indices.size > 0:
-            print(g_new)
             return active_events_indices, t_ev
     return np.array([]), t
 
@@ -166,8 +165,8 @@ def find_active_events_in_step(g, g_new, direction):
     g_new = [x if not isinstance(x, (bool, np.bool)) or x == True else -1 for x in g_new]
 
     g, g_new, direction = np.asarray(g), np.asarray(g_new), np.asarray(direction)
-    up = (g <= 0) & (g_new >= 0)
-    down = (g >= 0) & (g_new <= 0)
+    up = (g < 0) & (g_new >= 0)
+    down = (g > 0) & (g_new <= 0)
     either = up | down
     mask = (up & (direction > 0) |
             down & (direction < 0) |

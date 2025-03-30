@@ -265,18 +265,18 @@ def test_bounded_integration_by_variable():
     assert ia_dec.values[-1] == 4
 
 
-# def test_delete_event():
-#     a = vip.create_source(lambda t: t)
-#
-#     del_event = a.on_crossing(6, terminal=True)
-#     a.on_crossing(3, del_event)
-#
-#     # a.to_plot("Hey")
-#
-#     vip.solve(10)
-#     print(a.solver.events)
-#
-#     assert a.t[-1] == 10
+def test_delete_event():
+    a = vip.create_source(lambda t: t)
+
+    del_event = a.on_crossing(6, terminal=True)
+    a.on_crossing(3, del_event)
+
+    # a.to_plot("Hey")
+
+    vip.solve(10)
+    print(a.solver.events)
+
+    assert a.t[-1] == 10
 
 def test_variable_step_solving():
     # Exponential decay : dN/dt = - λ * N

@@ -454,7 +454,7 @@ class Solver:
         return output_fun
 
     def get_events(self, t):
-        event_list = [e for e in self.events if e.deletion_time is None or e.deletion_time < t]
+        event_list = [e for e in self.events if e.deletion_time is None or t<e.deletion_time]
         if not event_list:
             return None
         return event_list
