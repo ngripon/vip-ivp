@@ -553,6 +553,8 @@ class TemporalVar(Generic[T]):
         :param name: Name of the variable in the legend of the plot.
         """
         if name is None:
+            if self.name is None:
+                get_expression(self)
             name = self.name
         if isinstance(self.function, np.ndarray):
             [
