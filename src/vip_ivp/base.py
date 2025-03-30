@@ -18,7 +18,6 @@ from .solver_utils import *
 from .utils import add_necessary_brackets, convert_to_string
 
 T = TypeVar("T")
-EventAction: TypeAlias = Callable[[float, np.ndarray], None]
 
 
 class Solver:
@@ -342,13 +341,13 @@ class Solver:
                     y = ye
                     events = self.get_events(te)
                     [e.evaluate(t, y) for e in self.get_events(t)]
-                    active_event.g=0
+                    active_event.g = 0
                     solver = method(self._dy, t, y, tf, vectorized=vectorized, **options)
 
                     if active_event.terminal:
                         self.status = 1
                 else:
-                    [e.evaluate(t,y) for e in self.get_events(t)]
+                    [e.evaluate(t, y) for e in self.get_events(t)]
 
             if t_eval is None:
                 self.t.append(t)
@@ -469,7 +468,11 @@ class TemporalVar(Generic[T]):
             self,
             solver: "Solver",
             fun: Union[
-                Callable[[Union[float, np.ndarray], np.ndarray], T], np.ndarray, dict
+                Callable[[Union[float, np.ndarray], np.ndarray], T],
+                Callable[[Union[float, np.ndarray]], T],
+                np.ndarray,
+                dict,
+                Number
             ] = None,
             expression: str = None,
             child_cls=None
@@ -585,9 +588,9 @@ class TemporalVar(Generic[T]):
             variables[col] = fun
         return cls(solver, variables)
 
-    def on_crossing(self, value: T, action: "EventAction" = None,
+    def on_crossing(self, value: T, action: "Action" = None,
                     direction: Literal["rising", "falling", "both"] = "both",
-                    terminal: Union[bool, int] = False) -> "EventAction":
+                    terminal: Union[bool, int] = False) -> "Action":
         if self.output_type in (bool, np.bool, str):
             crossed_variable = self == value
         elif issubclass(self.output_type, abc.Iterable):
@@ -599,7 +602,7 @@ class TemporalVar(Generic[T]):
         event = Event(self.solver, crossed_variable, action, direction, terminal)
         return event.get_delete_from_simulation_action()
 
-    def change_behavior(self, value: T) -> EventAction:
+    def change_behavior(self, value: T) -> "Action":
         def change_value(t):
             time = TemporalVar(self.solver, lambda t: t)
             new_value = TemporalVar(self.solver, value)
@@ -607,7 +610,7 @@ class TemporalVar(Generic[T]):
             self.function = new_var.function
             self._expression = new_var.expression
 
-        return lambda t, y: change_value(t)
+        return Action(lambda t, y: change_value(t))
 
     def reset(self):
         self._values = None
@@ -1135,11 +1138,11 @@ class IntegratedVar(TemporalVar[T]):
             return self._y_idx
         raise ValueError("The argument 'y_idx' should be set for IntegratedVar containing a single value.")
 
-    def set_value(self, value: Union[TemporalVar[T], T]) -> EventAction:
+    def set_value(self, value: Union[TemporalVar[T], T]) -> "Action":
         if not isinstance(value, TemporalVar):
             value = TemporalVar(self.solver, value)
 
-        def action(t, y):
+        def action_fun(t, y):
             def set_y0(idx, subvalue):
                 if isinstance(idx, np.ndarray):
                     for arr_idx in np.ndindex(idx.shape):
@@ -1154,9 +1157,9 @@ class IntegratedVar(TemporalVar[T]):
 
             set_y0(self.y_idx, value)
 
-        return action
+        return Action(action_fun)
 
-    def change_behavior(self, value: T) -> EventAction:
+    def change_behavior(self, value: T) -> None:
         raise NotImplementedError(
             "This method is irrelevant for an integrated variable. "
             "If you want really want to change the behavior of an integrated variable, create a new variable by doing "
@@ -1192,7 +1195,7 @@ def get_expression(value) -> str:
 class Event:
     DIRECTION_MAP = {"rising": 1, "falling": -1, "both": 0}
 
-    def __init__(self, solver: Solver, fun, action: Union[EventAction, None],
+    def __init__(self, solver: Solver, fun, action: Union["Action", None],
                  direction: Literal["rising", "falling", "both"] = "both",
                  terminal: Union[bool, int] = False):
         self.solver = solver
@@ -1227,12 +1230,42 @@ class Event:
     def evaluate(self, t, y) -> None:
         self.g = self(t, y)
 
-    def get_delete_from_simulation_action(self) -> EventAction:
-        def delete_event(t, y):
+    def get_delete_from_simulation_action(self) -> "Action":
+        def delete_event(t):
             self.deletion_time = t
 
-        return delete_event
+        return Action(delete_event)
 
     def execute_action(self, t, y):
         if self.action is not None:
             self.action(t, y)
+
+
+class Action:
+    def __init__(self, fun: Callable):
+        if isinstance(fun, TemporalVar):
+            raise ValueError(
+                "An action can not be a TemporalVar, because an action is a function with side effects, "
+                "while a TemporalVar is a pure function."
+            )
+        if callable(fun):
+            n_args = len(inspect.signature(fun).parameters)
+            if n_args == 0:
+                self.function = lambda t, y: fun()
+            elif n_args == 1:
+                self.function = lambda t, y: fun(t)
+            else:
+                self.function = lambda t, y: fun(t, y)
+
+    def __call__(self, t, y):
+        return self.function(t, y)
+
+    def __add__(self, other: Union[Callable, "Action"]) -> "Action":
+        if not isinstance(other, Action):
+            other = Action(other)
+
+        def added_fun(t, y):
+            self(t, y)
+            other(t, y)
+
+        return Action(added_fun)
