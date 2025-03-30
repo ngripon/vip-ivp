@@ -251,7 +251,7 @@ def test_eval_events_at_all_time_points():
     )
     #
     # position.to_plot("Position")
-    # stopped.to_plot("Stopping condition")
+    stopped.to_plot("Stopping condition")
 
     vip.solve(20, time_step=0.01)
     # print(position.t)

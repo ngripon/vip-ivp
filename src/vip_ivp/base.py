@@ -321,18 +321,19 @@ class Solver:
                 sol = None
 
             if events is not None:
+                if sol is None:
+                    sol = self._sol_wrapper(solver.dense_output())
+
                 [event.evaluate(t, y) for event in events]
-                active_events_indices = find_active_events(events)
+                active_events_indices, t = find_active_events(events, sol, t_eval, t, t_old)
                 if active_events_indices.size > 0:
-                    if sol is None:
-                        sol = self._sol_wrapper(solver.dense_output())
                     for active_idx in active_events_indices:
                         events[active_idx].count += 1
                     active_events, roots = handle_events(sol, events, active_events_indices, t_old, t, t_eval)
 
                     # Get the first event, execute its action and relaunch the solver to begin at te.
                     e_idx = np.argmin(roots)
-                    active_event: Event = events[e_idx]
+                    active_event: Event = active_events[e_idx]
                     te = roots[0]
                     ye = sol(te)
                     active_event.t_events.append(te)
@@ -1209,8 +1210,7 @@ class Event:
         else:
             raise ValueError(message)
 
-        self.value = None
-        self.value_new = None
+        self.current_value = None
 
         self.t_events = []
         self.y_events = []
@@ -1223,8 +1223,7 @@ class Event:
         return self.function(t, y)
 
     def evaluate(self, t, y):
-        self.value = self.value_new
-        self.value_new = self(t, y)
+        self.current_value = self(t, y)
 
     def get_delete_from_simulation_action(self) -> EventAction:
         def delete_event(t, y):
