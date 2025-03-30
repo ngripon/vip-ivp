@@ -250,7 +250,7 @@ def test_bounded_integration_by_constant():
 
 def test_bounded_integration_by_variable():
     a = vip.create_source(1)
-    signal=vip.create_source(lambda t:6-t)
+    signal = vip.create_source(lambda t: 6 - t)
     ia_inc = vip.integrate(a, 0, maximum=signal)
     ia_dec = vip.integrate(-a, 0, minimum=-signal)
 
@@ -263,3 +263,30 @@ def test_bounded_integration_by_variable():
     assert ia_inc.values[-1] == -4
     assert ia_dec.values[3] == -3
     assert ia_dec.values[-1] == 4
+
+
+def test_delete_event():
+    a = vip.create_source(lambda t: t)
+
+    del_event = a.on_crossing(6, terminal=True)
+    a.on_crossing(3, del_event)
+
+    # a.to_plot("Hey")
+
+    vip.solve(10)
+    print(a.solver.events)
+
+    assert a.t[-1] == 10
+
+def test_variable_step_solving():
+    # Exponential decay : dN/dt = - λ * N
+    d_n = vip.loop_node()
+    n = vip.integrate(d_n, 1)
+    d_n.loop_into(-0.5 * n)
+
+    # Choose which variables to plot
+    n.to_plot("Quantity")
+    d_n.to_plot("Derivative")
+
+    # Solve the system. The plot will automatically show.
+    vip.solve(10, time_step=None)

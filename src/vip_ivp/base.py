@@ -106,8 +106,6 @@ class Solver:
         self.dim += 1
         return integrated_variable
 
-    DEFAULT_TIME_STEP = 0.1
-
     def solve(
             self,
             t_end: float,
@@ -133,16 +131,10 @@ class Solver:
         [var.reset() for var in self.vars]
         start = time.time()
         # Set t_eval
-        if time_step is not None:
-            if t_eval is not None:
-                warnings.warn(
-                    "The value of t_eval has been overridden because time_step parameter is not None."
-                )
+        if time_step is not None and t_eval is None:
             t_eval = np.arange(0, t_end + time_step, time_step)
-        elif t_eval is None:
-            t_eval = np.arange(0, t_end + self.DEFAULT_TIME_STEP, self.DEFAULT_TIME_STEP)
         try:
-            res = self._solve_ivp((0, t_end), self.x0, method=method, t_eval=t_eval, events=self.events,
+            res = self._solve_ivp((0, t_end), self.x0, method=method, t_eval=t_eval,
                                   include_events_times=include_events_times, **options)
             if not res.success:
                 raise Exception(res.message)
@@ -254,7 +246,6 @@ class Solver:
             method="RK45",
             t_eval=None,
             dense_output=False,
-            events=None,
             vectorized=False,
             include_events_times=True,
             **options,
@@ -303,12 +294,9 @@ class Solver:
             self.y = []
 
         solver = method(self._dy, t0, y0, tf, vectorized=vectorized, **options)
-        if events is not None:
-            events, max_events, event_dir = prepare_events(events)
-            event_count = np.zeros(len(events))
-            g = [event(t0, y0) for event in events]
-            t_events = [[] for _ in range(len(events))]
-            y_events = [[] for _ in range(len(events))]
+        if self.get_events(t0) is not None:
+            [event.evaluate(t0, y0) for event in self.get_events(t0)]
+            t_events = []
         else:
             t_events = None
             y_events = None
@@ -323,6 +311,8 @@ class Solver:
             t = solver.t
             y = self._bound_sol(t, solver.y)
 
+            events = self.get_events(t)
+
             if dense_output:
                 sol = lambda t: self._bound_sol(t, solver.dense_output()(t))
                 interpolants.append(sol)
@@ -330,34 +320,31 @@ class Solver:
                 sol = None
 
             if events is not None:
-                g_new = [event(t, y) for event in events]
-                active_events = find_active_events(g, g_new, event_dir)
-                if active_events.size > 0:
+                [event.evaluate(t, y) for event in events]
+                active_events_indices = find_active_events(events)
+                if active_events_indices.size > 0:
                     if sol is None:
                         sol = self._sol_wrapper(solver.dense_output())
-
-                    event_count[active_events] += 1
-                    root_indices, roots, _ = handle_events(
-                        sol, events, active_events, event_count, max_events,
-                        t_old, t, t_eval)
+                    for active_idx in active_events_indices:
+                        events[active_idx].count += 1
+                    active_events, roots = handle_events(sol, events, active_events_indices, t_old, t, t_eval)
 
                     # Get the first event, execute its action and relaunch the solver to begin at te.
-                    e_idx = root_indices[0]
+                    e_idx = np.argmin(roots)
                     active_event: Event = events[e_idx]
                     te = roots[0]
                     ye = sol(te)
-                    t_events[e_idx].append(te)
-                    y_events[e_idx].append(ye)
+                    active_event.t_events.append(te)
+                    active_event.y_events.append(ye)
                     active_event.execute_action(te, ye)
                     t = te
                     y = ye
-                    g_new = [event(t, y) for event in events]
+                    events = self.get_events(te)
+                    [event.evaluate(t, y) for event in events]
                     solver = method(self._dy, t, y, tf, vectorized=vectorized, **options)
 
                     if active_event.terminal:
                         self.status = 1
-
-                g = g_new
 
             if t_eval is None:
                 self.t.append(t)
@@ -384,9 +371,10 @@ class Solver:
                         self.y.extend([0] * len(t_eval_step))
                     t_eval_i = t_eval_i_new
                 if events is not None and include_events_times:
-                    if active_events.size > 0 and self.status != 1:
+                    if active_events_indices.size > 0 and self.status != 1:
                         self.t.append(te)
-                        self.y.append(ye)
+                        # When there is no integrated variable, self.y should be a list of zeros
+                        self.y.append(ye if len(ye) else 0.0)
 
             if t_eval is not None and dense_output:
                 ti.append(t)
@@ -399,8 +387,8 @@ class Solver:
 
         message = MESSAGES.get(self.status, message)
         if t_events is not None:
-            t_events = [np.asarray(te) for te in t_events]
-            y_events = [np.asarray(ye) for ye in y_events]
+            t_events = [np.asarray(e.t_events) for e in events]
+            y_events = [np.asarray(e.y_events) for e in events]
 
         if self.t:
             self.t = np.array(self.t)
@@ -464,6 +452,12 @@ class Solver:
             return self._bound_sol(t, sol(t))
 
         return output_fun
+
+    def get_events(self, t):
+        event_list = [e for e in self.events if e.deletion_time is None or e.deletion_time < t]
+        if not event_list:
+            return None
+        return event_list
 
 
 class TemporalVar(Generic[T]):
@@ -1203,13 +1197,39 @@ class Event:
         self.terminal = terminal
         self.direction = self.DIRECTION_MAP[direction]
 
+        self.count = 0
+        # Compute max events
+        message = ('The `terminal` attribute of each event '
+                   'must be a boolean or positive integer.')
+        if terminal is None or terminal == 0:
+            self.max_events = np.inf
+        elif int(terminal) == terminal and terminal > 0:
+            self.max_events = terminal
+        else:
+            raise ValueError(message)
+
+        self.value = None
+        self.value_new = None
+
+        self.t_events = []
+        self.y_events = []
+
+        self.deletion_time = None  # Time at which the event has been deleted from the simulation.
+
         self.solver.events.append(self)
 
     def __call__(self, t, y) -> float:
         return self.function(t, y)
 
+    def evaluate(self, t, y):
+        self.value = self.value_new
+        self.value_new = self(t, y)
+
     def get_delete_from_simulation_action(self) -> EventAction:
-        return lambda t, y: self.solver.events.remove(self)
+        def delete_event(t, y):
+            self.deletion_time = t
+
+        return delete_event
 
     def execute_action(self, t, y):
         if self.action is not None:

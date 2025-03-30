@@ -51,6 +51,16 @@ def test_integrate_scalar():
     assert np.allclose(x.values, np.linspace(1, 51, 11))
 
 
+def test_no_integration():
+    a = vip.create_source(lambda t: t)
+    b = 2 * a
+
+    a.to_plot('A')
+    b.to_plot('2*A')
+
+    vip.solve(10)
+
+
 def test_system_without_integration():
     # Without time step
     a = vip.create_source(lambda t: t)
