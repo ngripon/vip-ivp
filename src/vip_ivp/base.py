@@ -268,7 +268,7 @@ class Solver:
 
         y0 = self._bound_sol(t0, y0)
         if not events:
-            events=None
+            events = None
 
         if t_eval is not None:
             t_eval = np.asarray(t_eval)
@@ -307,8 +307,8 @@ class Solver:
         solver = method(self._dy, t0, y0, tf, vectorized=vectorized, **options)
         if events is not None:
             [event.evaluate(t0, y0) for event in events]
-            t_events=[]
-            t_events=[]
+            t_events = []
+            t_events = []
         else:
             t_events = None
             y_events = None
@@ -337,10 +337,10 @@ class Solver:
                         sol = self._sol_wrapper(solver.dense_output())
                     for active_idx in active_events_indices:
                         events[active_idx].count += 1
-                    active_events, roots = handle_events(sol, events, active_events_indices,t_old, t, t_eval)
+                    active_events, roots = handle_events(sol, events, active_events_indices, t_old, t, t_eval)
 
                     # Get the first event, execute its action and relaunch the solver to begin at te.
-                    e_idx=np.argmin(roots)
+                    e_idx = np.argmin(roots)
                     active_event: Event = events[e_idx]
                     te = roots[0]
                     ye = sol(te)
@@ -351,6 +351,7 @@ class Solver:
                     y = ye
                     [event.evaluate(t, y) for event in events]
                     solver = method(self._dy, t, y, tf, vectorized=vectorized, **options)
+
 
                     if active_event.terminal:
                         self.status = 1
@@ -382,7 +383,8 @@ class Solver:
                 if events is not None and include_events_times:
                     if active_events_indices.size > 0 and self.status != 1:
                         self.t.append(te)
-                        self.y.append(ye)
+                        # When there is no integrated variable, self.y should be a list of zeros
+                        self.y.append(ye if len(ye) else 0.0)
 
             if t_eval is not None and dense_output:
                 ti.append(t)
@@ -1199,7 +1201,7 @@ class Event:
         self.terminal = terminal
         self.direction = self.DIRECTION_MAP[direction]
 
-        self.count=0
+        self.count = 0
         # Compute max events
         message = ('The `terminal` attribute of each event '
                    'must be a boolean or positive integer.')
@@ -1210,20 +1212,20 @@ class Event:
         else:
             raise ValueError(message)
 
-        self.value=None
-        self.value_new=None
+        self.value = None
+        self.value_new = None
 
-        self.t_events=[]
-        self.y_events=[]
+        self.t_events = []
+        self.y_events = []
 
         self.solver.events.append(self)
 
     def __call__(self, t, y) -> float:
         return self.function(t, y)
 
-    def evaluate(self,t,y):
-        self.value=self.value_new
-        self.value_new=self(t,y)
+    def evaluate(self, t, y):
+        self.value = self.value_new
+        self.value_new = self(t, y)
 
     def get_delete_from_simulation_action(self) -> EventAction:
         return lambda t, y: self.solver.events.remove(self)
