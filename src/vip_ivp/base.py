@@ -342,13 +342,13 @@ class Solver:
                     y = ye
                     events = self.get_events(te)
                     [e.evaluate(t, y) for e in self.get_events(t)]
-                    active_event.g=0
+                    active_event.g = 0
                     solver = method(self._dy, t, y, tf, vectorized=vectorized, **options)
 
                     if active_event.terminal:
                         self.status = 1
                 else:
-                    [e.evaluate(t,y) for e in self.get_events(t)]
+                    [e.evaluate(t, y) for e in self.get_events(t)]
 
             if t_eval is None:
                 self.t.append(t)
@@ -546,12 +546,16 @@ class TemporalVar(Generic[T]):
             )
         self.solver.saved_vars[name] = self
 
-    def to_plot(self, name: str) -> None:
+    def to_plot(self, name: str = None) -> None:
         """
         Add the variable to the plotted data on solve.
 
         :param name: Name of the variable in the legend of the plot.
         """
+        if name is None:
+            if self.name is None:
+                get_expression(self)
+            name = self.name
         if isinstance(self.function, np.ndarray):
             [
                 self[idx].to_plot(f"{name}[{', '.join(str(i) for i in idx)}]")
