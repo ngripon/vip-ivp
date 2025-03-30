@@ -290,3 +290,15 @@ def test_variable_step_solving():
 
     # Solve the system. The plot will automatically show.
     vip.solve(10, time_step=None)
+
+def test_action_adding():
+    a=vip.create_source(5)
+    ia=vip.integrate(a,0)
+
+    ia.on_crossing(10, ia.set_value(0)+vip.terminate)
+
+    ia.to_plot("IA")
+
+    vip.solve(10)
+
+    assert ia.t[-1]==2
