@@ -213,3 +213,45 @@ def test_bouncing_projectile_motion():
 
     vip.solve(20, time_step=0.2)
     print(position.t)
+
+
+def test_eval_events_at_all_time_points():
+    # Parameters
+    GRAVITY = -9.81
+    v0 = 20
+    th0 = np.radians(45)
+    mu = 0.1  # Coefficient of air drag
+
+    # Compute initial condition
+    v0 = [v0 * np.cos(th0), v0 * np.sin(th0)]
+    x0 = [0, 0]
+
+    k = 0.7  # Bouncing coefficients
+    v_min = 0.01
+
+    # Create system
+    acceleration = vip.loop_node(2)
+    velocity = vip.integrate(acceleration, v0)
+    position = vip.integrate(velocity, x0)
+    v_norm = np.sqrt(velocity[0] ** 2 + velocity[1] ** 2)
+    acceleration.loop_into([-mu * velocity[0] * v_norm,
+                            GRAVITY - mu * velocity[1] * v_norm])
+
+    stopped = abs(velocity[1]) < v_min
+
+    position[1].on_crossing(
+        0,
+        velocity[1].set_value(-k * velocity[1]),
+        terminal=False, direction="falling"
+    )
+
+    stopped.on_crossing(
+        True,
+        terminal=True
+    )
+
+    position.to_plot("Position")
+    stopped.to_plot("Stopping condition")
+
+    vip.solve(20, time_step=0.01)
+    print(position.t)
