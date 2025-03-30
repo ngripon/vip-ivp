@@ -106,8 +106,6 @@ class Solver:
         self.dim += 1
         return integrated_variable
 
-    DEFAULT_TIME_STEP = 0.1
-
     def solve(
             self,
             t_end: float,
@@ -133,14 +131,8 @@ class Solver:
         [var.reset() for var in self.vars]
         start = time.time()
         # Set t_eval
-        if time_step is not None:
-            if t_eval is not None:
-                warnings.warn(
-                    "The value of t_eval has been overridden because time_step parameter is not None."
-                )
+        if time_step is not None and t_eval is None:
             t_eval = np.arange(0, t_end + time_step, time_step)
-        elif t_eval is None:
-            t_eval = np.arange(0, t_end + self.DEFAULT_TIME_STEP, self.DEFAULT_TIME_STEP)
         try:
             res = self._solve_ivp((0, t_end), self.x0, method=method, t_eval=t_eval,
                                   include_events_times=include_events_times, **options)
@@ -304,7 +296,7 @@ class Solver:
         solver = method(self._dy, t0, y0, tf, vectorized=vectorized, **options)
         if self.get_events(t0) is not None:
             [event.evaluate(t0, y0) for event in self.get_events(t0)]
-            t_events=[]
+            t_events = []
         else:
             t_events = None
             y_events = None
@@ -319,7 +311,7 @@ class Solver:
             t = solver.t
             y = self._bound_sol(t, solver.y)
 
-            events=self.get_events(t)
+            events = self.get_events(t)
 
             if dense_output:
                 sol = lambda t: self._bound_sol(t, solver.dense_output()(t))
@@ -347,7 +339,7 @@ class Solver:
                     active_event.execute_action(te, ye)
                     t = te
                     y = ye
-                    events=self.get_events(te)
+                    events = self.get_events(te)
                     [event.evaluate(t, y) for event in events]
                     solver = method(self._dy, t, y, tf, vectorized=vectorized, **options)
 
