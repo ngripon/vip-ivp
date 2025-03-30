@@ -106,9 +106,20 @@ def loop_node(shape: Union[int, tuple[int, ...]] = None) -> LoopNode:
     return LoopNode(solver, shape)
 
 
-def where(condition, a, b) -> TemporalVar:
+@overload
+def where(condition: TemporalVar, a: Action, b: Action) -> Action: ...
+
+
+@overload
+def where(condition: TemporalVar, a: Union[TemporalVar, T], b: Union[TemporalVar, T]) -> TemporalVar[T]: ...
+
+
+def where(condition, a, b):
     solver = _get_current_solver()
-    return base.where(solver, condition, a, b)
+    if isinstance(a, Action) or isinstance(b, Action):
+        return action_where(solver, condition, a, b)
+    else:
+        return temporal_var_where(solver, condition, a, b)
 
 
 def delay(input_value: TemporalVar[T], n_steps: int, initial_value: T = 0) -> TemporalVar[T]:
@@ -179,7 +190,7 @@ def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
     return wrapper
 
 
-def terminate(t, y):
+def terminate():
     solver = _get_current_solver()
     solver.status = 1
 

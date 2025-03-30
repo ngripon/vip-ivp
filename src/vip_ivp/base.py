@@ -606,7 +606,7 @@ class TemporalVar(Generic[T]):
         def change_value(t):
             time = TemporalVar(self.solver, lambda t: t)
             new_value = TemporalVar(self.solver, value)
-            new_var = where(self.solver, time < t, copy(self), new_value)
+            new_var = temporal_var_where(self.solver, time < t, copy(self), new_value)
             self.function = new_var.function
             self._expression = new_var.expression
 
@@ -1055,7 +1055,8 @@ def convert_args_to_temporal_var(solver: Solver, arg_list: Iterable) -> List[Tem
     return [convert(a) for a in arg_list]
 
 
-def where(solver, condition: TemporalVar[bool], a: Union[T, TemporalVar[T]], b: Union[T, TemporalVar[T]]) -> \
+def temporal_var_where(solver, condition: TemporalVar[bool], a: Union[T, TemporalVar[T]],
+                       b: Union[T, TemporalVar[T]]) -> \
         TemporalVar[T]:
     condition, a, b = convert_args_to_temporal_var(solver, (condition, a, b))
     return TemporalVar(solver,
@@ -1269,3 +1270,26 @@ class Action:
             other(t, y)
 
         return Action(added_fun)
+
+
+def convert_args_to_action(arg_list: Iterable) -> List[Action]:
+    def convert(arg):
+        if not isinstance(arg, Action):
+            arg = Action(arg)
+        return arg
+
+    return [convert(a) for a in arg_list]
+
+
+def action_where(solver: Solver, condition: TemporalVar[bool], a: Union[Callable, Action],
+                 b: Union[Callable, Action]) -> Action:
+    condition = convert_args_to_temporal_var(solver, [condition])[0]
+    a, b = convert_args_to_action([a, b])
+
+    def conditional_action(t, y):
+        if condition(t, y):
+            a(t, y)
+        else:
+            b(t, y)
+
+    return Action(conditional_action)

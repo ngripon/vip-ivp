@@ -197,11 +197,9 @@ def test_bouncing_projectile_motion():
     acceleration.loop_into([-mu * velocity[0] * v_norm,
                             GRAVITY - mu * velocity[1] * v_norm])
 
-    def bounce(t, y):
-        if abs(velocity[1](t, y)) > v_min:
-            velocity[1].set_value(-k * velocity[1])(t, y)
-        else:
-            vip.terminate(t, y)
+    bounce = vip.where(abs(velocity[1]) > v_min,
+                       velocity[1].set_value(-k * velocity[1]),
+                       vip.terminate)
 
     position[1].on_crossing(
         0,
@@ -255,4 +253,4 @@ def test_eval_events_at_all_time_points():
 
     vip.solve(20, time_step=0.01)
     # print(position.t)
-    assert np.count_nonzero(stopped.values)==1
+    assert np.count_nonzero(stopped.values) == 1
