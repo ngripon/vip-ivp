@@ -125,7 +125,7 @@ def find_active_events(events, sol, t_eval, t, t_old):
         Indices of events which occurred during the step.
     """
 
-    g = [e(t_old, sol(t_old)) for e in events]
+    g = [e.g for e in events]
     direction = np.array([e.direction for e in events])
 
     if t_eval is None:
