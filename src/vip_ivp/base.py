@@ -132,7 +132,8 @@ class Solver:
         start = time.time()
         # Set t_eval
         if time_step is not None and t_eval is None:
-            t_eval = np.arange(0, t_end + time_step, time_step)
+            t_eval = np.arange(0, t_end + time_step / 2,
+                               time_step)  # Add half a time step to get an array that stops on t_end
         try:
             res = self._solve_ivp((0, t_end), self.x0, method=method, t_eval=t_eval,
                                   include_events_times=include_events_times, **options)
@@ -295,8 +296,8 @@ class Solver:
 
         solver = method(self._dy, t0, y0, tf, vectorized=vectorized, **options)
         if self.get_events(t0) is not None:
-            [event.evaluate(t0, y0) for event in self.get_events(t0)]
             t_events = []
+            [e.evaluate(t0, y0) for e in self.get_events(t0)]
         else:
             t_events = None
             y_events = None
@@ -320,18 +321,18 @@ class Solver:
                 sol = None
 
             if events is not None:
-                [event.evaluate(t, y) for event in events]
-                active_events_indices = find_active_events(events)
+                if sol is None:
+                    sol = self._sol_wrapper(solver.dense_output())
+
+                active_events_indices, t = find_active_events(events, sol, t_eval, t, t_old)
                 if active_events_indices.size > 0:
-                    if sol is None:
-                        sol = self._sol_wrapper(solver.dense_output())
                     for active_idx in active_events_indices:
                         events[active_idx].count += 1
                     active_events, roots = handle_events(sol, events, active_events_indices, t_old, t, t_eval)
 
                     # Get the first event, execute its action and relaunch the solver to begin at te.
                     e_idx = np.argmin(roots)
-                    active_event: Event = events[e_idx]
+                    active_event: Event = active_events[e_idx]
                     te = roots[0]
                     ye = sol(te)
                     active_event.t_events.append(te)
@@ -340,11 +341,14 @@ class Solver:
                     t = te
                     y = ye
                     events = self.get_events(te)
-                    [event.evaluate(t, y) for event in events]
+                    [e.evaluate(t, y) for e in self.get_events(t)]
+                    active_event.g=0
                     solver = method(self._dy, t, y, tf, vectorized=vectorized, **options)
 
                     if active_event.terminal:
                         self.status = 1
+                else:
+                    [e.evaluate(t,y) for e in self.get_events(t)]
 
             if t_eval is None:
                 self.t.append(t)
@@ -454,7 +458,7 @@ class Solver:
         return output_fun
 
     def get_events(self, t):
-        event_list = [e for e in self.events if e.deletion_time is None or e.deletion_time < t]
+        event_list = [e for e in self.events if e.deletion_time is None or t < e.deletion_time]
         if not event_list:
             return None
         return event_list
@@ -1208,8 +1212,7 @@ class Event:
         else:
             raise ValueError(message)
 
-        self.value = None
-        self.value_new = None
+        self.g = None
 
         self.t_events = []
         self.y_events = []
@@ -1221,9 +1224,8 @@ class Event:
     def __call__(self, t, y) -> float:
         return self.function(t, y)
 
-    def evaluate(self, t, y):
-        self.value = self.value_new
-        self.value_new = self(t, y)
+    def evaluate(self, t, y) -> None:
+        self.g = self(t, y)
 
     def get_delete_from_simulation_action(self) -> EventAction:
         def delete_event(t, y):

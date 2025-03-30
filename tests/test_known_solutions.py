@@ -61,3 +61,21 @@ def test_second_order_ode():
     vip.solve(x[-1], t_eval=x)
     error_array = y_exact - y.values
     assert all(error_array < ABSOLUTE_TOLERANCE)
+
+def test_bouncing_ball():
+    gravity=-9.81
+    h=10
+    k=0.5
+
+    time_step=0.01
+
+    acc=vip.create_source(gravity)
+    velocity=vip.integrate(acc,0)
+    h=vip.integrate(velocity, h)
+
+    h.on_crossing(0, velocity.set_value(-k*velocity))
+
+    h.to_plot("Height")
+
+    vip.solve(10, time_step=time_step)
+    print(h.solver.events[0].t_events)

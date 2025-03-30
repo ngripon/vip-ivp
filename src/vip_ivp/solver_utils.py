@@ -109,7 +109,7 @@ def handle_events(sol, events, active_events_indices, t_old, t, t_eval):
     return active_events, roots
 
 
-def find_active_events(events):
+def find_active_events(events, sol, t_eval, t, t_old):
     """Find which event occurred during an integration step.
 
     Parameters
@@ -124,21 +124,52 @@ def find_active_events(events):
     active_events : ndarray
         Indices of events which occurred during the step.
     """
-    # Get g and g_new from events
-    g = [e.value for e in events]
-    g_new = [e.value_new for e in events]
-    direction = [e.direction for e in events]
+
+    g = [e.g for e in events]
+    direction = np.array([e.direction for e in events])
+
+    if t_eval is None:
+        t_list = []
+    else:
+        t_eval_i_new = np.searchsorted(t_eval, t, side="right")
+        t_eval_step = t_eval[:t_eval_i_new]
+        t_list = t_eval_step[t_eval_step > t_old]
+
+
+    for t_ev in [*t_list, t]:
+        g_new = [e(t_ev, sol(t_ev)) for e in events]
+        active_events_indices = find_active_events_in_step(g, g_new, direction)
+        if active_events_indices.size > 0:
+            return active_events_indices, t_ev
+    return np.array([]), t
+
+
+def find_active_events_in_step(g, g_new, direction):
+    """Find which event occurred during an integration step.
+
+    Parameters
+    ----------
+    g, g_new : array_like, shape (n_events,)
+        Values of event functions at a current and next points.
+    direction : ndarray, shape (n_events,)
+        Event "direction" according to the definition in `solve_ivp`.
+
+    Returns
+    -------
+    active_events : ndarray
+        Indices of events which occurred during the step.
+    """
 
     # replace False values by -1 because False being equal 0 breaks the 0 crossing detection.
     g = [x if not isinstance(x, (bool, np.bool)) or x == True else -1 for x in g]
     g_new = [x if not isinstance(x, (bool, np.bool)) or x == True else -1 for x in g_new]
 
     g, g_new, direction = np.asarray(g), np.asarray(g_new), np.asarray(direction)
-    up = (g <= 0) & (g_new >= 0)
-    down = (g >= 0) & (g_new <= 0)
+    up = (g < 0) & (g_new >= 0)
+    down = (g > 0) & (g_new <= 0)
     either = up | down
     mask = (up & (direction > 0) |
             down & (direction < 0) |
             either & (direction == 0))
-
-    return np.nonzero(mask)[0]
+    active_events_indices = np.nonzero(mask)[0]
+    return active_events_indices
