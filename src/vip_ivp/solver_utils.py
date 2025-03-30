@@ -1,5 +1,5 @@
 import inspect
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 import numpy as np
 from scipy.integrate._ivp.bdf import BDF
@@ -26,29 +26,6 @@ MESSAGES = {0: "The solver successfully reached the end of the integration inter
 
 class OdeResult(OptimizeResult):
     pass
-
-
-def prepare_events(events) -> ("Event", np.ndarray[int], np.ndarray[float]):
-    """Standardize event functions and extract attributes."""
-    if callable(events):
-        events = (events,)
-
-    max_events = np.empty(len(events))
-    direction = np.empty(len(events))
-    for i, event in enumerate(events):
-        terminal = getattr(event, 'terminal', None)
-        direction[i] = getattr(event, 'direction', 0)
-
-        message = ('The `terminal` attribute of each event '
-                   'must be a boolean or positive integer.')
-        if terminal is None or terminal == 0:
-            max_events[i] = np.inf
-        elif int(terminal) == terminal and terminal > 0:
-            max_events[i] = terminal
-        else:
-            raise ValueError(message)
-
-    return events, max_events, direction
 
 
 def solve_event_equation(event, sol, t_old, t, is_discrete: bool = False, t_eval: float = None):
@@ -95,8 +72,7 @@ def is_discrete(event: "Event") -> bool:
     return event.function.output_type in (str, bool, np.bool)
 
 
-def handle_events(sol, events, active_events, event_count, max_events,
-                  t_old, t, t_eval):
+def handle_events(sol, events, active_events_indices, t_old, t, t_eval):
     """Helper function to handle events.
 
     Parameters
@@ -126,30 +102,14 @@ def handle_events(sol, events, active_events, event_count, max_events,
     terminate : bool
         Whether a terminal event occurred.
     """
-    roots = [solve_event_equation(events[event_index], sol, t_old, t, is_discrete(events[event_index]), t_eval)
-             for event_index in active_events]
-
+    active_events = [events[idx] for idx in active_events_indices]
+    roots = [solve_event_equation(e, sol, t_old, t, is_discrete(e), t_eval)
+             for e in active_events]
     roots = np.asarray(roots)
-
-    if np.any(event_count[active_events] >= max_events[active_events]):
-        if t > t_old:
-            order = np.argsort(roots)
-        else:
-            order = np.argsort(-roots)
-        active_events = active_events[order]
-        roots = roots[order]
-        t = np.nonzero(event_count[active_events]
-                       >= max_events[active_events])[0][0]
-        active_events = active_events[:t + 1]
-        roots = roots[:t + 1]
-        terminate = True
-    else:
-        terminate = False
-
-    return active_events, roots, terminate
+    return active_events, roots
 
 
-def find_active_events(g, g_new, direction):
+def find_active_events(events):
     """Find which event occurred during an integration step.
 
     Parameters
@@ -164,11 +124,16 @@ def find_active_events(g, g_new, direction):
     active_events : ndarray
         Indices of events which occurred during the step.
     """
+    # Get g and g_new from events
+    g = [e.value for e in events]
+    g_new = [e.value_new for e in events]
+    direction = [e.direction for e in events]
+
     # replace False values by -1 because False being equal 0 breaks the 0 crossing detection.
     g = [x if not isinstance(x, (bool, np.bool)) or x == True else -1 for x in g]
     g_new = [x if not isinstance(x, (bool, np.bool)) or x == True else -1 for x in g_new]
 
-    g, g_new = np.asarray(g), np.asarray(g_new)
+    g, g_new, direction = np.asarray(g), np.asarray(g_new), np.asarray(direction)
     up = (g <= 0) & (g_new >= 0)
     down = (g >= 0) & (g_new <= 0)
     either = up | down
