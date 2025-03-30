@@ -125,17 +125,18 @@ def find_active_events(events, sol, t_eval, t, t_old):
         Indices of events which occurred during the step.
     """
 
-    g = [e.current_value for e in events]
+    g = [e(t_old, sol(t_old)) for e in events]
     direction = np.array([e.direction for e in events])
 
     if t_eval is None:
-        t_list = [t]
+        t_list = []
     else:
         t_eval_i_new = np.searchsorted(t_eval, t, side="right")
         t_eval_step = t_eval[:t_eval_i_new]
         t_list = t_eval_step[t_eval_step > t_old]
 
-    for t_ev in t_list:
+
+    for t_ev in [*t_list, t]:
         g_new = [e(t_ev, sol(t_ev)) for e in events]
         active_events_indices = find_active_events_in_step(g, g_new, direction)
         if active_events_indices.size > 0:

@@ -296,7 +296,6 @@ class Solver:
 
         solver = method(self._dy, t0, y0, tf, vectorized=vectorized, **options)
         if self.get_events(t0) is not None:
-            [event.evaluate(t0, y0) for event in self.get_events(t0)]
             t_events = []
         else:
             t_events = None
@@ -324,7 +323,6 @@ class Solver:
                 if sol is None:
                     sol = self._sol_wrapper(solver.dense_output())
 
-                [event.evaluate(t, y) for event in events]
                 active_events_indices, t = find_active_events(events, sol, t_eval, t, t_old)
                 if active_events_indices.size > 0:
                     for active_idx in active_events_indices:
@@ -342,7 +340,6 @@ class Solver:
                     t = te
                     y = ye
                     events = self.get_events(te)
-                    [event.evaluate(t, y) for event in events]
                     solver = method(self._dy, t, y, tf, vectorized=vectorized, **options)
 
                     if active_event.terminal:
@@ -386,6 +383,7 @@ class Solver:
             elif solver.status == "failed":
                 self.status = -1
                 break
+
 
         message = MESSAGES.get(self.status, message)
         if t_events is not None:
@@ -1210,8 +1208,6 @@ class Event:
         else:
             raise ValueError(message)
 
-        self.current_value = None
-
         self.t_events = []
         self.y_events = []
 
@@ -1222,8 +1218,6 @@ class Event:
     def __call__(self, t, y) -> float:
         return self.function(t, y)
 
-    def evaluate(self, t, y):
-        self.current_value = self(t, y)
 
     def get_delete_from_simulation_action(self) -> EventAction:
         def delete_event(t, y):
