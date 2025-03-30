@@ -132,7 +132,8 @@ class Solver:
         start = time.time()
         # Set t_eval
         if time_step is not None and t_eval is None:
-            t_eval = np.arange(0, t_end + time_step, time_step)
+            t_eval = np.arange(0, t_end + time_step / 2,
+                               time_step)  # Add half a time step to get an array that stops on t_end
         try:
             res = self._solve_ivp((0, t_end), self.x0, method=method, t_eval=t_eval,
                                   include_events_times=include_events_times, **options)
