@@ -249,9 +249,10 @@ def test_eval_events_at_all_time_points():
         True,
         terminal=True
     )
-
-    position.to_plot("Position")
-    stopped.to_plot("Stopping condition")
+    #
+    # position.to_plot("Position")
+    # stopped.to_plot("Stopping condition")
 
     vip.solve(20, time_step=0.01)
-    print(position.t)
+    # print(position.t)
+    assert np.count_nonzero(stopped.values)==1
