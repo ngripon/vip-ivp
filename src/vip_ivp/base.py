@@ -299,7 +299,6 @@ class Solver:
         y_events = []
         [e.evaluate(t0, y0) for e in self.get_events(t0)]
 
-
         interpolants = []
 
         self.status = None
@@ -338,7 +337,6 @@ class Solver:
                     active_event.execute_action(te, ye)
                     t = te
                     y = ye
-                    events = self.get_events(te)
                     [e.evaluate(t, y) for e in self.get_events(t)]
                     active_event.g = 0
                     solver = method(self._dy, t, y, tf, vectorized=vectorized, **options)
@@ -372,11 +370,15 @@ class Solver:
                     else:
                         self.y.extend([0] * len(t_eval_step))
                     t_eval_i = t_eval_i_new
-                if events and include_events_times:
+                # Add time events
+                if events:
                     if active_events_indices.size > 0 and self.status != 1:
-                        self.t.append(te)
-                        # When there is no integrated variable, self.y should be a list of zeros
-                        self.y.append(ye if len(ye) else 0.0)
+                        if self.t[-1]==te and self.dim!=0:
+                            self.y[-1]=ye
+                        elif include_events_times:
+                            self.t.append(te)
+                            # When there is no integrated variable, self.y should be a list of zeros
+                            self.y.append(ye if len(ye) else 0.0)
 
             if t_eval is not None and dense_output:
                 ti.append(t)
@@ -1270,7 +1272,7 @@ class Action:
                 self.function = lambda t, y: fun(t)
             else:
                 self.function = lambda t, y: fun(t, y)
-        self.expression=convert_to_string(fun)
+        self.expression = convert_to_string(fun)
 
     def __call__(self, t, y):
         return self.function(t, y)

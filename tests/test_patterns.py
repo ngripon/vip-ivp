@@ -311,9 +311,10 @@ def test_set_timeout():
 
     ia.to_plot()
 
-    vip.solve(10, time_step=1)
+    vip.solve(10, time_step=1, include_events_times=False)
 
     timeout_event=vip.get_events()[0]
+    print(ia.values)
     assert timeout_event.deletion_time==3
-    assert ia.values[4]==0
+    assert ia.values[3]==0
 
