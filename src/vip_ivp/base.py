@@ -1269,6 +1269,7 @@ class Action:
                 self.function = lambda t, y: fun(t)
             else:
                 self.function = lambda t, y: fun(t, y)
+        self.expression=convert_to_string(fun)
 
     def __call__(self, t, y):
         return self.function(t, y)
@@ -1282,6 +1283,9 @@ class Action:
             other(t, y)
 
         return Action(added_fun)
+
+    def __repr__(self):
+        return f"Action({self.expression})"
 
 
 def convert_args_to_action(arg_list: Iterable) -> List[Action]:
