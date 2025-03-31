@@ -278,6 +278,7 @@ def test_delete_event():
 
     assert a.t[-1] == 10
 
+
 def test_variable_step_solving():
     # Exponential decay : dN/dt = - λ * N
     d_n = vip.loop_node()
@@ -291,41 +292,56 @@ def test_variable_step_solving():
     # Solve the system. The plot will automatically show.
     vip.solve(10, time_step=None)
 
-def test_action_adding():
-    a=vip.create_source(5)
-    ia=vip.integrate(a,0)
 
-    ia.on_crossing(10, ia.set_value(0)+vip.terminate)
+def test_action_adding():
+    a = vip.create_source(5)
+    ia = vip.integrate(a, 0)
+
+    ia.on_crossing(10, ia.set_value(0) + vip.terminate)
 
     ia.to_plot("IA")
 
     vip.solve(10)
 
-    assert ia.t[-1]==2
+    assert ia.t[-1] == 2
+
 
 def test_set_timeout():
-    a=vip.create_source(1)
-    ia=vip.integrate(a,0)
+    a = vip.create_source(1)
+    ia = vip.integrate(a, 0)
 
-    timeout_event=vip.set_timeout(ia.set_value(0),3)
+    timeout_event = vip.set_timeout(ia.set_value(0), 3)
 
     ia.to_plot()
 
     vip.solve(10, time_step=1, include_events_times=False)
 
-    assert timeout_event.deletion_time==3
-    assert ia.values[3]==0
+    assert timeout_event.deletion_time == 3
+    assert ia.values[3] == 0
+
 
 def test_set_interval():
     a = vip.create_source(1)
     ia = vip.integrate(a, 0)
 
-    e1=vip.set_interval(ia.set_value(0), 2)
+    e1 = vip.set_interval(ia.set_value(0), 2)
 
     # ia.to_plot()
 
     vip.solve(10, time_step=1, include_events_times=False)
 
     assert np.all(ia.values[0::2] == 0)
-    assert np.allclose(ia.values[1::2],np.full_like(ia.values[1::2],1))
+    assert np.allclose(ia.values[1::2], np.full_like(ia.values[1::2], 1))
 
+
+def test_create_event():
+    a = vip.create_source(1)
+    ia = vip.integrate(a, 0)
+
+    vip.set_timeout(lambda: vip.set_timeout(ia.set_value(0), 2), 3)
+
+    ia.to_plot()
+
+    vip.solve(10, 1)
+
+    assert ia.values[5] == 0
