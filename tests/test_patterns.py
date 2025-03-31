@@ -307,6 +307,13 @@ def test_set_timeout():
     a=vip.create_source(1)
     ia=vip.integrate(a,0)
 
+    vip.set_timeout(ia.set_value(0),3)
+
     ia.to_plot()
 
-    vip.solve(10)
+    vip.solve(10, time_step=1)
+
+    timeout_event=vip.get_events()[0]
+    assert timeout_event.deletion_time==3
+    assert ia.values[4]==0
+

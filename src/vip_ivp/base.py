@@ -294,12 +294,11 @@ class Solver:
             self.y = []
 
         solver = method(self._dy, t0, y0, tf, vectorized=vectorized, **options)
-        if self.get_events(t0) is not None:
-            t_events = []
-            [e.evaluate(t0, y0) for e in self.get_events(t0)]
-        else:
-            t_events = None
-            y_events = None
+
+        t_events = []
+        y_events = []
+        [e.evaluate(t0, y0) for e in self.get_events(t0)]
+
 
         interpolants = []
 
@@ -319,7 +318,7 @@ class Solver:
             else:
                 sol = None
 
-            if events is not None:
+            if events:
                 if sol is None:
                     sol = self._sol_wrapper(solver.dense_output())
 
@@ -373,7 +372,7 @@ class Solver:
                     else:
                         self.y.extend([0] * len(t_eval_step))
                     t_eval_i = t_eval_i_new
-                if events is not None and include_events_times:
+                if events and include_events_times:
                     if active_events_indices.size > 0 and self.status != 1:
                         self.t.append(te)
                         # When there is no integrated variable, self.y should be a list of zeros
@@ -389,7 +388,7 @@ class Solver:
                 break
 
         message = MESSAGES.get(self.status, message)
-        if t_events is not None:
+        if t_events:
             t_events = [np.asarray(e.t_events) for e in events]
             y_events = [np.asarray(e.y_events) for e in events]
 
@@ -458,8 +457,6 @@ class Solver:
 
     def get_events(self, t):
         event_list = [e for e in self.events if e.deletion_time is None or t < e.deletion_time]
-        if not event_list:
-            return None
         return event_list
 
 

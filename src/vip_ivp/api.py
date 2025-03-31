@@ -193,6 +193,11 @@ def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
 
 # Events
 
+def get_events() -> List[Event]:
+    solver = _get_current_solver()
+    return solver.events
+
+
 def _terminate():
     solver = _get_current_solver()
     solver.status = 1
