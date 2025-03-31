@@ -191,6 +191,8 @@ def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
     return wrapper
 
 
+# Events
+
 def _terminate():
     solver = _get_current_solver()
     solver.status = 1
@@ -198,6 +200,19 @@ def _terminate():
 
 terminate = Action(_terminate)
 
+
+def set_timeout(action: Action, delay: float) -> Action:
+    solver = _get_current_solver()
+    current_time = solver.t[-1] if solver.t else 0
+    time_variable = create_source(lambda t: t)
+    del_fun = time_variable.on_crossing(current_time + delay, action)
+    # Ugly thing to delete the event after one triggers
+    event = time_variable.events[0]
+    event.action += del_fun
+    return del_fun
+
+
+# Solving
 
 def solve(t_end: Number, time_step: Union[Number, None] = 0.1, method='RK45', t_eval: Union[List, np.ndarray] = None,
           include_events_times: bool = True, **options) -> None:

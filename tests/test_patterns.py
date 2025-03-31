@@ -302,3 +302,11 @@ def test_action_adding():
     vip.solve(10)
 
     assert ia.t[-1]==2
+
+def test_set_timeout():
+    a=vip.create_source(1)
+    ia=vip.integrate(a,0)
+
+    ia.to_plot()
+
+    vip.solve(10)
