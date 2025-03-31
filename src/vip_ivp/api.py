@@ -211,8 +211,15 @@ def set_timeout(action: Action, delay: float) -> Event:
     current_time = solver.t[-1] if solver.t else 0
     time_variable = create_source(lambda t: t)
     event = time_variable.on_crossing(current_time + delay, action)
-    # Ugly thing to delete the event after one triggers
     event.action += event.delete_action
+    return event
+
+
+def set_interval(action: Action, delay: float) -> Event:
+    solver = _get_current_solver()
+    current_time = solver.t[-1] if solver.t else 0
+    time_variable = create_source(lambda t: t % delay)
+    event = time_variable.on_crossing((current_time + delay)%delay, action)
     return event
 
 

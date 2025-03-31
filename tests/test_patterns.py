@@ -307,14 +307,25 @@ def test_set_timeout():
     a=vip.create_source(1)
     ia=vip.integrate(a,0)
 
-    vip.set_timeout(ia.set_value(0),3)
+    timeout_event=vip.set_timeout(ia.set_value(0),3)
 
     ia.to_plot()
 
     vip.solve(10, time_step=1, include_events_times=False)
 
-    timeout_event=vip.get_events()[0]
-    print(ia.values)
     assert timeout_event.deletion_time==3
     assert ia.values[3]==0
+
+def test_set_interval():
+    a = vip.create_source(1)
+    ia = vip.integrate(a, 0)
+
+    e1=vip.set_interval(ia.set_value(0), 2)
+
+    # ia.to_plot()
+
+    vip.solve(10, time_step=1, include_events_times=False)
+
+    assert np.all(ia.values[0::2] == 0)
+    assert np.allclose(ia.values[1::2],np.full_like(ia.values[1::2],1))
 
