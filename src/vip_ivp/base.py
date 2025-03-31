@@ -30,6 +30,7 @@ class Solver:
         self.integrated_vars: List[IntegratedVar] = []
 
         self.events: List[Event] = []
+        self.t_current:float=0
         self.t = []
         self.y = None
         self.solved = False
@@ -330,6 +331,7 @@ class Solver:
                     # Get the first event
                     te = np.min(roots)
                     ye = sol(te)
+                    self.t_current=te
                     # Get all events that happens at te and execute their action
                     triggering_events = [active_events[i] for i in range(len(active_events)) if roots[i] == te]
                     for event in triggering_events:
@@ -348,7 +350,7 @@ class Solver:
                         self.status = 1
                 else:
                     [e.evaluate(t, y) for e in self.get_events(t)]
-
+            self.t_current = t
             if t_eval is None:
                 self.t.append(t)
                 self.y.append(y)
