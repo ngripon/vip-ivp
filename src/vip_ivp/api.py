@@ -107,11 +107,12 @@ def loop_node(shape: Union[int, tuple[int, ...]] = None) -> LoopNode:
 
 
 @overload
-def where(condition: TemporalVar, a: Action, b: Action) -> Action: ...
+def where(condition: Union[TemporalVar[bool], bool], a: Action, b: Action) -> Action: ...
 
 
 @overload
-def where(condition: TemporalVar, a: Union[TemporalVar, T], b: Union[TemporalVar, T]) -> TemporalVar[T]: ...
+def where(condition: Union[TemporalVar[bool], bool], a: Union[TemporalVar, T], b: Union[TemporalVar, T]) -> TemporalVar[
+    T]: ...
 
 
 def where(condition, a, b):
@@ -190,9 +191,12 @@ def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
     return wrapper
 
 
-def terminate():
+def _terminate():
     solver = _get_current_solver()
     solver.status = 1
+
+
+terminate = Action(_terminate)
 
 
 def solve(t_end: Number, time_step: Union[Number, None] = 0.1, method='RK45', t_eval: Union[List, np.ndarray] = None,

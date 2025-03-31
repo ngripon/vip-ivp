@@ -94,26 +94,32 @@ def test_bouncing_ball():
         solution[(t0 <= t) & (t < t_g)] = current_sol[(t0 <= t) & (t < t_g)]
         v0 = -k * dy(t_g - t0, v0)
         if abs(v0) < v_min:
-            solution=solution[t<t_g]
-            t=t[t<t_g]
+            solution = solution[t <= t_g]
+            t = t[t <= t_g]
+            print(f"{t_g=} {v0=}")
             break
         t0 = t_g
         current_h = 0
 
-    plt.plot(t, solution)
-    plt.grid()
-    plt.show()
+    acc = vip.create_source(gravity)
+    velocity = vip.integrate(acc, 0)
+    h = vip.integrate(velocity, h)
 
-    #
+    h.on_crossing(0,
+                  vip.where(abs(velocity) < v_min, vip.terminate, velocity.set_value(-k * velocity)),
+                  direction="falling"
+                  )
 
-    #
-    # acc=vip.create_source(gravity)
-    # velocity=vip.integrate(acc,0)
-    # h=vip.integrate(velocity, h)
-    #
-    # h.on_crossing(0, velocity.set_value(-k*velocity))
-    #
     # h.to_plot("Height")
-    #
-    # vip.solve(10, time_step=time_step)
+
+    vip.solve(10, time_step=time_step, plot=False, include_events_times=False)
     # print(h.solver.events[0].t_events)
+
+    # plt.plot(h.t, h.values)
+    # plt.plot(t, solution)
+    # plt.grid()
+    # plt.show()
+    print(h.solver.events[0].t_events)
+    print(h.solver.events[0].y_events)
+
+    assert np.allclose(h.values, solution)
