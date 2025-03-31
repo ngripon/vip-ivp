@@ -110,6 +110,8 @@ def test_bouncing_ball():
                   vip.where(abs(velocity) < v_min, vip.terminate, velocity.set_value(-k * velocity)),
                   direction="falling"
                   )
+    condition=h<5
+    condition.on_crossing(True, terminal=True)
 
     vip.solve(10, time_step=time_step, plot=False, include_events_times=False)
 
@@ -117,6 +119,6 @@ def test_bouncing_ball():
     # plt.plot(t, solution)
     # plt.grid()
     # plt.show()
-    print(h.events[0].y_events)
+    print(condition.events)
 
     assert np.allclose(h.values, solution)

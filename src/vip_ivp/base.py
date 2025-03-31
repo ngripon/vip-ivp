@@ -1206,6 +1206,8 @@ class Event:
         self.function: TemporalVar = convert_args_to_temporal_var(self.solver, [fun])[0]
         self.action = action
         self.terminal = terminal
+
+        self.direction_name = direction
         self.direction = self.DIRECTION_MAP[direction]
 
         self.count = 0
@@ -1230,6 +1232,13 @@ class Event:
 
     def __call__(self, t, y) -> float:
         return self.function(t, y)
+
+    def __repr__(self):
+        if self.function.output_type in (bool, np.bool):
+            condition = self.function.expression
+        else:
+            condition = f"{self.function.expression} cross 0"
+        return f"Event(on {condition}, action = {self.action}, direction = {self.direction_name}, terminal = {self.terminal})"
 
     def evaluate(self, t, y) -> None:
         self.g = self(t, y)
