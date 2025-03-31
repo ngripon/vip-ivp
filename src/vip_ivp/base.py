@@ -327,21 +327,24 @@ class Solver:
                         events[active_idx].count += 1
                     active_events, roots = handle_events(sol, events, active_events_indices, t_old, t, t_eval)
 
-                    # Get the first event, execute its action and relaunch the solver to begin at te.
-                    e_idx = np.argmin(roots)
-                    active_event: Event = active_events[e_idx]
-                    te = roots[0]
+                    # Get the first event
+                    te = np.min(roots)
                     ye = sol(te)
-                    active_event.t_events.append(te)
-                    active_event.y_events.append(ye)
-                    active_event.execute_action(te, ye)
+                    # Get all events that happens at te and execute their action
+                    triggering_events = [active_events[i] for i in range(len(active_events)) if roots[i] == te]
+                    for event in triggering_events:
+                        event.t_events.append(te)
+                        event.y_events.append(ye)
+                        event.execute_action(te, ye)
+                    # Reset the solver and events evaluation to begin at te for the next step
                     t = te
                     y = ye
                     [e.evaluate(t, y) for e in self.get_events(t)]
-                    active_event.g = 0
+                    for event in triggering_events:
+                        event.g = 0
                     solver = method(self._dy, t, y, tf, vectorized=vectorized, **options)
 
-                    if active_event.terminal:
+                    if any(e.terminal for e in triggering_events):
                         self.status = 1
                 else:
                     [e.evaluate(t, y) for e in self.get_events(t)]
@@ -373,8 +376,8 @@ class Solver:
                 # Add time events
                 if events:
                     if active_events_indices.size > 0 and self.status != 1:
-                        if self.t[-1]==te and self.dim!=0:
-                            self.y[-1]=ye
+                        if self.t[-1] == te and self.dim != 0:
+                            self.y[-1] = ye
                         elif include_events_times:
                             self.t.append(te)
                             # When there is no integrated variable, self.y should be a list of zeros
