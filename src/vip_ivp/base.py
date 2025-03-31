@@ -596,7 +596,7 @@ class TemporalVar(Generic[T]):
             variables[col] = fun
         return cls(solver, variables)
 
-    def on_crossing(self, value: T, action: "Action" = None,
+    def on_crossing(self, value: T, action: Union["Action", Callable] = None,
                     direction: Literal["rising", "falling", "both"] = "both",
                     terminal: Union[bool, int] = False) -> "Event":
         if self.output_type in (bool, np.bool, str):
@@ -1205,12 +1205,12 @@ def get_expression(value) -> str:
 class Event:
     DIRECTION_MAP = {"rising": 1, "falling": -1, "both": 0}
 
-    def __init__(self, solver: Solver, fun, action: Union["Action", None],
+    def __init__(self, solver: Solver, fun, action: Union["Action", Callable, None],
                  direction: Literal["rising", "falling", "both"] = "both",
                  terminal: Union[bool, int] = False):
         self.solver = solver
         self.function: TemporalVar = convert_args_to_temporal_var(self.solver, [fun])[0]
-        self.action = action
+        self.action = convert_args_to_action([action])[0] if action is not None else None
         self.terminal = terminal
 
         self.direction_name = direction
@@ -1276,7 +1276,7 @@ class Action:
                 self.function = lambda t, y: fun(t)
             else:
                 self.function = lambda t, y: fun(t, y)
-        self.expression = convert_to_string(fun)
+        self.expression = "convert_to_string(fun)"
 
     def __call__(self, t, y):
         return self.function(t, y)

@@ -206,7 +206,7 @@ def _terminate():
 terminate = Action(_terminate)
 
 
-def set_timeout(action: Action, delay: float) -> Event:
+def set_timeout(action: Union[Action, Callable], delay: float) -> Event:
     solver = _get_current_solver()
     current_time = solver.t[-1] if solver.t else 0
     time_variable = create_source(lambda t: t)
@@ -215,7 +215,7 @@ def set_timeout(action: Action, delay: float) -> Event:
     return event
 
 
-def set_interval(action: Action, delay: float) -> Event:
+def set_interval(action: Union[Action, Callable], delay: float) -> Event:
     solver = _get_current_solver()
     current_time = solver.t[-1] if solver.t else 0
     time_variable = create_source(lambda t: t % delay)
