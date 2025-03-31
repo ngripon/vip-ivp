@@ -92,12 +92,13 @@ def test_bouncing_ball():
         t_g = t0 + t_ground(v0, current_h)
         current_sol = y(t - t0, v0, current_h)
         solution[(t0 <= t) & (t < t_g)] = current_sol[(t0 <= t) & (t < t_g)]
-        v0 = -k * dy(t_g - t0, v0)
+        v0 = dy(t_g - t0, v0)
         if abs(v0) < v_min:
             solution = solution[t <= t_g]
             t = t[t <= t_g]
             print(f"{t_g=} {v0=}")
             break
+        v0 = -k * v0
         t0 = t_g
         current_h = 0
 
@@ -110,16 +111,11 @@ def test_bouncing_ball():
                   direction="falling"
                   )
 
-    # h.to_plot("Height")
-
     vip.solve(10, time_step=time_step, plot=False, include_events_times=False)
-    # print(h.solver.events[0].t_events)
 
     # plt.plot(h.t, h.values)
     # plt.plot(t, solution)
     # plt.grid()
     # plt.show()
-    print(h.solver.events[0].t_events)
-    print(h.solver.events[0].y_events)
 
     assert np.allclose(h.values, solution)
