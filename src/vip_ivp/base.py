@@ -3,7 +3,7 @@ import time
 import warnings
 from collections import abc
 from copy import copy
-from typing import overload, Literal, TypeAlias, Type, ParamSpec, List, Iterable
+from typing import overload, Literal, TypeAlias, Type, ParamSpec, List, Iterable, Dict
 from numbers import Number
 from pathlib import Path
 from typing import Callable, Union, TypeVar, Generic
@@ -29,14 +29,14 @@ class Solver:
         # All the scalars variables that are an output of an integrate function
         self.integrated_vars: List[IntegratedVar] = []
 
-        self.events = []
+        self.events: List[Event] = []
         self.t = []
         self.y = None
         self.solved = False
-        self.saved_vars = {}
-        self.named_vars = {}
-        self.vars_to_plot = {}
-        self.status = None
+        self.saved_vars: Dict[str, TemporalVar] = {}
+        self.named_vars: Dict[str, TemporalVar] = {}
+        self.vars_to_plot: Dict[str, TemporalVar] = {}
+        self.status: Union[int, None] = None
 
     def integrate(self, input_value: "TemporalVar[T]", x0: T, minimum: Union[T, "TemporalVar[T]"] = None,
                   maximum: Union[T, "TemporalVar[T]"] = None) -> "IntegratedVar[T]":
@@ -509,6 +509,8 @@ class TemporalVar(Generic[T]):
         self.name = None
         self._inputs: list[TemporalVar] = []
 
+        self.events: List[Event] = []
+
         self.solver.vars.append(self)
 
     @property
@@ -600,6 +602,7 @@ class TemporalVar(Generic[T]):
         else:
             crossed_variable = self - value
         event = Event(self.solver, crossed_variable, action, direction, terminal)
+        self.events.append(event)
         return event.get_delete_from_simulation_action()
 
     def change_behavior(self, value: T) -> "Action":

@@ -117,5 +117,6 @@ def test_bouncing_ball():
     # plt.plot(t, solution)
     # plt.grid()
     # plt.show()
+    print(h.events[0].y_events)
 
     assert np.allclose(h.values, solution)
