@@ -254,3 +254,17 @@ def test_eval_events_at_all_time_points():
     vip.solve(20, time_step=0.01)
     # print(position.t)
     assert np.count_nonzero(stopped.values) == 1
+
+
+def test_multiple_events_at_the_same_instant():
+    a = vip.create_source(1)
+    ia = vip.integrate(a, 0)
+
+    e1 = vip.set_interval(ia.set_value(0), 2)
+    e2=vip.set_timeout(e1.delete_action, 6)
+
+    # ia.to_plot()
+
+    vip.solve(10, time_step=0.01, include_events_times=False)
+
+    assert e1.deletion_time == 6
