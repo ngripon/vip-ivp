@@ -285,8 +285,8 @@ def test_variable_step_solving():
     d_n.loop_into(-0.5 * n)
 
     # Choose which variables to plot
-    n.to_plot("Quantity")
-    d_n.to_plot("Derivative")
+    n.to_plot()
+    d_n.to_plot()
 
     # Solve the system. The plot will automatically show.
     vip.solve(10, time_step=None)

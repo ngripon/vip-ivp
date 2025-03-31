@@ -551,12 +551,16 @@ class TemporalVar(Generic[T]):
             )
         self.solver.saved_vars[name] = self
 
-    def to_plot(self, name: str) -> None:
+    def to_plot(self, name: str = None) -> None:
         """
         Add the variable to the plotted data on solve.
 
         :param name: Name of the variable in the legend of the plot.
         """
+        if name is None:
+            if self.name is None:
+                get_expression(self)
+            name = self.name
         if isinstance(self.function, np.ndarray):
             [
                 self[idx].to_plot(f"{name}[{', '.join(str(i) for i in idx)}]")
