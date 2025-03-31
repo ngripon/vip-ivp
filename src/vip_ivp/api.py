@@ -206,15 +206,14 @@ def _terminate():
 terminate = Action(_terminate)
 
 
-def set_timeout(action: Action, delay: float) -> Action:
+def set_timeout(action: Action, delay: float) -> Event:
     solver = _get_current_solver()
     current_time = solver.t[-1] if solver.t else 0
     time_variable = create_source(lambda t: t)
-    del_fun = time_variable.on_crossing(current_time + delay, action)
+    event = time_variable.on_crossing(current_time + delay, action)
     # Ugly thing to delete the event after one triggers
-    event = time_variable.events[0]
-    event.action += del_fun
-    return del_fun
+    event.action += event.delete_action
+    return event
 
 
 # Solving

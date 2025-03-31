@@ -595,7 +595,7 @@ class TemporalVar(Generic[T]):
 
     def on_crossing(self, value: T, action: "Action" = None,
                     direction: Literal["rising", "falling", "both"] = "both",
-                    terminal: Union[bool, int] = False) -> "Action":
+                    terminal: Union[bool, int] = False) -> "Event":
         if self.output_type in (bool, np.bool, str):
             crossed_variable = self == value
         elif issubclass(self.output_type, abc.Iterable):
@@ -606,7 +606,7 @@ class TemporalVar(Generic[T]):
             crossed_variable = self - value
         event = Event(self.solver, crossed_variable, action, direction, terminal)
         self.events.append(event)
-        return event.get_delete_from_simulation_action()
+        return event
 
     def change_behavior(self, value: T) -> "Action":
         def change_value(t):
@@ -1246,7 +1246,8 @@ class Event:
     def evaluate(self, t, y) -> None:
         self.g = self(t, y)
 
-    def get_delete_from_simulation_action(self) -> "Action":
+    @property
+    def delete_action(self) -> "Action":
         def delete_event(t):
             self.deletion_time = t
 
