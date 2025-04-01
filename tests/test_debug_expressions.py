@@ -143,11 +143,12 @@ def test_transformations():
 
 
 def test_actions():
-    a=vip.create_source(1)
+    a = vip.create_source(1)
     ia = vip.integrate(5, 0)
-    # ia.to_plot()
 
     vip.solve(10)
 
     assert repr(ia.set_value(0)) == "Action(Reset ia to 0)"
-    assert repr(a.change_behavior(1))=="Action(Set a to 1)"
+    assert repr(a.change_behavior(1)) == "Action(Change a's value to 1)"
+    assert repr(ia.set_value(5.5)+a.change_behavior(2)) == "Action(Reset ia to 5.5 + Change a's value to 2)"
+    assert repr(vip.where(ia>5,ia.set_value(0),vip.terminate)) == "Action((Reset ia to 0) if ia > 5 else (Terminate simulation))"

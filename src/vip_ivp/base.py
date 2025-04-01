@@ -623,7 +623,7 @@ class TemporalVar(Generic[T]):
             self.function = new_var.function
             self._expression = new_var.expression
 
-        return Action(lambda t, y: change_value(t), f"Change {self.name} value to {new_value.expression}")
+        return Action(lambda t, y: change_value(t), f"Change {self.name}'s value to {new_value.expression}")
 
     def reset(self):
         self._values = None
@@ -1319,4 +1319,4 @@ def action_where(solver: Solver, condition: TemporalVar[bool], a: Union[Callable
         else:
             b(t, y)
 
-    return Action(conditional_action, f"({a.expression} if {condition.expression} else {b.expression})")
+    return Action(conditional_action, f"({a.expression}) if {condition.expression} else ({b.expression})")
