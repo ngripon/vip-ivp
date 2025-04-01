@@ -338,7 +338,7 @@ def test_create_event():
     a = vip.create_source(1)
     ia = vip.integrate(a, 0)
 
-    vip.set_timeout(lambda: vip.set_timeout(ia.set_value(0), 2), 3)
+    event=vip.set_timeout(lambda: vip.set_timeout(ia.set_value(0), 2), 3)
 
     ia.to_plot()
 
