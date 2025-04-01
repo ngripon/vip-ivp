@@ -23,7 +23,13 @@ def convert_to_string(content):
         if "create_source" in fun_string:
             lambda_content = fun_string.split("create_source")[1].strip()[1:-1]
             return lambda_content
-        fun_string = fun_string.split("=")[1].strip()
+        for word in ["set_timeout", "set_interval"]:
+            if word in fun_string:
+                start_index = fun_string.find(word, len(word))
+                lambda_content = ", ".join(fun_string[start_index:].split(",")[:-1])
+                return lambda_content
+        if "=" in fun_string:
+            fun_string = fun_string.split("=")[1].strip()
         return fun_string
     elif inspect.isclass(content):
         return content.__repr__()
@@ -71,9 +77,6 @@ def iter_structure(data: Any) -> Generator:
 
     else:
         yield None, None, data  # Base case: Scalars (no modification needed)
-
-
-
 
 
 def is_custom_class(obj: Any) -> bool:

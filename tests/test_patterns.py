@@ -268,8 +268,8 @@ def test_bounded_integration_by_variable():
 def test_delete_event():
     a = vip.create_source(lambda t: t)
 
-    del_event = a.on_crossing(6, terminal=True)
-    a.on_crossing(3, del_event)
+    event = a.on_crossing(6, terminal=True)
+    a.on_crossing(3, event.delete_action)
 
     # a.to_plot("Hey")
 
@@ -277,6 +277,7 @@ def test_delete_event():
     print(a.solver.events)
 
     assert a.t[-1] == 10
+
 
 def test_variable_step_solving():
     # Exponential decay : dN/dt = - λ * N
@@ -291,11 +292,56 @@ def test_variable_step_solving():
     # Solve the system. The plot will automatically show.
     vip.solve(10, time_step=None)
 
-def test_empty_to_plot():
-    a=vip.create_source(lambda t:t)
-    b=2*a
 
-    a.to_plot()
-    b.to_plot()
+def test_action_adding():
+    a = vip.create_source(5)
+    ia = vip.integrate(a, 0)
+
+    ia.on_crossing(10, ia.set_value(0) + vip.terminate)
+
+    ia.to_plot("IA")
 
     vip.solve(10)
+
+    assert ia.t[-1] == 2
+
+
+def test_set_timeout():
+    a = vip.create_source(1)
+    ia = vip.integrate(a, 0)
+
+    timeout_event = vip.set_timeout(ia.set_value(0), 3)
+
+    ia.to_plot()
+
+    vip.solve(10, time_step=1, include_events_times=False)
+
+    assert timeout_event.deletion_time == 3
+    assert ia.values[3] == 0
+
+
+def test_set_interval():
+    a = vip.create_source(1)
+    ia = vip.integrate(a, 0)
+
+    e1 = vip.set_interval(ia.set_value(0), 2)
+
+    # ia.to_plot()
+
+    vip.solve(10, time_step=1, include_events_times=False)
+
+    assert np.all(ia.values[0::2] == 0)
+    assert np.allclose(ia.values[1::2], np.full_like(ia.values[1::2], 1))
+
+
+def test_create_event():
+    a = vip.create_source(1)
+    ia = vip.integrate(a, 0)
+
+    event=vip.set_timeout(lambda: vip.set_timeout(ia.set_value(0), 2), 3)
+
+    ia.to_plot()
+
+    vip.solve(10, 1)
+
+    assert ia.values[5] == 0

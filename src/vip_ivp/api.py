@@ -106,9 +106,21 @@ def loop_node(shape: Union[int, tuple[int, ...]] = None) -> LoopNode:
     return LoopNode(solver, shape)
 
 
-def where(condition, a, b) -> TemporalVar:
+@overload
+def where(condition: Union[TemporalVar[bool], bool], a: Action, b: Action) -> Action: ...
+
+
+@overload
+def where(condition: Union[TemporalVar[bool], bool], a: Union[TemporalVar, T], b: Union[TemporalVar, T]) -> TemporalVar[
+    T]: ...
+
+
+def where(condition, a, b):
     solver = _get_current_solver()
-    return base.where(solver, condition, a, b)
+    if isinstance(a, Action) or isinstance(b, Action):
+        return action_where(solver, condition, a, b)
+    else:
+        return temporal_var_where(solver, condition, a, b)
 
 
 def delay(input_value: TemporalVar[T], n_steps: int, initial_value: T = 0) -> TemporalVar[T]:
@@ -179,10 +191,41 @@ def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
     return wrapper
 
 
-def terminate(t, y):
+# Events
+
+def get_events() -> List[Event]:
+    solver = _get_current_solver()
+    return solver.events
+
+
+def _terminate():
     solver = _get_current_solver()
     solver.status = 1
 
+
+terminate = Action(_terminate, "Terminate simulation")
+
+
+def set_timeout(action: Union[Action, Callable], delay: float) -> Event:
+    solver = _get_current_solver()
+    current_time = solver.t_current
+    time_variable = create_source(lambda t: t)
+    time_variable.name="Time"
+    event = time_variable.on_crossing(current_time + delay, action)
+    event.action += event.delete_action
+    return event
+
+
+def set_interval(action: Union[Action, Callable], delay: float) -> Event:
+    solver = _get_current_solver()
+    current_time = solver.t_current
+    time_variable = create_source(lambda t: t % delay)
+    time_variable.name=f"Time % {delay}"
+    event = time_variable.on_crossing((current_time + delay)%delay, action)
+    return event
+
+
+# Solving
 
 def solve(t_end: Number, time_step: Union[Number, None] = 0.1, method='RK45', t_eval: Union[List, np.ndarray] = None,
           include_events_times: bool = True, **options) -> None:

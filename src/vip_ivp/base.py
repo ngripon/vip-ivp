@@ -3,7 +3,7 @@ import time
 import warnings
 from collections import abc
 from copy import copy
-from typing import overload, Literal, TypeAlias, Type, ParamSpec, List, Iterable
+from typing import overload, Literal, TypeAlias, Type, ParamSpec, List, Iterable, Dict
 from numbers import Number
 from pathlib import Path
 from typing import Callable, Union, TypeVar, Generic
@@ -18,7 +18,6 @@ from .solver_utils import *
 from .utils import add_necessary_brackets, convert_to_string
 
 T = TypeVar("T")
-EventAction: TypeAlias = Callable[[float, np.ndarray], None]
 
 
 class Solver:
@@ -30,14 +29,15 @@ class Solver:
         # All the scalars variables that are an output of an integrate function
         self.integrated_vars: List[IntegratedVar] = []
 
-        self.events = []
+        self.events: List[Event] = []
+        self.t_current: float = 0
         self.t = []
         self.y = None
         self.solved = False
-        self.saved_vars = {}
-        self.named_vars = {}
-        self.vars_to_plot = {}
-        self.status = None
+        self.saved_vars: Dict[str, TemporalVar] = {}
+        self.named_vars: Dict[str, TemporalVar] = {}
+        self.vars_to_plot: Dict[str, TemporalVar] = {}
+        self.status: Union[int, None] = None
 
     def integrate(self, input_value: "TemporalVar[T]", x0: T, minimum: Union[T, "TemporalVar[T]"] = None,
                   maximum: Union[T, "TemporalVar[T]"] = None) -> "IntegratedVar[T]":
@@ -238,6 +238,7 @@ class Solver:
         local_variables = frame.f_locals
         for key, value in local_variables.items():
             if isinstance(value, TemporalVar) and key not in self.named_vars:
+                value.name = key
                 self.named_vars[key] = value
 
     def _solve_ivp(
@@ -295,12 +296,10 @@ class Solver:
             self.y = []
 
         solver = method(self._dy, t0, y0, tf, vectorized=vectorized, **options)
-        if self.get_events(t0) is not None:
-            t_events = []
-            [e.evaluate(t0, y0) for e in self.get_events(t0)]
-        else:
-            t_events = None
-            y_events = None
+
+        t_events = []
+        y_events = []
+        [e.evaluate(t0, y0) for e in self.get_events(t0)]
 
         interpolants = []
 
@@ -320,7 +319,7 @@ class Solver:
             else:
                 sol = None
 
-            if events is not None:
+            if events:
                 if sol is None:
                     sol = self._sol_wrapper(solver.dense_output())
 
@@ -330,26 +329,29 @@ class Solver:
                         events[active_idx].count += 1
                     active_events, roots = handle_events(sol, events, active_events_indices, t_old, t, t_eval)
 
-                    # Get the first event, execute its action and relaunch the solver to begin at te.
-                    e_idx = np.argmin(roots)
-                    active_event: Event = active_events[e_idx]
-                    te = roots[0]
+                    # Get the first event
+                    te = np.min(roots)
                     ye = sol(te)
-                    active_event.t_events.append(te)
-                    active_event.y_events.append(ye)
-                    active_event.execute_action(te, ye)
+                    self.t_current = te
+                    # Get all events that happens at te and execute their action
+                    triggering_events = [active_events[i] for i in range(len(active_events)) if roots[i] == te]
+                    for event in triggering_events:
+                        event.t_events.append(te)
+                        event.y_events.append(ye)
+                        event.execute_action(te, ye)
+                    # Reset the solver and events evaluation to begin at te for the next step
                     t = te
                     y = ye
-                    events = self.get_events(te)
                     [e.evaluate(t, y) for e in self.get_events(t)]
-                    active_event.g = 0
+                    for event in triggering_events:
+                        event.g = 0
                     solver = method(self._dy, t, y, tf, vectorized=vectorized, **options)
 
-                    if active_event.terminal:
+                    if any(e.terminal for e in triggering_events):
                         self.status = 1
                 else:
                     [e.evaluate(t, y) for e in self.get_events(t)]
-
+            self.t_current = t
             if t_eval is None:
                 self.t.append(t)
                 self.y.append(y)
@@ -374,11 +376,15 @@ class Solver:
                     else:
                         self.y.extend([0] * len(t_eval_step))
                     t_eval_i = t_eval_i_new
-                if events is not None and include_events_times:
+                # Add time events
+                if events:
                     if active_events_indices.size > 0 and self.status != 1:
-                        self.t.append(te)
-                        # When there is no integrated variable, self.y should be a list of zeros
-                        self.y.append(ye if len(ye) else 0.0)
+                        if self.t[-1] == te and self.dim != 0:
+                            self.y[-1] = ye
+                        elif include_events_times:
+                            self.t.append(te)
+                            # When there is no integrated variable, self.y should be a list of zeros
+                            self.y.append(ye if len(ye) else 0.0)
 
             if t_eval is not None and dense_output:
                 ti.append(t)
@@ -390,7 +396,7 @@ class Solver:
                 break
 
         message = MESSAGES.get(self.status, message)
-        if t_events is not None:
+        if t_events:
             t_events = [np.asarray(e.t_events) for e in events]
             y_events = [np.asarray(e.y_events) for e in events]
 
@@ -459,8 +465,6 @@ class Solver:
 
     def get_events(self, t):
         event_list = [e for e in self.events if e.deletion_time is None or t < e.deletion_time]
-        if not event_list:
-            return None
         return event_list
 
 
@@ -469,7 +473,11 @@ class TemporalVar(Generic[T]):
             self,
             solver: "Solver",
             fun: Union[
-                Callable[[Union[float, np.ndarray], np.ndarray], T], np.ndarray, dict
+                Callable[[Union[float, np.ndarray], np.ndarray], T],
+                Callable[[Union[float, np.ndarray]], T],
+                np.ndarray,
+                dict,
+                Number
             ] = None,
             expression: str = None,
             child_cls=None
@@ -505,6 +513,8 @@ class TemporalVar(Generic[T]):
         self._expression = convert_to_string(fun) if expression is None else expression
         self.name = None
         self._inputs: list[TemporalVar] = []
+
+        self.events: List[Event] = []
 
         self.solver.vars.append(self)
 
@@ -589,29 +599,33 @@ class TemporalVar(Generic[T]):
             variables[col] = fun
         return cls(solver, variables)
 
-    def on_crossing(self, value: T, action: "EventAction" = None,
+    def on_crossing(self, value: Union["TemporalVar[T]", T], action: Union["Action", Callable] = None,
                     direction: Literal["rising", "falling", "both"] = "both",
-                    terminal: Union[bool, int] = False) -> "EventAction":
+                    terminal: Union[bool, int] = False) -> "Event":
         if self.output_type in (bool, np.bool, str):
             crossed_variable = self == value
+            crossed_variable._expression = f"on {self.name} == {value.name if isinstance(value,TemporalVar) else value}"
         elif issubclass(self.output_type, abc.Iterable):
             raise ValueError(
                 "Can not apply crossing detection to a variable containing a collection of values because it is ambiguous."
             )
         else:
             crossed_variable = self - value
+            crossed_variable._expression = f"on {self.name} crossing {value.name if isinstance(value,TemporalVar) else value}"
         event = Event(self.solver, crossed_variable, action, direction, terminal)
-        return event.get_delete_from_simulation_action()
+        self.events.append(event)
+        return event
 
-    def change_behavior(self, value: T) -> EventAction:
+    def change_behavior(self, value: T) -> "Action":
+        new_value = TemporalVar(self.solver, value)
+
         def change_value(t):
             time = TemporalVar(self.solver, lambda t: t)
-            new_value = TemporalVar(self.solver, value)
-            new_var = where(self.solver, time < t, copy(self), new_value)
+            new_var = temporal_var_where(self.solver, time < t, copy(self), new_value)
             self.function = new_var.function
             self._expression = new_var.expression
 
-        return lambda t, y: change_value(t)
+        return Action(lambda t, y: change_value(t), f"Change {self.name}'s value to {new_value.expression}")
 
     def reset(self):
         self._values = None
@@ -1056,7 +1070,8 @@ def convert_args_to_temporal_var(solver: Solver, arg_list: Iterable) -> List[Tem
     return [convert(a) for a in arg_list]
 
 
-def where(solver, condition: TemporalVar[bool], a: Union[T, TemporalVar[T]], b: Union[T, TemporalVar[T]]) -> \
+def temporal_var_where(solver, condition: TemporalVar[bool], a: Union[T, TemporalVar[T]],
+                       b: Union[T, TemporalVar[T]]) -> \
         TemporalVar[T]:
     condition, a, b = convert_args_to_temporal_var(solver, (condition, a, b))
     return TemporalVar(solver,
@@ -1139,11 +1154,11 @@ class IntegratedVar(TemporalVar[T]):
             return self._y_idx
         raise ValueError("The argument 'y_idx' should be set for IntegratedVar containing a single value.")
 
-    def set_value(self, value: Union[TemporalVar[T], T]) -> EventAction:
+    def set_value(self, value: Union[TemporalVar[T], T]) -> "Action":
         if not isinstance(value, TemporalVar):
             value = TemporalVar(self.solver, value)
 
-        def action(t, y):
+        def action_fun(t, y):
             def set_y0(idx, subvalue):
                 if isinstance(idx, np.ndarray):
                     for arr_idx in np.ndindex(idx.shape):
@@ -1158,9 +1173,9 @@ class IntegratedVar(TemporalVar[T]):
 
             set_y0(self.y_idx, value)
 
-        return action
+        return Action(action_fun, f"Reset {self.name} to {value.expression}")
 
-    def change_behavior(self, value: T) -> EventAction:
+    def change_behavior(self, value: T) -> None:
         raise NotImplementedError(
             "This method is irrelevant for an integrated variable. "
             "If you want really want to change the behavior of an integrated variable, create a new variable by doing "
@@ -1195,14 +1210,16 @@ def get_expression(value) -> str:
 
 class Event:
     DIRECTION_MAP = {"rising": 1, "falling": -1, "both": 0}
+    DIRECTION_REPR = {1: "rising", 0: "any direction", -1: "falling"}
 
-    def __init__(self, solver: Solver, fun, action: Union[EventAction, None],
+    def __init__(self, solver: Solver, fun, action: Union["Action", Callable, None],
                  direction: Literal["rising", "falling", "both"] = "both",
                  terminal: Union[bool, int] = False):
         self.solver = solver
         self.function: TemporalVar = convert_args_to_temporal_var(self.solver, [fun])[0]
-        self.action = action
+        self.action = convert_args_to_action([action])[0] if action is not None else None
         self.terminal = terminal
+
         self.direction = self.DIRECTION_MAP[direction]
 
         self.count = 0
@@ -1228,15 +1245,78 @@ class Event:
     def __call__(self, t, y) -> float:
         return self.function(t, y)
 
+    def __repr__(self):
+
+        return (f"Event({self.function.expression} ({self.DIRECTION_REPR[self.direction]}), "
+                f"{self.action or 'No action'}, terminal = {self.terminal})")
+
     def evaluate(self, t, y) -> None:
         self.g = self(t, y)
 
-    def get_delete_from_simulation_action(self) -> EventAction:
-        def delete_event(t, y):
+    @property
+    def delete_action(self) -> "Action":
+        def delete_event(t):
             self.deletion_time = t
 
-        return delete_event
+        return Action(delete_event)
 
     def execute_action(self, t, y):
         if self.action is not None:
             self.action(t, y)
+
+
+class Action:
+    def __init__(self, fun: Callable, expression: str = None):
+        if isinstance(fun, TemporalVar):
+            raise ValueError(
+                "An action can not be a TemporalVar, because an action is a function with side effects, "
+                "while a TemporalVar is a pure function."
+            )
+        if callable(fun):
+            n_args = len(inspect.signature(fun).parameters)
+            if n_args == 0:
+                self.function = lambda t, y: fun()
+            elif n_args == 1:
+                self.function = lambda t, y: fun(t)
+            else:
+                self.function = lambda t, y: fun(t, y)
+        self.expression = expression or convert_to_string(fun)
+
+    def __call__(self, t, y):
+        return self.function(t, y)
+
+    def __add__(self, other: Union[Callable, "Action"]) -> "Action":
+        if not isinstance(other, Action):
+            other = Action(other)
+
+        def added_fun(t, y):
+            self(t, y)
+            other(t, y)
+
+        return Action(added_fun, f"{self.expression} + {other.expression}")
+
+    def __repr__(self):
+        return f"Action({self.expression})"
+
+
+def convert_args_to_action(arg_list: Iterable) -> List[Action]:
+    def convert(arg):
+        if not isinstance(arg, Action):
+            arg = Action(arg)
+        return arg
+
+    return [convert(a) for a in arg_list]
+
+
+def action_where(solver: Solver, condition: TemporalVar[bool], a: Union[Callable, Action],
+                 b: Union[Callable, Action]) -> Action:
+    condition = convert_args_to_temporal_var(solver, [condition])[0]
+    a, b = convert_args_to_action([a, b])
+
+    def conditional_action(t, y):
+        if condition(t, y):
+            a(t, y)
+        else:
+            b(t, y)
+
+    return Action(conditional_action, f"({a.expression}) if {condition.expression} else ({b.expression})")
