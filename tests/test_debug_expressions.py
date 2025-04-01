@@ -140,3 +140,15 @@ def test_transformations():
     assert ia.expression == "#INTEGRATE a"
     assert delay_a.expression == "#DELAY(1) a"
     assert foo_a.expression == "foo(a)"
+
+def test_actions():
+    ia=vip.integrate(5,0)
+    ia.to_plot()
+
+    event_interval=vip.set_interval(ia.set_value(0),1)
+
+    vip.solve(10)
+
+    print(event_interval.action)
+
+    assert event_interval.action=="Action(Reset ia to 0)"
