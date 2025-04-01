@@ -30,7 +30,7 @@ class Solver:
         self.integrated_vars: List[IntegratedVar] = []
 
         self.events: List[Event] = []
-        self.t_current:float=0
+        self.t_current: float = 0
         self.t = []
         self.y = None
         self.solved = False
@@ -238,6 +238,7 @@ class Solver:
         local_variables = frame.f_locals
         for key, value in local_variables.items():
             if isinstance(value, TemporalVar) and key not in self.named_vars:
+                value.name = key
                 self.named_vars[key] = value
 
     def _solve_ivp(
@@ -331,7 +332,7 @@ class Solver:
                     # Get the first event
                     te = np.min(roots)
                     ye = sol(te)
-                    self.t_current=te
+                    self.t_current = te
                     # Get all events that happens at te and execute their action
                     triggering_events = [active_events[i] for i in range(len(active_events)) if roots[i] == te]
                     for event in triggering_events:
@@ -615,6 +616,7 @@ class TemporalVar(Generic[T]):
 
     def change_behavior(self, value: T) -> "Action":
         new_value = TemporalVar(self.solver, value)
+
         def change_value(t):
             time = TemporalVar(self.solver, lambda t: t)
             new_var = temporal_var_where(self.solver, time < t, copy(self), new_value)
@@ -1264,7 +1266,7 @@ class Event:
 
 
 class Action:
-    def __init__(self, fun: Callable, expression:str=None):
+    def __init__(self, fun: Callable, expression: str = None):
         if isinstance(fun, TemporalVar):
             raise ValueError(
                 "An action can not be a TemporalVar, because an action is a function with side effects, "
