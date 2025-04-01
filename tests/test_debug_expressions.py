@@ -142,6 +142,26 @@ def test_transformations():
     assert foo_a.expression == "foo(a)"
 
 
+def test_condition():
+    a = vip.create_source(1)
+    b=vip.integrate(5,0)
+
+    cond=a<5
+    other_cond=a>2
+
+    event_constant = a.on_crossing(10)
+    event_temporalvar=a.on_crossing(b)
+    event_cond = cond.on_crossing(True)
+    event_cond_temporalvar = cond.on_crossing(other_cond)
+
+    vip.solve(10)
+
+    assert repr(event_constant) == "Event(on a crossing 10 (any direction), No action, terminal = False)"
+    assert repr(event_temporalvar) == "Event(on a crossing b (any direction), No action, terminal = False)"
+    assert repr(event_cond) == "Event(on cond == True (any direction), No action, terminal = False)"
+    assert repr(event_cond_temporalvar) == "Event(on cond == other_cond (any direction), No action, terminal = False)"
+
+
 def test_actions():
     a = vip.create_source(1)
     ia = vip.integrate(5, 0)
@@ -150,5 +170,6 @@ def test_actions():
 
     assert repr(ia.set_value(0)) == "Action(Reset ia to 0)"
     assert repr(a.change_behavior(1)) == "Action(Change a's value to 1)"
-    assert repr(ia.set_value(5.5)+a.change_behavior(2)) == "Action(Reset ia to 5.5 + Change a's value to 2)"
-    assert repr(vip.where(ia>5,ia.set_value(0),vip.terminate)) == "Action((Reset ia to 0) if ia > 5 else (Terminate simulation))"
+    assert repr(ia.set_value(5.5) + a.change_behavior(2)) == "Action(Reset ia to 5.5 + Change a's value to 2)"
+    assert repr(vip.where(ia > 5, ia.set_value(0),
+                          vip.terminate)) == "Action((Reset ia to 0) if ia > 5 else (Terminate simulation))"

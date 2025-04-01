@@ -599,17 +599,19 @@ class TemporalVar(Generic[T]):
             variables[col] = fun
         return cls(solver, variables)
 
-    def on_crossing(self, value: T, action: Union["Action", Callable] = None,
+    def on_crossing(self, value: Union["TemporalVar[T]", T], action: Union["Action", Callable] = None,
                     direction: Literal["rising", "falling", "both"] = "both",
                     terminal: Union[bool, int] = False) -> "Event":
         if self.output_type in (bool, np.bool, str):
             crossed_variable = self == value
+            crossed_variable._expression = f"on {self.name} == {value.name if isinstance(value,TemporalVar) else value}"
         elif issubclass(self.output_type, abc.Iterable):
             raise ValueError(
                 "Can not apply crossing detection to a variable containing a collection of values because it is ambiguous."
             )
         else:
             crossed_variable = self - value
+            crossed_variable._expression = f"on {self.name} crossing {value.name if isinstance(value,TemporalVar) else value}"
         event = Event(self.solver, crossed_variable, action, direction, terminal)
         self.events.append(event)
         return event
@@ -1208,6 +1210,7 @@ def get_expression(value) -> str:
 
 class Event:
     DIRECTION_MAP = {"rising": 1, "falling": -1, "both": 0}
+    DIRECTION_REPR = {1: "rising", 0: "any direction", -1: "falling"}
 
     def __init__(self, solver: Solver, fun, action: Union["Action", Callable, None],
                  direction: Literal["rising", "falling", "both"] = "both",
@@ -1217,7 +1220,6 @@ class Event:
         self.action = convert_args_to_action([action])[0] if action is not None else None
         self.terminal = terminal
 
-        self.direction_name = direction
         self.direction = self.DIRECTION_MAP[direction]
 
         self.count = 0
@@ -1244,11 +1246,9 @@ class Event:
         return self.function(t, y)
 
     def __repr__(self):
-        if self.function.output_type in (bool, np.bool):
-            condition = self.function.expression
-        else:
-            condition = f"{self.function.expression} cross 0"
-        return f"Event(on {condition}, {self.action}, direction = {self.direction_name}, terminal = {self.terminal})"
+
+        return (f"Event({self.function.expression} ({self.DIRECTION_REPR[self.direction]}), "
+                f"{self.action or 'No action'}, terminal = {self.terminal})")
 
     def evaluate(self, t, y) -> None:
         self.g = self(t, y)
