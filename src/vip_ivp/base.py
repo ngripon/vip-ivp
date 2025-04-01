@@ -614,14 +614,14 @@ class TemporalVar(Generic[T]):
         return event
 
     def change_behavior(self, value: T) -> "Action":
+        new_value = TemporalVar(self.solver, value)
         def change_value(t):
             time = TemporalVar(self.solver, lambda t: t)
-            new_value = TemporalVar(self.solver, value)
             new_var = temporal_var_where(self.solver, time < t, copy(self), new_value)
             self.function = new_var.function
             self._expression = new_var.expression
 
-        return Action(lambda t, y: change_value(t))
+        return Action(lambda t, y: change_value(t), f"Change {self.name} value to {new_value.expression}")
 
     def reset(self):
         self._values = None
@@ -1169,7 +1169,7 @@ class IntegratedVar(TemporalVar[T]):
 
             set_y0(self.y_idx, value)
 
-        return Action(action_fun)
+        return Action(action_fun, f"Reset {self.name} to {value.expression}")
 
     def change_behavior(self, value: T) -> None:
         raise NotImplementedError(
@@ -1246,7 +1246,7 @@ class Event:
             condition = self.function.expression
         else:
             condition = f"{self.function.expression} cross 0"
-        return f"Event(on {condition}, action = {self.action}, direction = {self.direction_name}, terminal = {self.terminal})"
+        return f"Event(on {condition}, {self.action}, direction = {self.direction_name}, terminal = {self.terminal})"
 
     def evaluate(self, t, y) -> None:
         self.g = self(t, y)
@@ -1264,7 +1264,7 @@ class Event:
 
 
 class Action:
-    def __init__(self, fun: Callable):
+    def __init__(self, fun: Callable, expression:str=None):
         if isinstance(fun, TemporalVar):
             raise ValueError(
                 "An action can not be a TemporalVar, because an action is a function with side effects, "
@@ -1278,7 +1278,7 @@ class Action:
                 self.function = lambda t, y: fun(t)
             else:
                 self.function = lambda t, y: fun(t, y)
-        self.expression = "convert_to_string(fun)"
+        self.expression = expression or convert_to_string(fun)
 
     def __call__(self, t, y):
         return self.function(t, y)
@@ -1291,7 +1291,7 @@ class Action:
             self(t, y)
             other(t, y)
 
-        return Action(added_fun)
+        return Action(added_fun, f"{self.expression} + {other.expression}")
 
     def __repr__(self):
         return f"Action({self.expression})"
@@ -1317,4 +1317,4 @@ def action_where(solver: Solver, condition: TemporalVar[bool], a: Union[Callable
         else:
             b(t, y)
 
-    return Action(conditional_action)
+    return Action(conditional_action, f"({a.expression} if {condition.expression} else {b.expression})")
