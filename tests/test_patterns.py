@@ -345,3 +345,12 @@ def test_create_event():
     vip.solve(10, 1)
 
     assert ia.values[5] == 0
+
+def test_increment_self():
+    count=vip.create_source(0)
+    b=2*count
+
+    vip.set_timeout(count.change_behavior(b+1),2)
+
+    count.to_plot()
+    vip.solve(10)
