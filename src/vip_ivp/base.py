@@ -306,6 +306,7 @@ class Solver:
         interpolants = []
 
         self.status = None
+        first_event = True
         while self.status is None:
             message = solver.step()
 
@@ -325,15 +326,16 @@ class Solver:
                 if sol is None:
                     sol = self._sol_wrapper(solver.dense_output())
 
-                active_events_indices, te_upper = find_active_events(events, sol, t_eval, t, t_old)
+                active_events_indices, te_upper, te_lower = find_active_events(events, sol, t_eval, t, t_old)
                 if active_events_indices.size > 0:
                     for active_idx in active_events_indices:
                         events[active_idx].count += 1
-                    active_events, roots = handle_events(sol, events, active_events_indices, t_old, te_upper, t_eval)
+                    active_events, roots = handle_events(sol, events, active_events_indices, te_lower, te_upper, t_eval)
 
                     # Get the first event
                     te = np.min(roots)
-                    if te != t_old:  # Prevent endless loops
+                    if te != t_old or first_event:  # Prevent endless loops
+                        first_event = False  # Only enable the case where we found an event at t = 0s
                         ye = sol(te)
                         self.t_current = te
                         # Get all events that happens at te and execute their action
@@ -354,11 +356,12 @@ class Solver:
                             self.status = 1
                     else:
                         warnings.warn(
-                            "Ignored event: The computed time of a detected event is the same as the previous solved "
-                            "time. A discontinuity in the variable you applied '.on_crossing()' to may cause the root "
-                            "finding algorithm to fail. Please apply '.on_crossing' to something more continuous."
+                            "Ignored event: The detected event computed time is the same as the previously solved "
+                            "time.\n"
+                            "A discontinuity in the variable you applied '.on_crossing()' to may cause the root "
+                            "finding algorithm to fail. Consider applying '.on_crossing' to a more continuous variable."
                         )
-                        active_events_indices=np.array([])
+                        active_events_indices = np.array([])
                         [e.evaluate(t, y) for e in self.get_events(t)]
                 else:
                     [e.evaluate(t, y) for e in self.get_events(t)]

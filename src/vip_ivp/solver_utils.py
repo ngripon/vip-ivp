@@ -126,6 +126,8 @@ def find_active_events(events, sol, t_eval, t, t_old):
 
     g = [e.g for e in events]
     direction = np.array([e.direction for e in events])
+    t_upper = t
+    t_lower = t_old
 
     if t_eval is None:
         t_list = []
@@ -137,16 +139,19 @@ def find_active_events(events, sol, t_eval, t, t_old):
     # an irrelevant zero-crossing is sure to occur.
     previous_triggers_mask = np.array([not t_old in e.t_events for e in events])
 
-    for i, t_ev in enumerate([*t_list, t]):
+    t_list = [*t_list, t]
+    for i, t_ev in enumerate(t_list):
         g_new = [e(t_ev, sol(t_ev)) for e in events]
         active_events_indices = find_active_events_in_step(g, g_new, direction, previous_triggers_mask)
         if active_events_indices.size > 0:
-            return active_events_indices, t_ev
-        if i == 0:
+            t_upper = t_ev
+            return active_events_indices, t_upper, t_lower
+        if i == 0 and len(t_list) > 1:
             # Disable the preventing of zero-crossing from previously triggered events
             g = g_new
+            t_lower = t_ev
             previous_triggers_mask = None
-    return np.array([]), t
+    return np.array([]), t_upper, t_lower
 
 
 def find_active_events_in_step(g, g_new, direction, previous_triggers_mask=None):
