@@ -638,12 +638,10 @@ class TemporalVar(Generic[T]):
                     if isinstance(var, TemporalVar):
                         inverse_refs[var] = current
                         if var is self:
-                            print("Autoreference!")
                             path = [var]
                             while path[-1] in inverse_refs:
                                 path.append(inverse_refs[path[-1]])
                             path.reverse()
-                            print(path)
                             # Replace all source variables of the path in value by copies
                             current_variable = path.pop(0)
                             for variable in path:
@@ -651,8 +649,7 @@ class TemporalVar(Generic[T]):
                                 new_source = list(current_variable.source)
                                 new_source[idx] = copy(variable)
                                 current_variable.source = tuple(new_source)
-                                current_variable = variable
-
+                                current_variable = current_variable.source[idx]
                             to_visit.clear()
                             break
                         if not var._is_source:
@@ -664,10 +661,10 @@ class TemporalVar(Generic[T]):
         def change_value(t):
             time = TemporalVar(self.solver, lambda t: t)
             new_var = temporal_var_where(self.solver, time < t, copy(self), new_value)
-            # vars(self).update(vars(new_var))
-            self.source = new_var.source
-            self._expression = new_var.expression
-            self.operator=new_var.operator
+            vars(self).update(vars(new_var))
+            # self.source = new_var.source
+            # self._expression = new_var.expression
+            # self.operator=new_var.operator
 
         return Action(lambda t, y: change_value(t), f"Change {self.name}'s value to {new_value.expression}")
 

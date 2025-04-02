@@ -346,11 +346,16 @@ def test_create_event():
 
     assert ia.values[5] == 0
 
-def test_increment_self():
+def test_increment_timeout():
     count=vip.create_source(0)
-    b=2*count
 
-    vip.set_timeout(count.change_behavior(b+1),2)
+    vip.set_timeout(count.change_behavior(count+1),2)
 
     count.to_plot()
-    vip.solve(10)
+    vip.solve(10, time_step=1)
+
+    assert count.values[0]==0
+    assert count.values[2]==1
+    assert count.values[-1]==1
+
+
