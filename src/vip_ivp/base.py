@@ -61,26 +61,25 @@ class Solver:
         return integrated_variable
 
     def _get_integrated_structure(self, data, x0, minimum, maximum):
-        if isinstance(data, TemporalVar):
-            if isinstance(data.function, np.ndarray):
-                if not isinstance(maximum, np.ndarray):
-                    maximum = np.full(data.function.shape, maximum)
-                if not isinstance(minimum, np.ndarray):
-                    minimum = np.full(data.function.shape, minimum)
-                return [
-                    self._get_integrated_structure(data[idx], np.array(x0)[idx], minimum[idx], maximum[idx])
-                    for idx in np.ndindex(data.function.shape)
-                ]
+        if data.output_type is np.ndarray:
+            if not isinstance(maximum, np.ndarray):
+                maximum = np.full(data.shape, maximum)
+            if not isinstance(minimum, np.ndarray):
+                minimum = np.full(data.shape, minimum)
+            return [
+                self._get_integrated_structure(data[idx], np.array(x0)[idx], minimum[idx], maximum[idx])
+                for idx in np.ndindex(data.shape)
+            ]
 
-            elif isinstance(data.function, dict):
-                if not isinstance(maximum, dict):
-                    maximum = {key: maximum for key in data.function.keys()}
-                if not isinstance(minimum, dict):
-                    minimum = {key: minimum for key in data.function.keys()}
-                return {
-                    key: self._get_integrated_structure(value, x0[key], minimum[key], maximum[key])
-                    for key, value in data.function.items()
-                }
+        elif data.output_type is dict:
+            if not isinstance(maximum, dict):
+                maximum = {key: maximum for key in data.function.keys()}
+            if not isinstance(minimum, dict):
+                minimum = {key: minimum for key in data.function.keys()}
+            return {
+                key: self._get_integrated_structure(value, x0[key], minimum[key], maximum[key])
+                for key, value in data.function.items()
+            }
 
         return self._add_integration_variable(data, x0, minimum, maximum)
 
@@ -576,7 +575,7 @@ class TemporalVar(Generic[T]):
         if self.output_type is np.ndarray:
             [
                 self[idx].to_plot(f"{name}[{', '.join(str(i) for i in idx)}]")
-                for idx in np.ndindex(self._first_value().shape)
+                for idx in np.ndindex(self.shape)
             ]
             return
         elif isinstance(self.source, dict):
@@ -836,7 +835,7 @@ class TemporalVar(Generic[T]):
         expression = f"{add_necessary_brackets(get_expression(self))} == {add_necessary_brackets(get_expression(other))}"
         return TemporalVar(
             self.solver,
-            (self,self._from_arg(other)),
+            (self, self._from_arg(other)),
             expression=expression,
             operator=operator.eq
         )
@@ -971,6 +970,13 @@ class TemporalVar(Generic[T]):
         else:
             return f"{self._expression}"
 
+    @property
+    def shape(self):
+        result = self._first_value()
+        if isinstance(result, np.ndarray):
+            return result.shape
+        raise AttributeError("Shape attribute does not exist because this variable does not contain a NumPy array.")
+
 
 def convert_args_to_temporal_var(solver: Solver, arg_list: Iterable) -> List[TemporalVar]:
     def convert(arg):
@@ -1020,17 +1026,18 @@ class LoopNode(TemporalVar[T]):
             self._input_var += value
         self._is_set = True
         self._expression = get_expression(self._input_var)
-        self.function = self._input_var.function
+        self.source = self._input_var.source
+        self.operator = self._input_var.operator
 
     def __call__(self, t: Union[float, np.ndarray], y: np.ndarray) -> T:
         return self._input_var(t, y)
 
-    def __getitem__(self, item):
-        expression = f"{add_necessary_brackets(get_expression(self))}[{item}]"
-        variable: TemporalVar = TemporalVar(
-            self.solver, lambda t, y: self(t, y)[item], expression
-        )
-        return variable
+    # def __getitem__(self, item):
+    #     expression = f"{add_necessary_brackets(get_expression(self))}[{item}]"
+    #     variable: TemporalVar = TemporalVar(
+    #         self.solver, lambda t, y: self(t, y)[item], expression
+    #     )
+    #     return variable
 
 
 class IntegratedVar(TemporalVar[T]):
