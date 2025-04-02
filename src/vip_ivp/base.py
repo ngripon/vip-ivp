@@ -1,3 +1,4 @@
+import enum
 import functools
 import inspect
 import operator
@@ -484,6 +485,11 @@ class Solver:
         return event_list
 
 
+class CallMode(enum.Enum):
+    CALL_ARGS_FUN = 0
+    GET_OBJECTS = 1
+
+
 class TemporalVar(Generic[T]):
     def __init__(
             self,
@@ -498,11 +504,13 @@ class TemporalVar(Generic[T]):
             ] = None,
             expression: str = None,
             child_cls=None,
-            operator=None
+            operator=None,
+            call_mode: CallMode = CallMode.CALL_ARGS_FUN
     ):
         self.solver = solver
         self._output_type = None
         self._is_source = False
+        self._call_mode = call_mode
         # Recursive building
         self.operator = operator
         child_cls = child_cls or type(self)
@@ -702,9 +710,15 @@ class TemporalVar(Generic[T]):
 
     def __call__(self, t: Union[float, np.ndarray], y: np.ndarray) -> T:
         if self.operator is not None:
-            args = [x(t, y) if isinstance(x, TemporalVar) else x for x in self.source if not isinstance(x, dict)]
-            kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
-            kwargs = {k: (x(t, y) if isinstance(x, TemporalVar) else x) for k, x in kwargs.items()}
+            if self._call_mode == CallMode.CALL_ARGS_FUN:
+                args = [x(t, y) if isinstance(x, TemporalVar) else x for x in self.source if not isinstance(x, dict)]
+                kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
+                kwargs = {k: (x(t, y) if isinstance(x, TemporalVar) else x) for k, x in kwargs.items()}
+            elif self._call_mode == CallMode.GET_OBJECTS:
+                args = [x for x in self.source if not isinstance(x, dict)]
+                kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
+            else:
+                raise ValueError(f"Unknown call mode: {self._call_mode}.")
             return self.operator(*args, **kwargs)
 
         if isinstance(self.source, np.ndarray):

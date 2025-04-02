@@ -169,11 +169,6 @@ P = ParamSpec("P")
 
 def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> TemporalVar:
-        # def content(t, y): return func(*[arg(t, y) if isinstance(arg, TemporalVar) else arg for arg in args],
-        #                                **{key: (arg(t, y) if isinstance(arg, TemporalVar) else arg) for key, arg in
-        #                                   kwargs.items()})
-
-        # Format input for the expression
         inputs_expr = [get_expression(inp) if isinstance(inp, TemporalVar) else str(inp) for inp in args]
         kwargs_expr = [
             f"{key}={get_expression(value) if isinstance(value, TemporalVar) else str(value)}"
