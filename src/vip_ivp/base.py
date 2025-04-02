@@ -49,7 +49,7 @@ class Solver:
         :param x0: The initial condition for the integration.
         :return: The integrated TemporalVar.
         """
-        if isinstance(input_value, (dict, list, np.ndarray)):
+        if not isinstance(input_value, TemporalVar):
             input_value = TemporalVar(self, input_value)
         integrated_structure = self._get_integrated_structure(input_value, x0, minimum, maximum)
         integrated_variable = IntegratedVar(
