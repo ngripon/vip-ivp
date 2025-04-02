@@ -107,7 +107,7 @@ def test_operations():
     assert t.expression == "sin(a, where=b > 1)"
 
     u = -(a + b)
-    assert u.expression == "-(a + b)"
+    assert u.expression == "- (a + b)"
 
     v = a - (b + c)
     assert v.expression == "a - (b + c)"

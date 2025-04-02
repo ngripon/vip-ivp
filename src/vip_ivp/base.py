@@ -626,13 +626,13 @@ class TemporalVar(Generic[T]):
     def change_behavior(self, value: T) -> "Action":
         new_value = TemporalVar(self.solver, value)
 
-        def change_value(t):
-            time = TemporalVar(self.solver, lambda t: t)
-            new_var = temporal_var_where(self.solver, time < t, copy(self), new_value)
-            self.function = new_var.function
-            self._expression = new_var.expression
-
-        return Action(lambda t, y: change_value(t), f"Change {self.name}'s value to {new_value.expression}")
+        # def change_value(t):
+        #     time = TemporalVar(self.solver, lambda t: t)
+        #     new_var = temporal_var_where(self.solver, time < t, copy(self), new_value)
+        #     self.function = new_var.function
+        #     self._expression = new_var.expression
+        #
+        # return Action(lambda t, y: change_value(t), f"Change {self.name}'s value to {new_value.expression}")
 
     def reset(self):
         self._values = None
@@ -849,14 +849,11 @@ class TemporalVar(Generic[T]):
 
     def __ne__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
         expression = f"{add_necessary_brackets(get_expression(self))} != {add_necessary_brackets(get_expression(other))}"
-        if isinstance(self.function, np.ndarray):
-            fun_arr = np.vectorize(lambda f, o: f != o)(self.function, other.function)
-            return TemporalVar(self.solver, fun_arr, expression=expression)
         return TemporalVar(
             self.solver,
-            lambda t, y: self(t, y)
-                         != (other(t, y) if isinstance(other, TemporalVar) else other),
+            (self, self._from_arg(other)),
             expression=expression,
+            operator=operator.ne
         )
 
     @overload
@@ -867,14 +864,11 @@ class TemporalVar(Generic[T]):
 
     def __lt__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
         expression = f"{add_necessary_brackets(get_expression(self))} < {add_necessary_brackets(get_expression(other))}"
-        if isinstance(self.function, np.ndarray):
-            fun_arr = np.vectorize(lambda f, o: f < o)(self.function, other.function)
-            return TemporalVar(self.solver, fun_arr, expression=expression)
         return TemporalVar(
             self.solver,
-            lambda t, y: self(t, y)
-                         < (other(t, y) if isinstance(other, TemporalVar) else other),
+            (self, self._from_arg(other)),
             expression=expression,
+            operator=operator.lt
         )
 
     @overload
@@ -885,14 +879,11 @@ class TemporalVar(Generic[T]):
 
     def __le__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
         expression = f"{add_necessary_brackets(get_expression(self))} <= {add_necessary_brackets(get_expression(other))}"
-        if isinstance(self.function, np.ndarray):
-            fun_arr = np.vectorize(lambda f, o: f <= o)(self.function, other.function)
-            return TemporalVar(self.solver, fun_arr, expression=expression)
         return TemporalVar(
             self.solver,
-            lambda t, y: self(t, y)
-                         <= (other(t, y) if isinstance(other, TemporalVar) else other),
+            (self, self._from_arg(other)),
             expression=expression,
+            operator=operator.le
         )
 
     @overload
@@ -903,14 +894,11 @@ class TemporalVar(Generic[T]):
 
     def __gt__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
         expression = f"{add_necessary_brackets(get_expression(self))} > {add_necessary_brackets(get_expression(other))}"
-        if isinstance(self.function, np.ndarray):
-            fun_arr = np.vectorize(lambda f, o: f > o)(self.function, other.function)
-            return TemporalVar(self.solver, fun_arr, expression=expression)
         return TemporalVar(
             self.solver,
-            lambda t, y: self(t, y)
-                         > (other(t, y) if isinstance(other, TemporalVar) else other),
+            (self, self._from_arg(other)),
             expression=expression,
+            operator=operator.gt
         )
 
     @overload
@@ -921,14 +909,11 @@ class TemporalVar(Generic[T]):
 
     def __ge__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
         expression = f"{add_necessary_brackets(get_expression(self))} >= {add_necessary_brackets(get_expression(other))}"
-        if isinstance(self.function, np.ndarray):
-            fun_arr = np.vectorize(lambda f, o: f >= o)(self.function, other.function)
-            return TemporalVar(self.solver, fun_arr, expression=expression)
         return TemporalVar(
             self.solver,
-            lambda t, y: self(t, y)
-                         >= (other(t, y) if isinstance(other, TemporalVar) else other),
+            (self, self._from_arg(other)),
             expression=expression,
+            operator=operator.ge
         )
 
     def __getitem__(self, item):
@@ -944,19 +929,6 @@ class TemporalVar(Generic[T]):
                 expression=expression,
                 operator=operator.getitem
             )
-        # # Ensure that childs of IntegratedVar and LoopNodes are of the same type.
-        # if self.operator:
-        #     item_sample=self._first_value()[item]
-        # else:
-        #     item_sample=self.source[item]
-        # if isinstance(item_sample, TemporalVar):
-        #     item_cls = type(item_sample)
-        # else:
-        #     item_cls = TemporalVar
-        # variable: TemporalVar = item_cls(
-        #     self.solver, self.function[item], expression
-        # )
-        # return variable
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs) -> "TemporalVar":
         inputs_expr = [
