@@ -358,4 +358,19 @@ def test_increment_timeout():
     assert count.values[2]==1
     assert count.values[-1]==1
 
+def test_increment_interval():
+    count=vip.create_source(0)
+
+    vip.set_interval(count.change_behavior(count+1),2)
+
+    count.to_plot()
+    vip.solve(10, time_step=1)
+
+    assert count.values[0]==0
+    assert count.values[2]==1
+    assert count.values[4]==2
+    assert count.values[6] == 3
+    assert count.values[8] == 4
+    assert count.values[10] == 5
+
 
