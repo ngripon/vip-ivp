@@ -653,7 +653,10 @@ class TemporalVar(Generic[T]):
 
     def __call__(self, t: Union[float, np.ndarray], y: np.ndarray) -> T:
         if self.operator is not None:
-            return self.operator(*[x(t, y) if isinstance(x, TemporalVar) else x for x in self.source])
+            args = [x(t, y) if isinstance(x, TemporalVar) else x for x in self.source if not isinstance(x, dict)]
+            kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
+            kwargs = {k: (x(t, y) if isinstance(x, TemporalVar) else x) for k, x in kwargs.items()}
+            return self.operator(*args, **kwargs)
 
         if isinstance(self.source, np.ndarray):
             if np.isscalar(t):
@@ -941,17 +944,9 @@ class TemporalVar(Generic[T]):
         if method == "__call__":
             return TemporalVar(
                 self.solver,
-                lambda t, y: ufunc(
-                    *[
-                        inp(t, y) if isinstance(inp, TemporalVar) else inp
-                        for inp in inputs
-                    ],
-                    **{
-                        key: (value(t, y) if isinstance(value, TemporalVar) else value)
-                        for key, value in kwargs.items()
-                    },
-                ),
+                (ufunc, *inputs, kwargs),
                 expression=expression,
+                operator=operator.call
             )
 
         return NotImplemented

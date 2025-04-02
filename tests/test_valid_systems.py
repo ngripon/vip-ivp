@@ -133,6 +133,9 @@ def test_differentiate():
     d_n2 = vip.differentiate(n)
     vip.solve(10, time_step=0.001)
 
+    print(d_n.values)
+    print(d_n2.values)
+
     errors = d_n.values - d_n2.values
     assert all(errors[1:] < 0.001)
 
