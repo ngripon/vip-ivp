@@ -487,7 +487,7 @@ class Solver:
 
 class CallMode(enum.Enum):
     CALL_ARGS_FUN = 0
-    GET_OBJECTS = 1
+    CALL_FUN_RESULT = 1
 
 
 class TemporalVar(Generic[T]):
@@ -714,12 +714,13 @@ class TemporalVar(Generic[T]):
                 args = [x(t, y) if isinstance(x, TemporalVar) else x for x in self.source if not isinstance(x, dict)]
                 kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
                 kwargs = {k: (x(t, y) if isinstance(x, TemporalVar) else x) for k, x in kwargs.items()}
-            elif self._call_mode == CallMode.GET_OBJECTS:
+                return self.operator(*args, **kwargs)
+            elif self._call_mode == CallMode.CALL_FUN_RESULT:
                 args = [x for x in self.source if not isinstance(x, dict)]
                 kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
+                return self.operator(*args, **kwargs)(t, y)
             else:
                 raise ValueError(f"Unknown call mode: {self._call_mode}.")
-            return self.operator(*args, **kwargs)
 
         if isinstance(self.source, np.ndarray):
             if np.isscalar(t):

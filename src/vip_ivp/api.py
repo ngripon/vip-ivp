@@ -129,22 +129,27 @@ def delay(input_value: TemporalVar[T], n_steps: int, initial_value: T = 0) -> Te
     elif n_steps < 1:
         raise Exception("Delay accept only a positive step.")
 
-    def previous_value(t, y):
-        if np.isscalar(t):
-            if len(input_value.solver.t) >= n_steps:
-                previous_t = input_value.solver.t[-n_steps]
-                previous_y = input_value.solver.y[-n_steps]
+    def create_delay(input_variable):
+        def previous_value(t, y):
+            if np.isscalar(t):
+                if len(input_variable.solver.t) >= n_steps:
+                    previous_t = input_variable.solver.t[-n_steps]
+                    previous_y = input_variable.solver.y[-n_steps]
 
-                return input_value(previous_t, previous_y)
+                    return input_variable(previous_t, previous_y)
+                else:
+                    return initial_value
             else:
-                return initial_value
-        else:
-            delayed_t = shift_array(t, n_steps, 0)
-            delayed_y = shift_array(y, n_steps, initial_value)
-            return input_value(delayed_t, delayed_y)
+                delayed_t = shift_array(t, n_steps, 0)
+                delayed_y = shift_array(y, n_steps, initial_value)
+                return input_variable(delayed_t, delayed_y)
 
-    return TemporalVar(input_value.solver, previous_value,
-                       expression=f"#DELAY({n_steps}) {get_expression(input_value)}")
+        return previous_value
+
+    return TemporalVar(input_value.solver, (create_delay, input_value),
+                       expression=f"#DELAY({n_steps}) {get_expression(input_value)}",
+                       operator=operator.call,
+                       call_mode=CallMode.CALL_FUN_RESULT)
 
 
 def differentiate(input_value: TemporalVar[float], initial_value=0) -> TemporalVar[float]:
