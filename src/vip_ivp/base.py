@@ -4,13 +4,12 @@ import time
 import warnings
 from collections import abc
 from copy import copy
-from typing import overload, Literal, TypeAlias, Type, ParamSpec, List, Iterable, Dict, Tuple
+from typing import overload, Literal, Iterable, Dict, Tuple
 from numbers import Number
 from pathlib import Path
 from typing import Callable, Union, TypeVar, Generic
 
 import matplotlib.pyplot as plt
-import numpy as np
 from sliderplot import sliderplot
 import pandas as pd
 from scipy.interpolate import interp1d

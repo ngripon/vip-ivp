@@ -1,11 +1,10 @@
 import json
-from typing import ParamSpec, overload, List, Dict, Union, Iterable, Literal
+from typing import Dict, Union
 
 import pandas as pd
 from varname import argname
 
 from .base import *
-from . import base
 from .utils import *
 
 warnings.simplefilter("once")
