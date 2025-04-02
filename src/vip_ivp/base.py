@@ -477,8 +477,9 @@ class TemporalVar(Generic[T]):
                 Callable[[Union[float, np.ndarray], np.ndarray], T],
                 Callable[[Union[float, np.ndarray]], T],
                 np.ndarray,
-                dict,
-                Number
+                Dict,
+                Number,
+                List
             ] = None,
             expression: str = None,
             child_cls=None,
@@ -532,7 +533,7 @@ class TemporalVar(Generic[T]):
                 "Call the solve() method before inquiring the variable values."
             )
         if self._values is None:
-            self._values = self(self.solver.t, self.solver.y)
+            self._values = self(self.t, self.solver.y)
         return self._values
 
     @property
@@ -639,17 +640,17 @@ class TemporalVar(Generic[T]):
     def _first_value(self):
         return self(0, self.solver.x0)
 
-    @classmethod
-    def from_arg(cls, solver: Solver, value: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
+
+    def _from_arg(self, value: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
         """
         Return a TemporalVar from an argument value. If the argument is already a TemporalVar, return it. If not, create a TemporalVar from the value.
         :param solver:
         :param value:
         :return:
         """
-        if isinstance(value, TemporalVar) and value.solver is solver:
+        if isinstance(value, TemporalVar) and value.solver is self.solver:
             return value
-        return TemporalVar(solver, value)
+        return TemporalVar(self.solver, value)
 
     def __call__(self, t: Union[float, np.ndarray], y: np.ndarray) -> T:
         if self.operator is not None:
@@ -673,7 +674,7 @@ class TemporalVar(Generic[T]):
         expression = f"{get_expression(self)} + {get_expression(other)}"
         return TemporalVar(
             self.solver,
-            [self, self.from_arg(self.solver, other)],
+            [self, self._from_arg(other)],
             expression=expression,
             operator=operator.add
         )
