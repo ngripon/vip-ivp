@@ -365,6 +365,9 @@ def test_increment_interval():
     count.to_plot()
     vip.solve(10, time_step=1)
 
+    print(count.values)
+    print(count.t)
+
     assert count.values[0]==0
     assert count.values[2]==1
     assert count.values[4]==2

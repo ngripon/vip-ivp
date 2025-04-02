@@ -209,7 +209,7 @@ def set_timeout(action: Union[Action, Callable], delay: float) -> Event:
     solver = _get_current_solver()
     current_time = solver.t_current
     time_variable = create_source(lambda t: t)
-    time_variable.name="Time"
+    time_variable.name = "Time"
     event = time_variable.on_crossing(current_time + delay, action)
     event.action += event.delete_action
     return event
@@ -218,9 +218,14 @@ def set_timeout(action: Union[Action, Callable], delay: float) -> Event:
 def set_interval(action: Union[Action, Callable], delay: float) -> Event:
     solver = _get_current_solver()
     current_time = solver.t_current
-    time_variable = create_source(lambda t: t % delay)
-    time_variable.name=f"Time % {delay}"
-    event = time_variable.on_crossing((current_time + delay)%delay, action)
+    time_variable = create_source(lambda t: t)
+    time_variable.name = f"Time % {delay}"
+
+    def reset_timer(t_reset, y):
+        time_variable.change_behavior(lambda t: t - t_reset)(t_reset, y)
+
+    reset_timer_action = Action(reset_timer,"RESET TIMER")
+    event = time_variable.on_crossing((current_time + delay), action+reset_timer_action)
     return event
 
 
