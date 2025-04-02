@@ -326,7 +326,7 @@ def test_set_interval():
 
     e1 = vip.set_interval(ia.set_value(0), 2)
 
-    # ia.to_plot()
+    ia.to_plot()
 
     vip.solve(10, time_step=1, include_events_times=False)
 
@@ -360,6 +360,7 @@ def test_increment_timeout():
 
 def test_increment_interval():
     count=vip.create_source(0)
+    ia=vip.integrate(count,0)
 
     vip.set_interval(count.change_behavior(count+1),2)
 
