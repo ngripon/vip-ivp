@@ -1,4 +1,5 @@
 import functools
+import operator
 import time
 import warnings
 from collections import abc
@@ -472,7 +473,7 @@ class TemporalVar(Generic[T]):
     def __init__(
             self,
             solver: "Solver",
-            fun: Union[
+            source: Union[
                 Callable[[Union[float, np.ndarray], np.ndarray], T],
                 Callable[[Union[float, np.ndarray]], T],
                 np.ndarray,
@@ -480,37 +481,42 @@ class TemporalVar(Generic[T]):
                 Number
             ] = None,
             expression: str = None,
-            child_cls=None
+            child_cls=None,
+            operator=None
     ):
         self.solver = solver
         self._output_type = None
         # Recursive building
+        self.operator = operator
         child_cls = child_cls or type(self)
-        if callable(fun) and not isinstance(fun, child_cls):
-            n_args = len(inspect.signature(fun).parameters)
-            if n_args == 1:
-                self.function = lambda t, y: fun(t)
-            else:
-                self.function = lambda t, y: fun(t, y)
-        elif np.isscalar(fun):
-            self.function = lambda t, y: fun if np.isscalar(t) else np.full(t.shape, fun)
-            self._output_type = type(fun)
-        elif isinstance(fun, (list, np.ndarray)):
-            self._output_type = np.ndarray
-            self.function = np.vectorize(lambda f: child_cls(solver, f))(
-                np.array(fun)
-            )
-        elif isinstance(fun, TemporalVar):
-            vars(self).update(vars(fun))
-        elif isinstance(fun, dict):
-            self._output_type = dict
-            self.function = {key: child_cls(solver, val) for key, val in fun.items()}
+        if self.operator is not None:
+            self.source = source
         else:
-            raise ValueError(f"Unsupported type: {type(fun)}.")
+            if callable(source) and not isinstance(source, child_cls):
+                n_args = len(inspect.signature(source).parameters)
+                if n_args == 1:
+                    self.source = lambda t, y: source(t)
+                else:
+                    self.source = lambda t, y: source(t, y)
+            elif np.isscalar(source):
+                self.source = lambda t, y: source if np.isscalar(t) else np.full(t.shape, source)
+                self._output_type = type(source)
+            elif isinstance(source, (list, np.ndarray)):
+                self._output_type = np.ndarray
+                self.source = np.vectorize(lambda f: child_cls(solver, f))(
+                    np.array(source)
+                )
+            elif isinstance(source, TemporalVar):
+                vars(self).update(vars(source))
+            elif isinstance(source, dict):
+                self._output_type = dict
+                self.source = {key: child_cls(solver, val) for key, val in source.items()}
+            else:
+                raise ValueError(f"Unsupported type: {type(source)}.")
 
         self._values = None
         # Variable definition
-        self._expression = convert_to_string(fun) if expression is None else expression
+        self._expression = convert_to_string(source) if expression is None else expression
         self.name = None
         self._inputs: list[TemporalVar] = []
 
@@ -566,14 +572,14 @@ class TemporalVar(Generic[T]):
             if self.name is None:
                 get_expression(self)
             name = self.name
-        if isinstance(self.function, np.ndarray):
+        if self.output_type is np.ndarray:
             [
                 self[idx].to_plot(f"{name}[{', '.join(str(i) for i in idx)}]")
-                for idx in np.ndindex(self.function.shape)
+                for idx in np.ndindex(self._first_value().shape)
             ]
             return
-        elif isinstance(self.function, dict):
-            [self[key].to_plot(f"{name}[{key}]") for key in self.function.keys()]
+        elif isinstance(self.source, dict):
+            [self[key].to_plot(f"{name}[{key}]") for key in self._first_value().keys()]
             return
         self.solver.vars_to_plot[name] = self
 
@@ -604,14 +610,14 @@ class TemporalVar(Generic[T]):
                     terminal: Union[bool, int] = False) -> "Event":
         if self.output_type in (bool, np.bool, str):
             crossed_variable = self == value
-            crossed_variable._expression = f"on {self.name} == {value.name if isinstance(value,TemporalVar) else value}"
+            crossed_variable._expression = f"on {self.name} == {value.name if isinstance(value, TemporalVar) else value}"
         elif issubclass(self.output_type, abc.Iterable):
             raise ValueError(
                 "Can not apply crossing detection to a variable containing a collection of values because it is ambiguous."
             )
         else:
             crossed_variable = self - value
-            crossed_variable._expression = f"on {self.name} crossing {value.name if isinstance(value,TemporalVar) else value}"
+            crossed_variable._expression = f"on {self.name} crossing {value.name if isinstance(value, TemporalVar) else value}"
         event = Event(self.solver, crossed_variable, action, direction, terminal)
         self.events.append(event)
         return event
@@ -630,36 +636,47 @@ class TemporalVar(Generic[T]):
     def reset(self):
         self._values = None
 
+    def _first_value(self):
+        return self(0, self.solver.x0)
+
+    @classmethod
+    def from_arg(cls, solver: Solver, value: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
+        """
+        Return a TemporalVar from an argument value. If the argument is already a TemporalVar, return it. If not, create a TemporalVar from the value.
+        :param solver:
+        :param value:
+        :return:
+        """
+        if isinstance(value, TemporalVar) and value.solver is solver:
+            return value
+        return TemporalVar(solver, value)
+
     def __call__(self, t: Union[float, np.ndarray], y: np.ndarray) -> T:
-        if isinstance(self.function, np.ndarray):
+        if self.operator is not None:
+            return self.operator(*[x(t, y) if isinstance(x, TemporalVar) else x for x in self.source])
+
+        if isinstance(self.source, np.ndarray):
             if np.isscalar(t):
-                return np.stack(np.frompyfunc(lambda f: f(t, y), 1, 1)(self.function))
+                return np.stack(np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source))
             return np.stack(
-                np.frompyfunc(lambda f: f(t, y), 1, 1)(self.function.ravel())
-            ).reshape((*self.function.shape, *np.array(t).shape))
-        elif isinstance(self.function, dict):
-            return {key: val(t, y) for key, val in self.function.items()}
-        return self.function(t, y)
+                np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source.ravel())
+            ).reshape((*self.source.shape, *np.array(t).shape))
+        elif isinstance(self.source, dict):
+            return {key: val(t, y) for key, val in self.source.items()}
+        else:
+            return self.source(t, y)
 
     def __copy__(self):
-        return TemporalVar(self.solver, self.function, self.expression)
+        return TemporalVar(self.solver, self.source, self.expression, operator=self.operator)
 
     def __add__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
         expression = f"{get_expression(self)} + {get_expression(other)}"
-        if isinstance(self.function, np.ndarray):
-            return TemporalVar(
-                self.solver, self.function + other.function, expression=expression
-            )
-        if isinstance(other, TemporalVar):
-            return TemporalVar(
-                self.solver,
-                lambda t, y: self(t, y) + other(t, y),
-                expression=expression,
-            )
-        else:
-            return TemporalVar(
-                self.solver, lambda t, y: self(t, y) + other, expression=expression
-            )
+        return TemporalVar(
+            self.solver,
+            [self, self.from_arg(self.solver, other)],
+            expression=expression,
+            operator=operator.add
+        )
 
     def __radd__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
         expression = f"{get_expression(other)} + {get_expression(self)}"
@@ -1009,15 +1026,30 @@ class TemporalVar(Generic[T]):
 
     def __getitem__(self, item):
         expression = f"{add_necessary_brackets(get_expression(self))}[{item}]"
-        # Ensure that childs of IntegratedVar and LoopNodes are of the same type.
-        if isinstance(self.function[item], TemporalVar):
-            item_cls = type(self.function[item])
+        if isinstance(self.source, np.ndarray):
+            return type(self)(
+                self.solver, [self, item], expression=expression, operator=operator.getitem
+            )
         else:
-            item_cls = TemporalVar
-        variable: TemporalVar = item_cls(
-            self.solver, self.function[item], expression
-        )
-        return variable
+            return type(self)(
+                self.solver,
+                [self, item],
+                expression=expression,
+                operator=operator.getitem
+            )
+        # # Ensure that childs of IntegratedVar and LoopNodes are of the same type.
+        # if self.operator:
+        #     item_sample=self._first_value()[item]
+        # else:
+        #     item_sample=self.source[item]
+        # if isinstance(item_sample, TemporalVar):
+        #     item_cls = type(item_sample)
+        # else:
+        #     item_cls = TemporalVar
+        # variable: TemporalVar = item_cls(
+        #     self.solver, self.function[item], expression
+        # )
+        # return variable
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs) -> "TemporalVar":
         inputs_expr = [
