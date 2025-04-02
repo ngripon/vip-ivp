@@ -360,7 +360,6 @@ def test_increment_timeout():
 
 def test_increment_interval():
     count=vip.create_source(0)
-    ia=vip.integrate(count,0)
 
     vip.set_interval(count.change_behavior(count+1),2)
 
