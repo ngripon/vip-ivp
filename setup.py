@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setuptools.setup(
     name="vip_ivp",
-    version="0.1.1",
+    version="0.2.0",
     author="Nathan Gripon",
     author_email="n.gripon@gmail.com",
     description="Solve ODEs without having to build the system of equations.",
@@ -22,6 +22,6 @@ setuptools.setup(
     ],
     package_dir={"": "src"},
     packages=setuptools.find_packages(where="src"),
-    python_requires=">=3.10",
+    python_requires=">=3.11",
     install_requires=['numpy', 'scipy', 'matplotlib', 'pandas']
 )

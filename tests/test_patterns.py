@@ -34,6 +34,7 @@ def test_use_numpy_function():
     map_x = np.linspace(0, 100, map_length)
     map_y = np.random.rand(map_length)
     y = vip.f(np.interp)(a, map_x, map_y)
+
     vip.solve(10, time_step=0.01)
 
     error_array = y.values - np.interp(a.values, map_x, map_y)
@@ -237,8 +238,8 @@ def test_bounded_integration_by_constant():
     ia_inc = vip.integrate(a, 0, maximum=5, minimum=2)
     ia_dec = vip.integrate(-a, 10, maximum=5, minimum=2)
 
-    ia_inc.to_plot("Integral")
-    ia_dec.to_plot("Decreasing integral")
+    # ia_inc.to_plot("Integral")
+    # ia_dec.to_plot("Decreasing integral")
 
     vip.solve(10)
 
@@ -254,8 +255,8 @@ def test_bounded_integration_by_variable():
     ia_inc = vip.integrate(a, 0, maximum=signal)
     ia_dec = vip.integrate(-a, 0, minimum=-signal)
 
-    ia_inc.to_plot("Integral")
-    ia_dec.to_plot("Decreasing integral")
+    # ia_inc.to_plot("Integral")
+    # ia_dec.to_plot("Decreasing integral")
 
     vip.solve(10, time_step=1)
 
@@ -286,8 +287,8 @@ def test_variable_step_solving():
     d_n.loop_into(-0.5 * n)
 
     # Choose which variables to plot
-    n.to_plot()
-    d_n.to_plot()
+    # n.to_plot()
+    # d_n.to_plot()
 
     # Solve the system. The plot will automatically show.
     vip.solve(10, time_step=None)
@@ -326,7 +327,7 @@ def test_set_interval():
 
     e1 = vip.set_interval(ia.set_value(0), 2)
 
-    # ia.to_plot()
+    ia.to_plot()
 
     vip.solve(10, time_step=1, include_events_times=False)
 
@@ -345,3 +346,34 @@ def test_create_event():
     vip.solve(10, 1)
 
     assert ia.values[5] == 0
+
+def test_increment_timeout():
+    count=vip.create_source(0)
+
+    vip.set_timeout(count.change_behavior(count+1),2)
+
+    count.to_plot()
+    vip.solve(10, time_step=1)
+
+    assert count.values[0]==0
+    assert count.values[2]==1
+    assert count.values[-1]==1
+
+def test_increment_interval():
+    count=vip.create_source(0)
+    vip.set_interval(count.change_behavior(count+1),2)
+
+    count.to_plot()
+    vip.solve(10, time_step=1)
+
+    print(count.values)
+    print(count.t)
+
+    assert count.values[0]==0
+    assert count.values[2]==1
+    assert count.values[4]==2
+    assert count.values[6] == 3
+    assert count.values[8] == 4
+    assert count.values[10] == 5
+
+

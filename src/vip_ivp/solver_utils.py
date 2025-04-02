@@ -1,5 +1,4 @@
-import inspect
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 import numpy as np
 from scipy.integrate._ivp.bdf import BDF
@@ -127,6 +126,8 @@ def find_active_events(events, sol, t_eval, t, t_old):
 
     g = [e.g for e in events]
     direction = np.array([e.direction for e in events])
+    t_upper = t
+    t_lower = t_old
 
     if t_eval is None:
         t_list = []
@@ -134,17 +135,26 @@ def find_active_events(events, sol, t_eval, t, t_old):
         t_eval_i_new = np.searchsorted(t_eval, t, side="right")
         t_eval_step = t_eval[:t_eval_i_new]
         t_list = t_eval_step[t_eval_step > t_old]
+    # Prevent events that triggered at the previous step to trigger again in this step, because its g_new is at 0 so
+    # an irrelevant zero-crossing is sure to occur.
+    previous_triggers_mask = np.array([not t_old in e.t_events for e in events])
 
-
-    for t_ev in [*t_list, t]:
+    t_list = [*t_list, t]
+    for i, t_ev in enumerate(t_list):
         g_new = [e(t_ev, sol(t_ev)) for e in events]
-        active_events_indices = find_active_events_in_step(g, g_new, direction)
+        active_events_indices = find_active_events_in_step(g, g_new, direction, previous_triggers_mask)
         if active_events_indices.size > 0:
-            return active_events_indices, t_ev
-    return np.array([]), t
+            t_upper = t_ev
+            return active_events_indices, t_upper, t_lower
+        if i == 0 and len(t_list) > 1:
+            # Disable the preventing of zero-crossing from previously triggered events
+            g = g_new
+            t_lower = t_ev
+            previous_triggers_mask = None
+    return np.array([]), t_upper, t_lower
 
 
-def find_active_events_in_step(g, g_new, direction):
+def find_active_events_in_step(g, g_new, direction, previous_triggers_mask=None):
     """Find which event occurred during an integration step.
 
     Parameters
@@ -165,11 +175,13 @@ def find_active_events_in_step(g, g_new, direction):
     g_new = [x if not isinstance(x, (bool, np.bool)) or x == True else -1 for x in g_new]
 
     g, g_new, direction = np.asarray(g), np.asarray(g_new), np.asarray(direction)
-    up = (g < 0) & (g_new >= 0)
-    down = (g > 0) & (g_new <= 0)
+    up = (g <= 0) & (g_new >= 0)
+    down = (g >= 0) & (g_new <= 0)
     either = up | down
     mask = (up & (direction > 0) |
             down & (direction < 0) |
             either & (direction == 0))
+    if previous_triggers_mask is not None:
+        mask = mask & previous_triggers_mask
     active_events_indices = np.nonzero(mask)[0]
     return active_events_indices

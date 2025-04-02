@@ -1,11 +1,11 @@
 import json
-from typing import ParamSpec, overload, List, Dict, Union, Iterable, Literal
+import operator
+from typing import Dict, Union, ParamSpec
 
 import pandas as pd
 from varname import argname
 
 from .base import *
-from . import base
 from .utils import *
 
 warnings.simplefilter("once")
@@ -64,8 +64,8 @@ def create_scenario(scenario_table: Union[pd.DataFrame, str, dict], time_key: st
             print(input_data)
             return TemporalVar.from_scenario(solver, input_data, time_key, interpolation_kind)
         elif scenario_table.endswith(".json"):
-            with open(scenario_table, "r") as f:
-                dict_data = json.load(f)
+            with open(scenario_table, "r") as file:
+                dict_data = json.load(file)
             input_data = pd.DataFrame(dict_data)
             return TemporalVar.from_scenario(solver, input_data, time_key, interpolation_kind)
         else:
@@ -129,22 +129,27 @@ def delay(input_value: TemporalVar[T], n_steps: int, initial_value: T = 0) -> Te
     elif n_steps < 1:
         raise Exception("Delay accept only a positive step.")
 
-    def previous_value(t, y):
-        if np.isscalar(t):
-            if len(input_value.solver.t) >= n_steps:
-                previous_t = input_value.solver.t[-n_steps]
-                previous_y = input_value.solver.y[-n_steps]
+    def create_delay(input_variable):
+        def previous_value(t, y):
+            if np.isscalar(t):
+                if len(input_variable.solver.t) >= n_steps:
+                    previous_t = input_variable.solver.t[-n_steps]
+                    previous_y = input_variable.solver.y[-n_steps]
 
-                return input_value(previous_t, previous_y)
+                    return input_variable(previous_t, previous_y)
+                else:
+                    return initial_value
             else:
-                return initial_value
-        else:
-            delayed_t = shift_array(t, n_steps, 0)
-            delayed_y = shift_array(y, n_steps, initial_value)
-            return input_value(delayed_t, delayed_y)
+                delayed_t = shift_array(t, n_steps, 0)
+                delayed_y = shift_array(y, n_steps, initial_value)
+                return input_variable(delayed_t, delayed_y)
 
-    return TemporalVar(input_value.solver, previous_value,
-                       expression=f"#DELAY({n_steps}) {get_expression(input_value)}")
+        return previous_value
+
+    return TemporalVar(input_value.solver, (create_delay, input_value),
+                       expression=f"#DELAY({n_steps}) {get_expression(input_value)}",
+                       operator=operator.call,
+                       call_mode=CallMode.CALL_FUN_RESULT)
 
 
 def differentiate(input_value: TemporalVar[float], initial_value=0) -> TemporalVar[float]:
@@ -169,11 +174,6 @@ P = ParamSpec("P")
 
 def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> TemporalVar:
-        def content(t, y): return func(*[arg(t, y) if isinstance(arg, TemporalVar) else arg for arg in args],
-                                       **{key: (arg(t, y) if isinstance(arg, TemporalVar) else arg) for key, arg in
-                                          kwargs.items()})
-
-        # Format input for the expression
         inputs_expr = [get_expression(inp) if isinstance(inp, TemporalVar) else str(inp) for inp in args]
         kwargs_expr = [
             f"{key}={get_expression(value) if isinstance(value, TemporalVar) else str(value)}"
@@ -184,8 +184,8 @@ def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
             expression += ", ".join(kwargs_expr)
         expression += ")"
 
-        return TemporalVar(_get_current_solver(), content,
-                           expression=expression)
+        return TemporalVar(_get_current_solver(), [func, *args, kwargs],
+                           expression=expression, operator=operator.call)
 
     functools.update_wrapper(wrapper, func)
     return wrapper
@@ -210,7 +210,7 @@ def set_timeout(action: Union[Action, Callable], delay: float) -> Event:
     solver = _get_current_solver()
     current_time = solver.t_current
     time_variable = create_source(lambda t: t)
-    time_variable.name="Time"
+    time_variable.name = "Time"
     event = time_variable.on_crossing(current_time + delay, action)
     event.action += event.delete_action
     return event
@@ -219,15 +219,20 @@ def set_timeout(action: Union[Action, Callable], delay: float) -> Event:
 def set_interval(action: Union[Action, Callable], delay: float) -> Event:
     solver = _get_current_solver()
     current_time = solver.t_current
-    time_variable = create_source(lambda t: t % delay)
-    time_variable.name=f"Time % {delay}"
-    event = time_variable.on_crossing((current_time + delay)%delay, action)
+    time_variable = create_source(lambda t: t)
+    time_variable.name = f"Time % {delay}"
+
+    def reset_timer(t_reset, y):
+        time_variable.change_behavior(lambda t: t - t_reset)(t_reset, y)
+
+    reset_timer_action = Action(reset_timer, "RESET TIMER")
+    event = time_variable.on_crossing((current_time + delay), action + reset_timer_action)
     return event
 
 
 # Solving
 
-def solve(t_end: Number, time_step: Union[Number, None] = 0.1, method='RK45', t_eval: Union[List, np.ndarray] = None,
+def solve(t_end: float, time_step: Union[Number, None] = 0.1, method='RK45', t_eval: Union[List, np.ndarray] = None,
           include_events_times: bool = True, **options) -> None:
     """
     Solve the equations of the dynamical system through an integration scheme.
@@ -243,7 +248,7 @@ def solve(t_end: Number, time_step: Union[Number, None] = 0.1, method='RK45', t_
     solver.solve(t_end, method, time_step, t_eval, include_events_times=include_events_times, **options)
 
 
-def explore(fun: Callable[..., T], t_end: Number, bounds=(), time_step: float = None, title: str = "") -> None:
+def explore(fun: Callable[..., T], t_end: float, bounds=(), time_step: float = None, title: str = "") -> None:
     """
     Explore the function f over the given bounds and solve the system until t_end.
     This function needs the sliderplot package.

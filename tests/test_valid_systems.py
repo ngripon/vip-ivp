@@ -55,8 +55,8 @@ def test_no_integration():
     a = vip.create_source(lambda t: t)
     b = 2 * a
 
-    a.to_plot('A')
-    b.to_plot('2*A')
+    # a.to_plot('A')
+    # b.to_plot('2*A')
 
     vip.solve(10)
 
@@ -133,6 +133,9 @@ def test_differentiate():
     d_n2 = vip.differentiate(n)
     vip.solve(10, time_step=0.001)
 
+    print(d_n.values)
+    print(d_n2.values)
+
     errors = d_n.values - d_n2.values
     assert all(errors[1:] < 0.001)
 
@@ -164,15 +167,15 @@ def test_boolean_crossing_event():
 
 def test_string_crossing_event():
     a = vip.create_source(lambda t: t)
-    string = vip.where(a >= 5, "A", "B")
+    string = vip.where(a >= 5, "Aa", "Ba")
 
-    string.on_crossing("A", terminal=True)
+    string.on_crossing("Aa", terminal=True)
 
     vip.solve(10, time_step=1)
     print(string.values)
     print(string.t)
     assert len(a.t) == 6
-    assert string.values[-1] == "A"
+    assert string.values[-1] == "Aa"
 
 
 def test_bouncing_projectile_motion():
