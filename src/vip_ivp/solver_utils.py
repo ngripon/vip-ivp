@@ -1,5 +1,4 @@
-import inspect
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING
 
 import numpy as np
 from scipy.integrate._ivp.bdf import BDF

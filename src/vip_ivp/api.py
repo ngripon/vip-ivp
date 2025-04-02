@@ -1,5 +1,5 @@
 import json
-from typing import Dict, Union
+from typing import Dict, Union, ParamSpec
 
 import pandas as pd
 from varname import argname
@@ -63,8 +63,8 @@ def create_scenario(scenario_table: Union[pd.DataFrame, str, dict], time_key: st
             print(input_data)
             return TemporalVar.from_scenario(solver, input_data, time_key, interpolation_kind)
         elif scenario_table.endswith(".json"):
-            with open(scenario_table, "r") as f:
-                dict_data = json.load(f)
+            with open(scenario_table, "r") as file:
+                dict_data = json.load(file)
             input_data = pd.DataFrame(dict_data)
             return TemporalVar.from_scenario(solver, input_data, time_key, interpolation_kind)
         else:
@@ -226,7 +226,7 @@ def set_interval(action: Union[Action, Callable], delay: float) -> Event:
 
 # Solving
 
-def solve(t_end: Number, time_step: Union[Number, None] = 0.1, method='RK45', t_eval: Union[List, np.ndarray] = None,
+def solve(t_end: float, time_step: Union[Number, None] = 0.1, method='RK45', t_eval: Union[List, np.ndarray] = None,
           include_events_times: bool = True, **options) -> None:
     """
     Solve the equations of the dynamical system through an integration scheme.
@@ -242,7 +242,7 @@ def solve(t_end: Number, time_step: Union[Number, None] = 0.1, method='RK45', t_
     solver.solve(t_end, method, time_step, t_eval, include_events_times=include_events_times, **options)
 
 
-def explore(fun: Callable[..., T], t_end: Number, bounds=(), time_step: float = None, title: str = "") -> None:
+def explore(fun: Callable[..., T], t_end: float, bounds=(), time_step: float = None, title: str = "") -> None:
     """
     Explore the function f over the given bounds and solve the system until t_end.
     This function needs the sliderplot package.

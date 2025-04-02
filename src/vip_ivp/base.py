@@ -1,10 +1,11 @@
 import functools
+import inspect
 import operator
 import time
 import warnings
 from collections import abc
 from copy import copy
-from typing import overload, Literal, Iterable, Dict, Tuple
+from typing import overload, Literal, Iterable, Dict, Tuple, List
 from numbers import Number
 from pathlib import Path
 from typing import Callable, Union, TypeVar, Generic
@@ -175,7 +176,7 @@ class Solver:
     def explore(
             self,
             f: Callable,
-            t_end: Number,
+            t_end: float,
             bounds=(),
             time_step: float = None,
             title: str = "",
@@ -644,9 +645,6 @@ class TemporalVar(Generic[T]):
     def _from_arg(self, value: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
         """
         Return a TemporalVar from an argument value. If the argument is already a TemporalVar, return it. If not, create a TemporalVar from the value.
-        :param solver:
-        :param value:
-        :return:
         """
         if isinstance(value, TemporalVar) and value.solver is self.solver:
             return value
@@ -924,7 +922,7 @@ class TemporalVar(Generic[T]):
         expression = f"{add_necessary_brackets(get_expression(self))}[{item}]"
         return TemporalVar(
             self.solver,
-            [self, item],
+            (self, item),
             expression=expression,
             operator=operator.getitem
         )
@@ -1006,7 +1004,7 @@ def temporal_var_where(solver, condition: TemporalVar[bool], a: Union[T, Tempora
 
     return TemporalVar(
         solver,
-        [where, condition, a, b],
+        (where, condition, a, b),
         expression=f"({get_expression(a)} if {get_expression(condition)} else {get_expression(b)})",
         operator=operator.call
     )
