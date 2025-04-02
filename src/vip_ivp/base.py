@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Callable, Union, TypeVar, Generic
 
 import matplotlib.pyplot as plt
+import numpy as np
 from sliderplot import sliderplot
 import pandas as pd
 from scipy.interpolate import interp1d
@@ -324,32 +325,41 @@ class Solver:
                 if sol is None:
                     sol = self._sol_wrapper(solver.dense_output())
 
-                active_events_indices, t = find_active_events(events, sol, t_eval, t, t_old)
+                active_events_indices, te_upper = find_active_events(events, sol, t_eval, t, t_old)
                 if active_events_indices.size > 0:
                     for active_idx in active_events_indices:
                         events[active_idx].count += 1
-                    active_events, roots = handle_events(sol, events, active_events_indices, t_old, t, t_eval)
+                    active_events, roots = handle_events(sol, events, active_events_indices, t_old, te_upper, t_eval)
 
                     # Get the first event
                     te = np.min(roots)
-                    ye = sol(te)
-                    self.t_current = te
-                    # Get all events that happens at te and execute their action
-                    triggering_events = [active_events[i] for i in range(len(active_events)) if roots[i] == te]
-                    for event in triggering_events:
-                        event.t_events.append(te)
-                        event.y_events.append(ye)
-                        event.execute_action(te, ye)
-                    # Reset the solver and events evaluation to begin at te for the next step
-                    t = te
-                    y = ye
-                    [e.evaluate(t, y) for e in self.get_events(t)]
-                    for event in triggering_events:
-                        event.g = 0
-                    solver = method(self._dy, t, y, tf, vectorized=vectorized, **options)
+                    if te != t_old:  # Prevent endless loops
+                        ye = sol(te)
+                        self.t_current = te
+                        # Get all events that happens at te and execute their action
+                        triggering_events = [active_events[i] for i in range(len(active_events)) if roots[i] == te]
+                        for event in triggering_events:
+                            event.t_events.append(te)
+                            event.y_events.append(ye)
+                            event.execute_action(te, ye)
+                        # Reset the solver and events evaluation to begin at te for the next step
+                        t = te
+                        y = ye
+                        [e.evaluate(t, y) for e in self.get_events(t)]
+                        for event in triggering_events:
+                            event.g = 0
+                        solver = method(self._dy, t, y, tf, vectorized=vectorized, **options)
 
-                    if any(e.terminal for e in triggering_events):
-                        self.status = 1
+                        if any(e.terminal for e in triggering_events):
+                            self.status = 1
+                    else:
+                        warnings.warn(
+                            "Ignored event: The computed time of a detected event is the same as the previous solved "
+                            "time. A discontinuity in the variable you applied '.on_crossing()' to may cause the root "
+                            "finding algorithm to fail. Please apply '.on_crossing' to something more continuous."
+                        )
+                        active_events_indices=np.array([])
+                        [e.evaluate(t, y) for e in self.get_events(t)]
                 else:
                     [e.evaluate(t, y) for e in self.get_events(t)]
             self.t_current = t
