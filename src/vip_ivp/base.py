@@ -73,12 +73,13 @@ class Solver:
 
         elif data.output_type is dict:
             if not isinstance(maximum, dict):
-                maximum = {key: maximum for key in data.function.keys()}
+                maximum = {key: maximum for key in data.keys()}
             if not isinstance(minimum, dict):
-                minimum = {key: minimum for key in data.function.keys()}
+                minimum = {key: minimum for key in data.keys()}
+
             return {
                 key: self._get_integrated_structure(value, x0[key], minimum[key], maximum[key])
-                for key, value in data.function.items()
+                for key, value in data.items()
             }
 
         return self._add_integration_variable(data, x0, minimum, maximum)
@@ -965,12 +966,28 @@ class TemporalVar(Generic[T]):
         else:
             return f"{self._expression}"
 
+    # NumPy arrays utility methods
     @property
     def shape(self):
         result = self._first_value()
         if isinstance(result, np.ndarray):
             return result.shape
-        raise AttributeError("Shape attribute does not exist because this variable does not contain a NumPy array.")
+        raise AttributeError("hhape attribute does not exist because this variable does not contain a NumPy array.")
+
+    # Dict utility methods
+    def keys(self):
+        result = self._first_value()
+        if isinstance(result, dict):
+            return result.keys()
+        raise AttributeError("keys() method does not exist because this variable does not contain a dict.")
+
+    def items(self):
+        result = self._first_value()
+        if isinstance(result, dict):
+            key_list = list(result.keys())
+            value_list = [self[key] for key in key_list]
+            return zip(key_list, value_list)
+        raise AttributeError("items() method does not exist because this variable does not contain a dict.")
 
 
 def convert_args_to_temporal_var(solver: Solver, arg_list: Iterable) -> List[TemporalVar]:
@@ -1050,7 +1067,7 @@ class IntegratedVar(TemporalVar[T]):
             self._y_idx = IntegratedVar.y_idx
         super().__init__(solver, fun, expression)
 
-    def __getitem__(self, item)->"IntegratedVar":
+    def __getitem__(self, item) -> "IntegratedVar":
         return self.source[item]
 
     @property
