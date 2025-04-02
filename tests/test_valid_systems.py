@@ -55,8 +55,8 @@ def test_no_integration():
     a = vip.create_source(lambda t: t)
     b = 2 * a
 
-    a.to_plot('A')
-    b.to_plot('2*A')
+    # a.to_plot('A')
+    # b.to_plot('2*A')
 
     vip.solve(10)
 

@@ -237,8 +237,8 @@ def test_bounded_integration_by_constant():
     ia_inc = vip.integrate(a, 0, maximum=5, minimum=2)
     ia_dec = vip.integrate(-a, 10, maximum=5, minimum=2)
 
-    ia_inc.to_plot("Integral")
-    ia_dec.to_plot("Decreasing integral")
+    # ia_inc.to_plot("Integral")
+    # ia_dec.to_plot("Decreasing integral")
 
     vip.solve(10)
 
@@ -254,8 +254,8 @@ def test_bounded_integration_by_variable():
     ia_inc = vip.integrate(a, 0, maximum=signal)
     ia_dec = vip.integrate(-a, 0, minimum=-signal)
 
-    ia_inc.to_plot("Integral")
-    ia_dec.to_plot("Decreasing integral")
+    # ia_inc.to_plot("Integral")
+    # ia_dec.to_plot("Decreasing integral")
 
     vip.solve(10, time_step=1)
 
@@ -286,8 +286,8 @@ def test_variable_step_solving():
     d_n.loop_into(-0.5 * n)
 
     # Choose which variables to plot
-    n.to_plot()
-    d_n.to_plot()
+    # n.to_plot()
+    # d_n.to_plot()
 
     # Solve the system. The plot will automatically show.
     vip.solve(10, time_step=None)

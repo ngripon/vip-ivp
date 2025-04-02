@@ -917,17 +917,12 @@ class TemporalVar(Generic[T]):
 
     def __getitem__(self, item):
         expression = f"{add_necessary_brackets(get_expression(self))}[{item}]"
-        if isinstance(self.source, np.ndarray):
-            return type(self)(
-                self.solver, [self, item], expression=expression, operator=operator.getitem
-            )
-        else:
-            return type(self)(
-                self.solver,
-                [self, item],
-                expression=expression,
-                operator=operator.getitem
-            )
+        return TemporalVar(
+            self.solver,
+            [self, item],
+            expression=expression,
+            operator=operator.getitem
+        )
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs) -> "TemporalVar":
         inputs_expr = [
@@ -1032,13 +1027,6 @@ class LoopNode(TemporalVar[T]):
     def __call__(self, t: Union[float, np.ndarray], y: np.ndarray) -> T:
         return self._input_var(t, y)
 
-    # def __getitem__(self, item):
-    #     expression = f"{add_necessary_brackets(get_expression(self))}[{item}]"
-    #     variable: TemporalVar = TemporalVar(
-    #         self.solver, lambda t, y: self(t, y)[item], expression
-    #     )
-    #     return variable
-
 
 class IntegratedVar(TemporalVar[T]):
     def __init__(
@@ -1062,12 +1050,15 @@ class IntegratedVar(TemporalVar[T]):
             self._y_idx = IntegratedVar.y_idx
         super().__init__(solver, fun, expression)
 
+    def __getitem__(self, item)->"IntegratedVar":
+        return self.source[item]
+
     @property
     def y_idx(self):
-        if isinstance(self.function, np.ndarray):
-            return np.vectorize(lambda v: v.y_idx)(self.function)
-        elif isinstance(self.function, dict):
-            return {key: value.y_idx for key, value in self.function.items()}
+        if isinstance(self.source, np.ndarray):
+            return np.vectorize(lambda v: v.y_idx)(self.source)
+        elif isinstance(self.source, dict):
+            return {key: value.y_idx for key, value in self.source.items()}
         elif self._y_idx is not None:
             return self._y_idx
         raise ValueError("The argument 'y_idx' should be set for IntegratedVar containing a single value.")
