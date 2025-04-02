@@ -1,4 +1,5 @@
 import json
+import operator
 from typing import Dict, Union, ParamSpec
 
 import pandas as pd
@@ -168,9 +169,9 @@ P = ParamSpec("P")
 
 def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> TemporalVar:
-        def content(t, y): return func(*[arg(t, y) if isinstance(arg, TemporalVar) else arg for arg in args],
-                                       **{key: (arg(t, y) if isinstance(arg, TemporalVar) else arg) for key, arg in
-                                          kwargs.items()})
+        # def content(t, y): return func(*[arg(t, y) if isinstance(arg, TemporalVar) else arg for arg in args],
+        #                                **{key: (arg(t, y) if isinstance(arg, TemporalVar) else arg) for key, arg in
+        #                                   kwargs.items()})
 
         # Format input for the expression
         inputs_expr = [get_expression(inp) if isinstance(inp, TemporalVar) else str(inp) for inp in args]
@@ -183,8 +184,8 @@ def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
             expression += ", ".join(kwargs_expr)
         expression += ")"
 
-        return TemporalVar(_get_current_solver(), content,
-                           expression=expression)
+        return TemporalVar(_get_current_solver(), [func, *args, kwargs],
+                           expression=expression, operator=operator.call)
 
     functools.update_wrapper(wrapper, func)
     return wrapper
@@ -224,8 +225,8 @@ def set_interval(action: Union[Action, Callable], delay: float) -> Event:
     def reset_timer(t_reset, y):
         time_variable.change_behavior(lambda t: t - t_reset)(t_reset, y)
 
-    reset_timer_action = Action(reset_timer,"RESET TIMER")
-    event = time_variable.on_crossing((current_time + delay), action+reset_timer_action)
+    reset_timer_action = Action(reset_timer, "RESET TIMER")
+    event = time_variable.on_crossing((current_time + delay), action + reset_timer_action)
     return event
 
 
