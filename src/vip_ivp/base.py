@@ -613,6 +613,8 @@ class TemporalVar(Generic[T]):
             crossed_variable = self == value
             crossed_variable._expression = f"on {self.name} == {value.name if isinstance(value, TemporalVar) else value}"
         elif issubclass(self.output_type, abc.Iterable):
+            print(self.output_type)
+            print(self._first_value())
             raise ValueError(
                 "Can not apply crossing detection to a variable containing a collection of values because it is ambiguous."
             )
@@ -997,11 +999,22 @@ def convert_args_to_temporal_var(solver: Solver, arg_list: Iterable) -> List[Tem
 def temporal_var_where(solver, condition: TemporalVar[bool], a: Union[T, TemporalVar[T]],
                        b: Union[T, TemporalVar[T]]) -> \
         TemporalVar[T]:
-    condition, a, b = convert_args_to_temporal_var(solver, (condition, a, b))
-    return TemporalVar(solver,
-                       lambda t, y: (a(t, y) if condition(t, y) else b(t, y)) if np.isscalar(t) else np.where(
-                           condition(t, y), a(t, y), b(t, y)),
-                       expression=f"({get_expression(a)} if {get_expression(condition)} else {get_expression(b)})")
+    def where(condition, a, b):
+        result = np.where(condition, a, b)
+        if result.size == 1:
+            result = result.item()
+        return result
+
+    return TemporalVar(
+        solver,
+        [where, condition, a, b],
+        expression=f"({get_expression(a)} if {get_expression(condition)} else {get_expression(b)})",
+        operator=operator.call
+    )
+    # return TemporalVar(solver,
+    #                    lambda t, y: (a(t, y) if condition(t, y) else b(t, y)) if np.isscalar(t) else np.where(
+    #                        condition(t, y), a(t, y), b(t, y)),
+    #                    expression=f"({get_expression(a)} if {get_expression(condition)} else {get_expression(b)})")
 
 
 class LoopNode(TemporalVar[T]):

@@ -167,15 +167,15 @@ def test_boolean_crossing_event():
 
 def test_string_crossing_event():
     a = vip.create_source(lambda t: t)
-    string = vip.where(a >= 5, "A", "B")
+    string = vip.where(a >= 5, "Aa", "Ba")
 
-    string.on_crossing("A", terminal=True)
+    string.on_crossing("Aa", terminal=True)
 
     vip.solve(10, time_step=1)
     print(string.values)
     print(string.t)
     assert len(a.t) == 6
-    assert string.values[-1] == "A"
+    assert string.values[-1] == "Aa"
 
 
 def test_bouncing_projectile_motion():
