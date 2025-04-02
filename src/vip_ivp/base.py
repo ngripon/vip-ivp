@@ -393,8 +393,10 @@ class Solver:
                 # Add time events
                 if events:
                     if active_events_indices.size > 0 and self.status != 1:
-                        if self.t[-1] == te and self.dim != 0:
-                            self.y[-1] = ye
+
+                        if self.t[-1] == te:
+                            if self.dim != 0:
+                                self.y[-1] = ye
                         elif include_events_times:
                             self.t.append(te)
                             # When there is no integrated variable, self.y should be a list of zeros
