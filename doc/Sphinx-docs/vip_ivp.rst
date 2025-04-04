@@ -5,3 +5,4 @@ vip\_ivp package
    :members:
    :show-inheritance:
    :undoc-members:
+   :noindex:

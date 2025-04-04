@@ -1,13 +1,13 @@
 # vip_ivp package
 
-### clear()
+### vip_ivp.api.clear()
 
 Clear the current solver’s stored information.
 
 * **Return type:**
   `None`
 
-### create_scenario(scenario_table, time_key, interpolation_kind='linear', sep=',')
+### vip_ivp.api.create_scenario(scenario_table, time_key, interpolation_kind='linear', sep=',')
 
 Creates a scenario from a given input table, which can be in various formats such as CSV, JSON, dictionary, or DataFrame.
 The maps in the scenario table are interpolated over time and converted into TemporalVar objects.
@@ -31,7 +31,7 @@ The function processes the data and returns a dictionary of TemporalVar objects.
 * **Raises:**
   **ValueError** – If the input file type is unsupported or the input type is invalid.
 
-### create_source(value)
+### vip_ivp.api.create_source(value)
 
 Create a source signal from a temporal function or a scalar value.
 
@@ -42,17 +42,17 @@ Create a source signal from a temporal function or a scalar value.
 * **Returns:**
   The created TemporalVar.
 
-### delay(input_value, n_steps, initial_value=0)
+### vip_ivp.api.delay(input_value, n_steps, initial_value=0)
 
 * **Return type:**
   `TemporalVar`[`TypeVar`(`T`)]
 
-### differentiate(input_value, initial_value=0)
+### vip_ivp.api.differentiate(input_value, initial_value=0)
 
 * **Return type:**
   `TemporalVar`[`float`]
 
-### explore(fun, t_end, bounds=(), time_step=None, title='')
+### vip_ivp.api.explore(fun, t_end, bounds=(), time_step=None, title='')
 
 Explore the function f over the given bounds and solve the system until t_end.
 This function needs the sliderplot package.
@@ -66,27 +66,27 @@ This function needs the sliderplot package.
 * **Return type:**
   `None`
 
-### export_file(filename, variables=None, file_format=None)
+### vip_ivp.api.export_file(filename, variables=None, file_format=None)
 
 * **Return type:**
   `None`
 
-### export_to_df(variables=None)
+### vip_ivp.api.export_to_df(variables=None)
 
 * **Return type:**
   `DataFrame`
 
-### f(func)
+### vip_ivp.api.f(func)
 
 * **Return type:**
   `Callable`[[`ParamSpec`(`P`)], `TemporalVar`[`TypeVar`(`T`)]]
 
-### get_events()
+### vip_ivp.api.get_events()
 
 * **Return type:**
   `List`[`Event`]
 
-### get_var(var_name)
+### vip_ivp.api.get_var(var_name)
 
 Retrieve a saved TemporalVar by its name.
 
@@ -97,7 +97,7 @@ Retrieve a saved TemporalVar by its name.
 * **Returns:**
   The retrieved TemporalVar.
 
-### integrate(input_value, x0, minimum=None, maximum=None)
+### vip_ivp.api.integrate(input_value, x0, minimum=None, maximum=None)
 
 Integrate the input value starting from the initial condition x0.
 
@@ -111,7 +111,7 @@ Integrate the input value starting from the initial condition x0.
 * **Returns:**
   The integrated TemporalVar.
 
-### loop_node(shape=None)
+### vip_ivp.api.loop_node(shape=None)
 
 Create a loop node. Loop node can accept new inputs through its “loop_into()” method after being instantiated.
 
@@ -120,21 +120,21 @@ Create a loop node. Loop node can accept new inputs through its “loop_into()�
 * **Returns:**
   The created LoopNode.
 
-### new_system()
+### vip_ivp.api.new_system()
 
 Create a new solver system.
 
 * **Return type:**
   `None`
 
-### plot()
+### vip_ivp.api.plot()
 
 Plot the variables that have been marked for plotting.
 
 * **Return type:**
   `None`
 
-### save(\*args)
+### vip_ivp.api.save(\*args)
 
 Save the given TemporalVars with their variable names.
 
@@ -145,17 +145,17 @@ Save the given TemporalVars with their variable names.
 * **Return type:**
   `None`
 
-### set_interval(action, delay)
+### vip_ivp.api.set_interval(action, delay)
 
 * **Return type:**
   `Event`
 
-### set_timeout(action, delay)
+### vip_ivp.api.set_timeout(action, delay)
 
 * **Return type:**
   `Event`
 
-### solve(t_end, time_step=0.1, method='RK45', t_eval=None, include_events_times=True, \*\*options)
+### vip_ivp.api.solve(t_end, time_step=0.1, method='RK45', t_eval=None, include_events_times=True, \*\*options)
 
 Solve the equations of the dynamical system through an integration scheme.
 
@@ -169,4 +169,4 @@ Solve the equations of the dynamical system through an integration scheme.
 * **Return type:**
   `None`
 
-### where(condition, a, b)
+### vip_ivp.api.where(condition, a, b)
