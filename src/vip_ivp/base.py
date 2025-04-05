@@ -13,7 +13,6 @@ from typing import Callable, Union, TypeVar, Generic
 
 import matplotlib.pyplot as plt
 import numpy as np
-from sliderplot import sliderplot
 import pandas as pd
 from scipy.interpolate import interp1d
 
@@ -193,6 +192,7 @@ class Solver:
         :param t_end: Time at which the integration stops.
         :param bounds: Bounds for the exploration.
         """
+        from sliderplot import sliderplot
 
         def wrapper(*args, **kwargs):
             self.clear()
