@@ -2,7 +2,6 @@ import json
 import operator
 from typing import Dict, Union, ParamSpec
 
-import pandas as pd
 from varname import argname
 
 from .base import *
@@ -27,7 +26,7 @@ def create_source(value: Union[Callable[[Union[float, np.ndarray]], T], T]) -> T
     return TemporalVar(solver, value)
 
 
-def create_scenario(scenario_table: Union[pd.DataFrame, str, dict], time_key: str, interpolation_kind="linear",
+def create_scenario(scenario_table: Union["pd.DataFrame", str, dict], time_key: str, interpolation_kind="linear",
                     sep=',') -> TemporalVar:
     """
     Creates a scenario from a given input table, which can be in various formats such as CSV, JSON, dictionary, or DataFrame.
@@ -57,6 +56,8 @@ def create_scenario(scenario_table: Union[pd.DataFrame, str, dict], time_key: st
 
     :raises ValueError: If the input file type is unsupported or the input type is invalid.
     """
+    import pandas as pd
+
     solver = _get_current_solver()
     if isinstance(scenario_table, str):
         if scenario_table.endswith(".csv"):
@@ -274,7 +275,9 @@ def new_system() -> None:
 AVAILABLE_EXPORT_FILE_FORMATS = ["csv", "json"]
 
 
-def export_to_df(variables: Iterable[TemporalVar] = None) -> pd.DataFrame:
+def export_to_df(variables: Iterable[TemporalVar] = None) -> "pd.DataFrame":
+    import pandas as pd
+
     solver = _get_current_solver()
     if not solver.solved:
         raise Exception("System must be solved before exporting the results. Please call 'vip.solve(t_end)'.")

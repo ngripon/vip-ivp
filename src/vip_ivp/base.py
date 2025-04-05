@@ -11,14 +11,14 @@ from numbers import Number
 from pathlib import Path
 from typing import Callable, Union, TypeVar, Generic
 
-import matplotlib.pyplot as plt
 import numpy as np
-from sliderplot import sliderplot
-import pandas as pd
-from scipy.interpolate import interp1d
+
 
 from .solver_utils import *
 from .utils import add_necessary_brackets, convert_to_string
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 T = TypeVar("T")
 
@@ -161,6 +161,8 @@ class Solver:
         """
         Plot the variables that have been marked for plotting.
         """
+        import matplotlib.pyplot as plt
+
         if not self.vars_to_plot:
             return
         # Plot data
@@ -193,6 +195,7 @@ class Solver:
         :param t_end: Time at which the integration stops.
         :param bounds: Bounds for the exploration.
         """
+        from sliderplot import sliderplot
 
         def wrapper(*args, **kwargs):
             self.clear()
@@ -613,10 +616,12 @@ class TemporalVar(Generic[T]):
     def from_scenario(
             cls,
             solver: "Solver",
-            scenario_table: pd.DataFrame,
+            scenario_table: "pd.DataFrame",
             time_key: str,
             interpolation_kind="linear",
     ) -> "TemporalVar":
+        from scipy.interpolate import interp1d
+
         variables = {}
         for col in scenario_table.columns:
             if col == time_key:
