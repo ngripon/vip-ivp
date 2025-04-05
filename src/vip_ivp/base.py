@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Callable, Union, TypeVar, Generic
 
 import numpy as np
-from scipy.interpolate import interp1d
+
 
 from .solver_utils import *
 from .utils import add_necessary_brackets, convert_to_string
@@ -620,6 +620,8 @@ class TemporalVar(Generic[T]):
             time_key: str,
             interpolation_kind="linear",
     ) -> "TemporalVar":
+        from scipy.interpolate import interp1d
+
         variables = {}
         for col in scenario_table.columns:
             if col == time_key:
