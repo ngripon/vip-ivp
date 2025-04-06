@@ -83,8 +83,9 @@ const config: Config = {
         {to: '/blog', label: 'Blog', position: 'left'},
         {
           href: 'https://github.com/ngripon/vip-ivp',
-          label: 'GitHub',
           position: 'right',
+          className: 'header-github-link',
+          'aria-label': 'GitHub repository',
         },
       ],
     },
@@ -114,7 +115,7 @@ const config: Config = {
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} My Project, Inc. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()}. MIT License.`,
     },
     prism: {
       theme: prismThemes.github,
