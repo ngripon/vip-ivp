@@ -13,7 +13,6 @@ from typing import Callable, Union, TypeVar, Generic
 
 import numpy as np
 
-
 from .solver_utils import *
 from .utils import add_necessary_brackets, convert_to_string
 
@@ -1085,7 +1084,7 @@ def temporal_var_where(solver, condition: TemporalVar[bool], a: Union[T, Tempora
 
 
 class LoopNode(TemporalVar[T]):
-    def __init__(self, solver: "Solver", shape: Union[int, tuple[int, ...]] = None):
+    def __init__(self, solver: "Solver", shape: Union[int, tuple[int, ...]] = None, strict: bool = True):
         if shape is not None:
             initial_value = np.zeros(shape)
         else:
@@ -1093,6 +1092,7 @@ class LoopNode(TemporalVar[T]):
         self._input_var: TemporalVar = TemporalVar(solver, initial_value)
         super().__init__(solver, self._input_var, expression="", child_cls=TemporalVar)
         self._is_set = False
+        self._is_strict = strict
 
     def loop_into(self, value: Union[TemporalVar[T], T], force: bool = False):
         """
@@ -1117,7 +1117,19 @@ class LoopNode(TemporalVar[T]):
         self.operator = self._input_var.operator
 
     def __call__(self, t: Union[float, np.ndarray], y: np.ndarray) -> T:
+        if self._is_strict and not self._is_set:
+            raise Exception(f"The value has not been set in loop node {self.name or self.expression}. Please call the 'loop_into()' method.\n"
+                            "If this is intentional, instantiate the LoopNode object with parameter 'strict = False' to "
+                            "disable this exception.")
         return self._input_var(t, y)
+
+    @property
+    def shape(self):
+        return self._input_var.shape
+
+    @property
+    def output_type(self):
+        return self._input_var.output_type
 
 
 class IntegratedVar(TemporalVar[T]):
