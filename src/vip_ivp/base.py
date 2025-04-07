@@ -1084,10 +1084,6 @@ def temporal_var_where(solver, condition: TemporalVar[bool], a: Union[T, Tempora
         expression=f"({get_expression(a)} if {get_expression(condition)} else {get_expression(b)})",
         operator=operator.call
     )
-    # return TemporalVar(solver,
-    #                    lambda t, y: (a(t, y) if condition(t, y) else b(t, y)) if np.isscalar(t) else np.where(
-    #                        condition(t, y), a(t, y), b(t, y)),
-    #                    expression=f"({get_expression(a)} if {get_expression(condition)} else {get_expression(b)})")
 
 
 class LoopNode(TemporalVar[T]):
@@ -1133,14 +1129,6 @@ class LoopNode(TemporalVar[T]):
         :return: True if valid, False if incorrect
         """
         return not self._is_strict or self._is_set
-
-    @property
-    def shape(self):
-        return self._input_var.shape
-
-    @property
-    def output_type(self):
-        return self._input_var.output_type
 
 
 class IntegratedVar(TemporalVar[T]):
