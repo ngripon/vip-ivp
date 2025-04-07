@@ -12,6 +12,21 @@ def test_algebraic_loop():
         vip.solve(10)
 
 
+def test_loop_node_not_set():
+    x = vip.loop_node()
+    with pytest.raises(Exception):
+        vip.solve(10)
+
+    vip.new_system()
+    y = vip.loop_node(shape=(2, 3))
+    with pytest.raises(Exception):
+        vip.solve(10)
+
+    vip.new_system()
+    z=vip.loop_node(shape=(2,3), strict=False)
+    vip.solve(10)
+
+
 def test_set_loop_node_two_times():
     x = vip.loop_node()
     x.loop_into(6)
@@ -21,7 +36,7 @@ def test_set_loop_node_two_times():
 
 def test_crossing_integration_bounds():
     a = vip.create_source(1)
-    signal=vip.create_source(lambda t:6-t)
+    signal = vip.create_source(lambda t: 6 - t)
     ia = vip.integrate(a, 0, maximum=signal, minimum=-1)
 
     ia.to_plot("Integral")
