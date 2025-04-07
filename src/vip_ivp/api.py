@@ -1,5 +1,4 @@
 import json
-import operator
 from typing import Dict, Union, ParamSpec
 
 from varname import argname
@@ -97,14 +96,17 @@ def integrate(input_value: Union[TemporalVar[T], T], x0: T, minimum: Union[Tempo
     return integral_value
 
 
-def loop_node(shape: Union[int, tuple[int, ...]] = None) -> LoopNode:
+def loop_node(shape: Union[int, tuple[int, ...]] = None, strict: bool = True) -> LoopNode:
     """
     Create a loop node. Loop node can accept new inputs through its "loop_into()" method after being instantiated.
+
+    :param shape: Shape of the NumPy array contained in the Loop Node. If None, the Loop Node will contain a scalar.
+    :param strict: Flag that triggers an error when the Loop Node has not been set before the solving.
 
     :return: The created LoopNode.
     """
     solver = _get_current_solver()
-    return LoopNode(solver, shape)
+    return LoopNode(solver, shape, strict)
 
 
 @overload

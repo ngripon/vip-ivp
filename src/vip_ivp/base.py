@@ -13,7 +13,6 @@ from typing import Callable, Union, TypeVar, Generic
 
 import numpy as np
 
-
 from .solver_utils import *
 from .utils import add_necessary_brackets, convert_to_string
 
@@ -130,6 +129,13 @@ class Solver:
         :param options: Additional options for the solver. See https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html.
         """
         self._get_remaining_named_variables()
+        # Check if LoopNodes has been set
+        for loop_node in (var for var in self.vars if isinstance(var, LoopNode)):
+            if not loop_node.is_valid():
+                raise Exception(
+                    f"The value has not been set in loop node {loop_node.name}. Please call the 'loop_into()' method.\n"
+                    "If this is intentional, instantiate the LoopNode object with parameter 'strict = False' to "
+                    "disable this exception.")
         # Reinit values
         [var.reset() for var in self.vars]
         start = time.time()
@@ -1078,14 +1084,10 @@ def temporal_var_where(solver, condition: TemporalVar[bool], a: Union[T, Tempora
         expression=f"({get_expression(a)} if {get_expression(condition)} else {get_expression(b)})",
         operator=operator.call
     )
-    # return TemporalVar(solver,
-    #                    lambda t, y: (a(t, y) if condition(t, y) else b(t, y)) if np.isscalar(t) else np.where(
-    #                        condition(t, y), a(t, y), b(t, y)),
-    #                    expression=f"({get_expression(a)} if {get_expression(condition)} else {get_expression(b)})")
 
 
 class LoopNode(TemporalVar[T]):
-    def __init__(self, solver: "Solver", shape: Union[int, tuple[int, ...]] = None):
+    def __init__(self, solver: "Solver", shape: Union[int, tuple[int, ...]] = None, strict: bool = True):
         if shape is not None:
             initial_value = np.zeros(shape)
         else:
@@ -1093,6 +1095,7 @@ class LoopNode(TemporalVar[T]):
         self._input_var: TemporalVar = TemporalVar(solver, initial_value)
         super().__init__(solver, self._input_var, expression="", child_cls=TemporalVar)
         self._is_set = False
+        self._is_strict = strict
 
     def loop_into(self, value: Union[TemporalVar[T], T], force: bool = False):
         """
@@ -1118,6 +1121,14 @@ class LoopNode(TemporalVar[T]):
 
     def __call__(self, t: Union[float, np.ndarray], y: np.ndarray) -> T:
         return self._input_var(t, y)
+
+    def is_valid(self) -> bool:
+        """
+        Check if the Loop Node is ready to be solved.
+        If the Loop Node uses strict mode, its value must be set.
+        :return: True if valid, False if incorrect
+        """
+        return not self._is_strict or self._is_set
 
 
 class IntegratedVar(TemporalVar[T]):
