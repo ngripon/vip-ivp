@@ -129,6 +129,13 @@ class Solver:
         :param options: Additional options for the solver. See https://docs.scipy.org/doc/scipy/reference/generated/scipy.integrate.solve_ivp.html.
         """
         self._get_remaining_named_variables()
+        # Check if LoopNodes has been set
+        for loop_node in (var for var in self.vars if isinstance(var, LoopNode)):
+            if not loop_node.is_valid():
+                raise Exception(
+                    f"The value has not been set in loop node {loop_node.name}. Please call the 'loop_into()' method.\n"
+                    "If this is intentional, instantiate the LoopNode object with parameter 'strict = False' to "
+                    "disable this exception.")
         # Reinit values
         [var.reset() for var in self.vars]
         start = time.time()
@@ -1117,11 +1124,15 @@ class LoopNode(TemporalVar[T]):
         self.operator = self._input_var.operator
 
     def __call__(self, t: Union[float, np.ndarray], y: np.ndarray) -> T:
-        if self._is_strict and not self._is_set:
-            raise Exception(f"The value has not been set in loop node {self.name or self.expression}. Please call the 'loop_into()' method.\n"
-                            "If this is intentional, instantiate the LoopNode object with parameter 'strict = False' to "
-                            "disable this exception.")
         return self._input_var(t, y)
+
+    def is_valid(self) -> bool:
+        """
+        Check if the Loop Node is ready to be solved.
+        If the Loop Node uses strict mode, its value must be set.
+        :return: True if valid, False if incorrect
+        """
+        return not self._is_strict or self._is_set
 
     @property
     def shape(self):
