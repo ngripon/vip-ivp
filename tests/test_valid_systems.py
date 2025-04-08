@@ -1,6 +1,10 @@
+import pathlib
+import runpy
 from typing import Sequence
 
+import matplotlib
 import numpy as np
+import pytest
 
 import vip_ivp as vip
 
@@ -190,7 +194,7 @@ def test_bouncing_projectile_motion():
     x0 = [0, 0]
 
     k = 0.7  # Bouncing coefficients
-    v_min = 0.01
+    v_min = 2
 
     # Create system
     acceleration = vip.loop_node(2)
@@ -211,8 +215,9 @@ def test_bouncing_projectile_motion():
     )
 
     position.to_plot("Position")
+    velocity[1].to_plot()
 
-    vip.solve(20, time_step=0.2)
+    vip.solve(20, time_step=0.2, verbose=True)
     print(position.t)
 
 
@@ -271,3 +276,21 @@ def test_multiple_events_at_the_same_instant():
     vip.solve(10, time_step=0.01, include_events_times=False)
 
     assert e1.deletion_time == 6
+
+
+def test_demos():
+    matplotlib.use("Agg")
+    demo_dir = pathlib.Path(__file__).parent.parent / "demos"
+
+    # Get all .py files in demo folder
+    demo_scripts = list(demo_dir.glob("*.py"))
+    demo_scripts=[path for path in demo_scripts if "explore" not in str(path)]
+    print(demo_scripts)
+
+    for script_path in demo_scripts:
+        vip.new_system()
+        print(script_path)
+        try:
+            runpy.run_path(str(script_path), run_name="__main__")
+        except Exception as e:
+            pytest.fail(f"Demo script {script_path.name} raised an exception: {e}")
