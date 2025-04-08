@@ -287,6 +287,7 @@ def test_demos():
     print(demo_scripts)
 
     for script_path in demo_scripts:
+        vip.new_system()
         print(script_path)
         try:
             runpy.run_path(str(script_path), run_name="__main__")
