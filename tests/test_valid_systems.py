@@ -194,7 +194,7 @@ def test_bouncing_projectile_motion():
     x0 = [0, 0]
 
     k = 0.7  # Bouncing coefficients
-    v_min = 0.01
+    v_min = 2
 
     # Create system
     acceleration = vip.loop_node(2)
@@ -215,6 +215,7 @@ def test_bouncing_projectile_motion():
     )
 
     position.to_plot("Position")
+    velocity[1].to_plot()
 
     vip.solve(20, time_step=0.2, verbose=True)
     print(position.t)
