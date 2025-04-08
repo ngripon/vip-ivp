@@ -236,11 +236,12 @@ def set_interval(action: Union[Action, Callable], delay: float) -> Event:
 # Solving
 
 def solve(t_end: float, time_step: Union[Number, None] = 0.1, method='RK45', t_eval: Union[List, np.ndarray] = None,
-          include_events_times: bool = True, **options) -> None:
+          include_events_times: bool = True, verbose: bool = False, **options) -> None:
     """
     Solve the equations of the dynamical system through an integration scheme.
 
-    :param include_events_times: If true, include time points at which events are triggered.
+    :param verbose: If True, print solving information to the console.
+    :param include_events_times: If True, include time points at which events are triggered.
     :param t_end: Time at which the integration stops.
     :param method: Integration method to use. Default is 'RK45'.
     :param time_step: Time step for the integration. If None, use points selected by the solver.
@@ -248,7 +249,8 @@ def solve(t_end: float, time_step: Union[Number, None] = 0.1, method='RK45', t_e
     :param options: Additional options for the solver.
     """
     solver = _get_current_solver()
-    solver.solve(t_end, method, time_step, t_eval, include_events_times=include_events_times, **options)
+    solver.solve(t_end, method, time_step, t_eval, include_events_times=include_events_times, verbose=verbose,
+                 **options)
 
 
 def explore(fun: Callable[..., T], t_end: float, bounds=(), time_step: float = None, title: str = "") -> None:

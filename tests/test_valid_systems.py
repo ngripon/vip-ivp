@@ -216,7 +216,7 @@ def test_bouncing_projectile_motion():
 
     position.to_plot("Position")
 
-    vip.solve(20, time_step=0.2)
+    vip.solve(20, time_step=0.2, verbose=True)
     print(position.t)
 
 

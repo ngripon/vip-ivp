@@ -116,6 +116,7 @@ class Solver:
             t_eval=None,
             include_events_times: bool = True,
             plot: bool = True,
+            verbose: bool = False,
             **options,
     ) -> None:
         """
@@ -154,8 +155,13 @@ class Solver:
                 "Please check in the set_value() methods if a variable use itself for computing "
                 "its value."
             )
-        print(f"Performance = {time.time() - start}")
+
         self.solved = True
+        if verbose:
+            output_str = f"Solving time = {time.time() - start} s\n"
+            if self.events:
+                output_str += f"Number of triggered events = {len(res.t_events)}\n"
+            print(output_str)
         if plot:
             self.plot()
 
