@@ -428,7 +428,7 @@ class Solver:
                 break
 
         message = MESSAGES.get(self.status, message)
-        if t_events:
+        if self.events:
             t_events = [np.asarray(e.t_events) for e in events]
             y_events = [np.asarray(e.y_events) for e in events]
 
