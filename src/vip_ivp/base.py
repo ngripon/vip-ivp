@@ -650,12 +650,19 @@ class TemporalVar(Generic[T]):
     def on_crossing(self, value: Union["TemporalVar[T]", T], action: Union["Action", Callable] = None,
                     direction: Literal["rising", "falling", "both"] = "both",
                     terminal: Union[bool, int] = False) -> "Event":
+        """
+        Execute the specified action when the signal crosses the specified value in the specified direction.
+        :param value: Value to be crossed to trigger the event action.
+        :param action: Action that is triggered when the crossing condition is met.
+        :param direction: Direction of the crossing that will trigger the event.
+        :param terminal: If True, the simulation will terminate when the crossing occurs. If it is an integer, it
+        specifies the number of occurrences of the event after which the simulation will be terminated.
+        :return: Crossing event
+        """
         if self.output_type in (bool, np.bool, str):
             crossed_variable = self == value
             crossed_variable._expression = f"on {self.name} == {value.name if isinstance(value, TemporalVar) else value}"
         elif issubclass(self.output_type, abc.Iterable):
-            print(self.output_type)
-            print(self._first_value())
             raise ValueError(
                 "Can not apply crossing detection to a variable containing a collection of values because it is ambiguous."
             )
@@ -666,9 +673,14 @@ class TemporalVar(Generic[T]):
         self.events.append(event)
         return event
 
-    def change_behavior(self, new_value: Union["TemporalVar[T]", T]) -> "Action":
+    def action_set_to(self, new_value: Union["TemporalVar[T]", T]) -> "Action":
+        """
+        Create an action that, when its event is triggered, change the TemporalVar value.
+        This action works with recursive statements. For example, `count.action_set_to(count+1)` is valid.
+        :param new_value: New value
+        :return: Action to be put into an Event.
+        """
         def change_value(t):
-            print(self)
             if isinstance(new_value, TemporalVar):
                 value = copy(new_value)
                 # Check if it references self
@@ -680,7 +692,6 @@ class TemporalVar(Generic[T]):
                         if isinstance(var, TemporalVar):
                             inverse_refs[var] = current
                             if var is self:
-                                print("Autoref!")
                                 path = [var]
                                 while path[-1] in inverse_refs:
                                     path.append(inverse_refs[path[-1]])
@@ -1204,7 +1215,7 @@ class IntegratedVar(TemporalVar[T]):
 
         return Action(action_fun, f"Reset {self.name} to {value.expression}")
 
-    def change_behavior(self, new_value: T) -> None:
+    def action_set_to(self, new_value: T) -> None:
         raise NotImplementedError(
             "This method is irrelevant for an integrated variable. "
             "If you want really want to change the behavior of an integrated variable, create a new variable by doing "

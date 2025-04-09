@@ -261,7 +261,7 @@ def set_interval(action: Union[Action, Callable], delay: float) -> Event:
     time_variable.name = f"Time % {delay}"
 
     def reset_timer(t_reset, y):
-        time_variable.change_behavior(lambda t: t - t_reset)(t_reset, y)
+        time_variable.action_set_to(lambda t: t - t_reset)(t_reset, y)
 
     reset_timer_action = Action(reset_timer, "RESET TIMER")
     event = time_variable.on_crossing((current_time + delay), action + reset_timer_action)

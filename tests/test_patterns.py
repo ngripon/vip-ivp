@@ -347,7 +347,7 @@ def test_create_event():
 def test_increment_timeout():
     count=vip.create_source(0)
 
-    vip.set_timeout(count.change_behavior(count+1),2)
+    vip.set_timeout(count.action_set_to(count+1),2)
 
     count.to_plot()
     vip.solve(10, time_step=1)
@@ -358,7 +358,7 @@ def test_increment_timeout():
 
 def test_increment_interval():
     count=vip.create_source(0)
-    vip.set_interval(count.change_behavior(count+1),2)
+    vip.set_interval(count.action_set_to(count+1),2)
 
     count.to_plot()
     vip.solve(10, time_step=1)
