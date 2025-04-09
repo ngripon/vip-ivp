@@ -7,7 +7,6 @@ import warnings
 from collections import abc
 from copy import copy
 from typing import overload, Literal, Iterable, Dict, Tuple, List, Any
-from numbers import Number
 from pathlib import Path
 from typing import Callable, Union, TypeVar, Generic
 
@@ -515,7 +514,7 @@ class TemporalVar(Generic[T]):
                 Callable[[Union[float, NDArray]], T],
                 NDArray,
                 Dict,
-                Number,
+                float,
                 Tuple
             ] = None,
             expression: str = None,
