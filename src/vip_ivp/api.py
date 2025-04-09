@@ -15,7 +15,7 @@ T = TypeVar('T')
 K = TypeVar("K")
 
 
-def create_source(value: Union[Callable[[Union[float, np.ndarray]], T], T]) -> TemporalVar[T]:
+def create_source(value: Union[Callable[[Union[float, NDArray]], T], T]) -> TemporalVar[T]:
     """
     Create a source signal from a temporal function or a scalar value.
 
@@ -236,7 +236,7 @@ def set_interval(action: Union[Action, Callable], delay: float) -> Event:
 
 # Solving
 
-def solve(t_end: float, time_step: Union[Number, None] = 0.1, method='RK45', t_eval: Union[List, np.ndarray] = None,
+def solve(t_end: float, time_step: Union[Number, None] = 0.1, method='RK45', t_eval: Union[List, NDArray] = None,
           include_events_times: bool = True, verbose: bool = False, **options) -> None:
     """
     Solve the equations of the dynamical system through an integration scheme.
