@@ -6,7 +6,7 @@ import time
 import warnings
 from collections import abc
 from copy import copy
-from typing import overload, Literal, Iterable, Dict, Tuple, List
+from typing import overload, Literal, Iterable, Dict, Tuple, List, Any
 from numbers import Number
 from pathlib import Path
 from typing import Callable, Union, TypeVar, Generic
@@ -916,7 +916,7 @@ class TemporalVar(Generic[T]):
         ...
 
     @overload
-    def __eq__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
+    def __eq__(self, other: Any) -> "TemporalVar[bool]":
         ...
 
     def __eq__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
@@ -933,7 +933,7 @@ class TemporalVar(Generic[T]):
         ...
 
     @overload
-    def __ne__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
+    def __ne__(self, other: Any) -> "TemporalVar[bool]":
         ...
 
     def __ne__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
@@ -950,7 +950,7 @@ class TemporalVar(Generic[T]):
         ...
 
     @overload
-    def __lt__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
+    def __lt__(self, other: Any) -> "TemporalVar[bool]":
         ...
 
     def __lt__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
@@ -967,7 +967,7 @@ class TemporalVar(Generic[T]):
         ...
 
     @overload
-    def __le__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
+    def __le__(self, other: Any) -> "TemporalVar[bool]":
         ...
 
     def __le__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
@@ -984,7 +984,7 @@ class TemporalVar(Generic[T]):
         ...
 
     @overload
-    def __gt__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
+    def __gt__(self, other: Any) -> "TemporalVar[bool]":
         ...
 
     def __gt__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
@@ -1001,7 +1001,7 @@ class TemporalVar(Generic[T]):
         ...
 
     @overload
-    def __ge__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
+    def __ge__(self, other: Any) -> "TemporalVar[bool]":
         ...
 
     def __ge__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
@@ -1116,7 +1116,7 @@ class LoopNode(TemporalVar[T]):
         self._is_set = False
         self._is_strict = strict
 
-    def loop_into(self, value: Union[TemporalVar[T], T], force: bool = False):
+    def loop_into(self, value: Union[TemporalVar[T], T, List], force: bool = False):
         """
         Set the input value of the loop node.
 
