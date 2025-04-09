@@ -188,7 +188,7 @@ def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
             expression += ", ".join(kwargs_expr)
         expression += ")"
 
-        return TemporalVar(_get_current_solver(), [func, *args, kwargs],
+        return TemporalVar(_get_current_solver(), (func, *args, kwargs),
                            expression=expression, operator=operator_call)
 
     functools.update_wrapper(wrapper, func)
