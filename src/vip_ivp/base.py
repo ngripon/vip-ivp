@@ -10,7 +10,6 @@ from typing import overload, Literal, Iterable, Dict, Tuple, List, Any
 from pathlib import Path
 from typing import Callable, Union, TypeVar, Generic
 
-import numpy as np
 from numpy.typing import NDArray
 
 from .solver_utils import *
