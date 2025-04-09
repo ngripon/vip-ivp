@@ -250,7 +250,7 @@ def set_timeout(action: Union[Action, Callable], delay: float) -> Event:
     time_variable = create_source(lambda t: t)
     time_variable.name = "Time"
     event = time_variable.on_crossing(current_time + delay, action)
-    event.action += event.delete_action
+    event.action += event.action_disable
     return event
 
 

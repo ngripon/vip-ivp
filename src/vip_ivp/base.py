@@ -1317,7 +1317,11 @@ class Event:
         self.g = self(t, y)
 
     @property
-    def delete_action(self) -> "Action":
+    def action_disable(self) -> "Action":
+        """
+        Create an action that disable the event, so it will not execute its action anymore.
+        :return: Action
+        """
         def delete_event(t):
             self.deletion_time = t
 
