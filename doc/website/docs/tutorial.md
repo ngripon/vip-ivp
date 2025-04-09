@@ -58,7 +58,7 @@ x = vip.integrate(v, x0)  # Displacement
 a.loop_into(-(c * v + k * x) / m) # Set acceleration value
 ```
 
-### 3. Add an event to count oscillations
+### 3. Add an event
 
 ```python
 # Create a variable to count the number of oscillations
@@ -81,4 +81,4 @@ vip.solve(10, time_step=0.01)
 
 Phase diagram
 
-### Complete example
+## Complete example
