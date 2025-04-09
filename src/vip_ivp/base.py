@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Callable, Union, TypeVar, Generic
 
 from numpy.typing import NDArray
+from typing_extensions import deprecated
 
 from .solver_utils import *
 from .utils import add_necessary_brackets, convert_to_string, operator_call
@@ -137,7 +138,7 @@ class Solver:
                     "If this is intentional, instantiate the LoopNode object with parameter 'strict = False' to "
                     "disable this exception.")
         # Reinit values
-        [var.reset() for var in self.vars]
+        [var.clear_values() for var in self.vars]
         start = time.time()
         # Set t_eval
         if time_step is not None and t_eval is None:
@@ -680,6 +681,7 @@ class TemporalVar(Generic[T]):
         :param new_value: New value
         :return: Action to be put into an Event.
         """
+
         def change_value(t):
             if isinstance(new_value, TemporalVar):
                 value = copy(new_value)
@@ -718,7 +720,7 @@ class TemporalVar(Generic[T]):
 
         return Action(lambda t, y: change_value(t), f"Change {self.name}'s value to {get_expression(new_value)}")
 
-    def reset(self):
+    def clear_values(self):
         self._values = None
 
     def _first_value(self):
@@ -1158,6 +1160,17 @@ class LoopNode(TemporalVar[T]):
         """
         return not self._is_strict or self._is_set
 
+    def action_set_to(self) -> None:
+        """
+        Not implemented
+        :return: Raise an exception
+        """
+        raise NotImplementedError(
+            "This method is forbidden for a Loop Node.\n"
+            "If you want really want to change the behavior of a Loop Node, create a new variable by doing "
+            "'new_var = 1 * loop_node'. You will be able to call `action_set_to()` on `new_var`."
+        )
+
 
 class IntegratedVar(TemporalVar[T]):
     def __init__(
@@ -1215,11 +1228,16 @@ class IntegratedVar(TemporalVar[T]):
 
         return Action(action_fun, f"Reset {self.name} to {value.expression}")
 
-    def action_set_to(self, new_value: T) -> None:
+    def action_set_to(self) -> None:
+        """
+        Not implemented
+        :return: Raise an exception
+        """
         raise NotImplementedError(
-            "This method is irrelevant for an integrated variable. "
+            "This method is forbidden for an integrated variable.\n"
+            "If you want to reset the integrator output, use `action_reset_to()`.\n"
             "If you want really want to change the behavior of an integrated variable, create a new variable by doing "
-            "'new_var = 1*integrated_variable'."
+            "'new_var = 1 * integrated_variable'. You will be able to call `action_set_to()` on `new_var`."
         )
 
 
