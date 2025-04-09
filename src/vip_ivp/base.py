@@ -6,12 +6,11 @@ import time
 import warnings
 from collections import abc
 from copy import copy
-from typing import overload, Literal, Iterable, Dict, Tuple, List
-from numbers import Number
+from typing import overload, Literal, Iterable, Dict, Tuple, List, Any
 from pathlib import Path
 from typing import Callable, Union, TypeVar, Generic
 
-import numpy as np
+from numpy.typing import NDArray
 
 from .solver_utils import *
 from .utils import add_necessary_brackets, convert_to_string, operator_call
@@ -41,8 +40,8 @@ class Solver:
         self.vars_to_plot: Dict[str, TemporalVar] = {}
         self.status: Union[int, None] = None
 
-    def integrate(self, input_value: "TemporalVar[T]", x0: T, minimum: Union[T, "TemporalVar[T]"] = None,
-                  maximum: Union[T, "TemporalVar[T]"] = None) -> "IntegratedVar[T]":
+    def integrate(self, input_value: "TemporalVar[T]", x0: T, minimum: Union[T, "TemporalVar[T]", None] = None,
+                  maximum: Union[T, "TemporalVar[T]", None] = None) -> "IntegratedVar[T]":
         """
         Integrate the input value starting from the initial condition x0.
 
@@ -466,7 +465,7 @@ class Solver:
             success=self.status >= 0,
         )
 
-    def _bound_sol(self, t, y: np.ndarray):
+    def _bound_sol(self, t, y: NDArray):
         upper, lower = self._get_bounds(t, y)
         y_bounded_max = np.where(y < upper, y, upper)
         y_bounded = np.where(y_bounded_max > lower, y_bounded_max, lower)
@@ -490,7 +489,7 @@ class Solver:
         return upper, lower
 
     def _sol_wrapper(self, sol):
-        def output_fun(t: Union[float, np.ndarray]):
+        def output_fun(t: Union[float, NDArray]):
             return self._bound_sol(t, sol(t))
 
         return output_fun
@@ -510,11 +509,11 @@ class TemporalVar(Generic[T]):
             self,
             solver: "Solver",
             source: Union[
-                Callable[[Union[float, np.ndarray], np.ndarray], T],
-                Callable[[Union[float, np.ndarray]], T],
-                np.ndarray,
+                Callable[[Union[float, NDArray], NDArray], T],
+                Callable[[Union[float, NDArray]], T],
+                NDArray,
                 Dict,
-                Number,
+                float,
                 Tuple
             ] = None,
             expression: str = None,
@@ -566,7 +565,7 @@ class TemporalVar(Generic[T]):
         self.solver.vars.append(self)
 
     @property
-    def values(self) -> np.ndarray:
+    def values(self) -> NDArray:
         if not self.solver.solved:
             raise Exception(
                 "The differential system has not been solved. "
@@ -577,7 +576,7 @@ class TemporalVar(Generic[T]):
         return self._values
 
     @property
-    def t(self) -> np.ndarray:
+    def t(self) -> NDArray:
         if not self.solver.solved:
             raise Exception(
                 "The differential system has not been solved. "
@@ -725,7 +724,7 @@ class TemporalVar(Generic[T]):
     def __hash__(self):
         return hash(self.source)
 
-    def __call__(self, t: Union[float, np.ndarray], y: np.ndarray) -> T:
+    def __call__(self, t: Union[float, NDArray], y: NDArray) -> T:
         if self.operator is not None:
             if self._call_mode == CallMode.CALL_ARGS_FUN:
                 args = [x(t, y) if isinstance(x, TemporalVar) else x for x in self.source if not isinstance(x, dict)]
@@ -911,9 +910,11 @@ class TemporalVar(Generic[T]):
         )
 
     @overload
-    def __eq__(
-            self, other: "TemporalVar[np.ndarray[T]]"
-    ) -> "TemporalVar[np.ndarray[bool]]":
+    def __eq__(self, other: "TemporalVar[NDArray[T]]") -> "TemporalVar[NDArray[bool]]":
+        ...
+
+    @overload
+    def __eq__(self, other: Any) -> "TemporalVar[bool]":
         ...
 
     def __eq__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
@@ -926,9 +927,11 @@ class TemporalVar(Generic[T]):
         )
 
     @overload
-    def __ne__(
-            self, other: "TemporalVar[np.ndarray[T]]"
-    ) -> "TemporalVar[np.ndarray[bool]]":
+    def __ne__(self, other: "TemporalVar[NDArray[T]]") -> "TemporalVar[NDArray[bool]]":
+        ...
+
+    @overload
+    def __ne__(self, other: Any) -> "TemporalVar[bool]":
         ...
 
     def __ne__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
@@ -941,9 +944,11 @@ class TemporalVar(Generic[T]):
         )
 
     @overload
-    def __lt__(
-            self, other: "TemporalVar[np.ndarray[T]]"
-    ) -> "TemporalVar[np.ndarray[bool]]":
+    def __lt__(self, other: "TemporalVar[NDArray[T]]") -> "TemporalVar[NDArray[bool]]":
+        ...
+
+    @overload
+    def __lt__(self, other: Any) -> "TemporalVar[bool]":
         ...
 
     def __lt__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
@@ -956,9 +961,11 @@ class TemporalVar(Generic[T]):
         )
 
     @overload
-    def __le__(
-            self, other: "TemporalVar[np.ndarray[T]]"
-    ) -> "TemporalVar[np.ndarray[bool]]":
+    def __le__(self, other: "TemporalVar[NDArray[T]]") -> "TemporalVar[NDArray[bool]]":
+        ...
+
+    @overload
+    def __le__(self, other: Any) -> "TemporalVar[bool]":
         ...
 
     def __le__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
@@ -971,9 +978,11 @@ class TemporalVar(Generic[T]):
         )
 
     @overload
-    def __gt__(
-            self, other: "TemporalVar[np.ndarray[T]]"
-    ) -> "TemporalVar[np.ndarray[bool]]":
+    def __gt__(self, other: "TemporalVar[NDArray[T]]") -> "TemporalVar[NDArray[bool]]":
+        ...
+
+    @overload
+    def __gt__(self, other: Any) -> "TemporalVar[bool]":
         ...
 
     def __gt__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
@@ -986,9 +995,11 @@ class TemporalVar(Generic[T]):
         )
 
     @overload
-    def __ge__(
-            self, other: "TemporalVar[np.ndarray[T]]"
-    ) -> "TemporalVar[np.ndarray[bool]]":
+    def __ge__(self, other: "TemporalVar[NDArray[T]]") -> "TemporalVar[NDArray[bool]]":
+        ...
+
+    @overload
+    def __ge__(self, other: Any) -> "TemporalVar[bool]":
         ...
 
     def __ge__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
@@ -1103,7 +1114,7 @@ class LoopNode(TemporalVar[T]):
         self._is_set = False
         self._is_strict = strict
 
-    def loop_into(self, value: Union[TemporalVar[T], T], force: bool = False):
+    def loop_into(self, value: Union[TemporalVar[T], T, List], force: bool = False):
         """
         Set the input value of the loop node.
 
@@ -1125,7 +1136,7 @@ class LoopNode(TemporalVar[T]):
         self.source = self._input_var.source
         self.operator = self._input_var.operator
 
-    def __call__(self, t: Union[float, np.ndarray], y: np.ndarray) -> T:
+    def __call__(self, t: Union[float, NDArray], y: NDArray) -> T:
         return self._input_var(t, y)
 
     def is_valid(self) -> bool:
@@ -1142,7 +1153,7 @@ class IntegratedVar(TemporalVar[T]):
             self,
             solver: "Solver",
             fun: Union[
-                Callable[[Union[float, np.ndarray], np.ndarray], T], np.ndarray, dict
+                Callable[[Union[float, NDArray], NDArray], T], NDArray, dict
             ] = None,
             expression: str = None,
             x0: T = None,
