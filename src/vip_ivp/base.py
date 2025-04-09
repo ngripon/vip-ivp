@@ -14,7 +14,7 @@ from typing import Callable, Union, TypeVar, Generic
 import numpy as np
 
 from .solver_utils import *
-from .utils import add_necessary_brackets, convert_to_string
+from .utils import add_necessary_brackets, convert_to_string, operator_call
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -1027,7 +1027,7 @@ class TemporalVar(Generic[T]):
                 self.solver,
                 (ufunc, *inputs, kwargs),
                 expression=expression,
-                operator=operator.call
+                operator=operator_call
             )
 
         return NotImplemented
@@ -1088,7 +1088,7 @@ def temporal_var_where(solver, condition: TemporalVar[bool], a: Union[T, Tempora
         solver,
         (where, condition, a, b),
         expression=f"({get_expression(a)} if {get_expression(condition)} else {get_expression(b)})",
-        operator=operator.call
+        operator=operator_call
     )
 
 
