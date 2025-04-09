@@ -144,13 +144,13 @@ def test_transformations():
 
 def test_condition():
     a = vip.create_source(1)
-    b=vip.integrate(5,0)
+    b = vip.integrate(5, 0)
 
-    cond=a<5
-    other_cond=a>2
+    cond = a < 5
+    other_cond = a > 2
 
     event_constant = a.on_crossing(10)
-    event_temporalvar=a.on_crossing(b)
+    event_temporalvar = a.on_crossing(b)
     event_cond = cond.on_crossing(True)
     event_cond_temporalvar = cond.on_crossing(other_cond)
 

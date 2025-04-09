@@ -89,7 +89,7 @@ def create_scenario(scenario_table: Union["pd.DataFrame", str, dict], time_key: 
 
 
 def integrate(input_value: Union[TemporalVar[T], T], x0: T, minimum: Union[TemporalVar[T], T] = None,
-              maximum: Union[TemporalVar[T], T] = None) -> IntegratedVar:
+              maximum: Union[TemporalVar[T], T] = None) -> IntegratedVar[T]:
     """
     Integrate the input value starting from the initial condition x0.
 
@@ -103,6 +103,14 @@ def integrate(input_value: Union[TemporalVar[T], T], x0: T, minimum: Union[Tempo
     _check_solver_discrepancy(input_value, solver)
     integral_value = solver.integrate(input_value, x0, minimum, maximum)
     return integral_value
+
+
+@overload
+def loop_node(shape: None = None, strict: bool = True) -> LoopNode[float]: ...
+
+
+@overload
+def loop_node(shape: Union[int, tuple[int, ...]] = None, strict: bool = True) -> LoopNode[NDArray]: ...
 
 
 def loop_node(shape: Union[int, tuple[int, ...]] = None, strict: bool = True) -> LoopNode:
