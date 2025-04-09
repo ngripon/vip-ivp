@@ -1,7 +1,8 @@
 import json
-from typing import Dict, Union, ParamSpec
+from typing import Dict, Union
 
 from varname import argname
+from typing_extensions import ParamSpec
 
 from .base import *
 from .utils import *
