@@ -205,7 +205,7 @@ def test_bouncing_projectile_motion():
                             GRAVITY - mu * velocity[1] * v_norm])
 
     bounce = vip.where(abs(velocity[1]) > v_min,
-                       velocity[1].set_value(-k * velocity[1]),
+                       velocity[1].action_reset_to(-k * velocity[1]),
                        vip.terminate)
 
     position[1].on_crossing(
@@ -247,7 +247,7 @@ def test_eval_events_at_all_time_points():
 
     position[1].on_crossing(
         0,
-        velocity[1].set_value(-k * velocity[1]),
+        velocity[1].action_reset_to(-k * velocity[1]),
         terminal=False, direction="falling"
     )
 
@@ -268,7 +268,7 @@ def test_multiple_events_at_the_same_instant():
     a = vip.create_source(1)
     ia = vip.integrate(a, 0)
 
-    e1 = vip.set_interval(ia.set_value(0), 2)
+    e1 = vip.set_interval(ia.action_reset_to(0), 2)
     e2=vip.set_timeout(e1.delete_action, 6)
 
     ia.to_plot()

@@ -1207,7 +1207,12 @@ class IntegratedVar(TemporalVar[T]):
             return self._y_idx
         raise ValueError("The argument 'y_idx' should be set for IntegratedVar containing a single value.")
 
-    def set_value(self, value: Union[TemporalVar[T], T]) -> "Action":
+    def action_reset_to(self, value: Union[TemporalVar[T], T]) -> "Action":
+        """
+        Create an action that, when its event is triggered, reset the IntegratedVar output to the specified value.
+        :param value: Value at which the integrator output is reset to
+        :return: Action to be put into an Event.
+        """
         if not isinstance(value, TemporalVar):
             value = TemporalVar(self.solver, value)
 

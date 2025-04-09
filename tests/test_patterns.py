@@ -295,7 +295,7 @@ def test_action_adding():
     a = vip.create_source(5)
     ia = vip.integrate(a, 0)
 
-    ia.on_crossing(10, ia.set_value(0) + vip.terminate)
+    ia.on_crossing(10, ia.action_reset_to(0) + vip.terminate)
 
     ia.to_plot("IA")
 
@@ -308,7 +308,7 @@ def test_set_timeout():
     a = vip.create_source(1)
     ia = vip.integrate(a, 0)
 
-    timeout_event = vip.set_timeout(ia.set_value(0), 3)
+    timeout_event = vip.set_timeout(ia.action_reset_to(0), 3)
 
     ia.to_plot()
 
@@ -322,7 +322,7 @@ def test_set_interval():
     a = vip.create_source(1)
     ia = vip.integrate(a, 0)
 
-    e1 = vip.set_interval(ia.set_value(0), 2)
+    e1 = vip.set_interval(ia.action_reset_to(0), 2)
 
     ia.to_plot()
 
@@ -336,7 +336,7 @@ def test_create_event():
     a = vip.create_source(1)
     ia = vip.integrate(a, 0)
 
-    event=vip.set_timeout(lambda: vip.set_timeout(ia.set_value(0), 2), 3)
+    event=vip.set_timeout(lambda: vip.set_timeout(ia.action_reset_to(0), 2), 3)
 
     ia.to_plot()
 
