@@ -267,7 +267,7 @@ def test_delete_event():
     a = vip.create_source(lambda t: t)
 
     event = a.on_crossing(6, terminal=True)
-    a.on_crossing(3, event.delete_action)
+    a.on_crossing(3, event.action_disable)
 
     # a.to_plot("Hey")
 

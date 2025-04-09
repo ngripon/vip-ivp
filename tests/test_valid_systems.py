@@ -269,7 +269,7 @@ def test_multiple_events_at_the_same_instant():
     ia = vip.integrate(a, 0)
 
     e1 = vip.set_interval(ia.action_reset_to(0), 2)
-    e2=vip.set_timeout(e1.delete_action, 6)
+    e2=vip.set_timeout(e1.action_disable, 6)
 
     ia.to_plot()
 
