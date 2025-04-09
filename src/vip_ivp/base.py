@@ -41,8 +41,8 @@ class Solver:
         self.vars_to_plot: Dict[str, TemporalVar] = {}
         self.status: Union[int, None] = None
 
-    def integrate(self, input_value: "TemporalVar[T]", x0: T, minimum: Union[T, "TemporalVar[T]"] = None,
-                  maximum: Union[T, "TemporalVar[T]"] = None) -> "IntegratedVar[T]":
+    def integrate(self, input_value: "TemporalVar[T]", x0: T, minimum: Union[T, "TemporalVar[T]", None] = None,
+                  maximum: Union[T, "TemporalVar[T]", None] = None) -> "IntegratedVar[T]":
         """
         Integrate the input value starting from the initial condition x0.
 
