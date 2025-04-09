@@ -15,6 +15,14 @@ T = TypeVar('T')
 K = TypeVar("K")
 
 
+@overload
+def create_source(value: List[T]) -> TemporalVar[NDArray[T]]: ...
+
+
+@overload
+def create_source(value: Union[Callable[[Union[float, NDArray]], T], T]) -> TemporalVar[T]: ...
+
+
 def create_source(value: Union[Callable[[Union[float, NDArray]], T], T]) -> TemporalVar[T]:
     """
     Create a source signal from a temporal function or a scalar value.
