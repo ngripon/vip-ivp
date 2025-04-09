@@ -1,4 +1,5 @@
 import inspect
+import operator
 import types
 from typing import Any, Generator
 
@@ -56,3 +57,8 @@ def is_custom_class(obj: Any) -> bool:
         return True
 
     return False
+
+
+def operator_call(obj, /, *args, **kwargs):
+    """operator.call function source code copy in order to be used with Python version <3.11"""
+    return obj(*args, **kwargs)

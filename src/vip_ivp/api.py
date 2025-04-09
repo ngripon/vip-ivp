@@ -1,7 +1,8 @@
 import json
-from typing import Dict, Union, ParamSpec
+from typing import Dict, Union
 
 from varname import argname
+from typing_extensions import ParamSpec
 
 from .base import *
 from .utils import *
@@ -151,7 +152,7 @@ def delay(input_value: TemporalVar[T], n_steps: int, initial_value: T = 0) -> Te
 
     return TemporalVar(input_value.solver, (create_delay, input_value),
                        expression=f"#DELAY({n_steps}) {get_expression(input_value)}",
-                       operator=operator.call,
+                       operator=operator_call,
                        call_mode=CallMode.CALL_FUN_RESULT)
 
 
@@ -188,7 +189,7 @@ def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
         expression += ")"
 
         return TemporalVar(_get_current_solver(), [func, *args, kwargs],
-                           expression=expression, operator=operator.call)
+                           expression=expression, operator=operator_call)
 
     functools.update_wrapper(wrapper, func)
     return wrapper
