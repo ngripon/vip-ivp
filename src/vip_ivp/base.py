@@ -212,7 +212,7 @@ class Solver:
             self.clear()
             outputs = f(*args, **kwargs)
             self.solve(t_end, time_step=time_step)
-            transformed_outputs = self.unwrap_leaves(outputs)
+            transformed_outputs = self._unwrap_leaves(outputs)
             return transformed_outputs
 
         functools.update_wrapper(wrapper, f)
@@ -233,7 +233,7 @@ class Solver:
     def _dy(self, t, y):
         return [var(t, y) if callable(var) else var for var in self.feed_vars]
 
-    def unwrap_leaves(self, outputs):
+    def _unwrap_leaves(self, outputs):
         """
         Transform all TemporalVar in an iterable into (x.t, x.values) pairs.
 
@@ -243,7 +243,7 @@ class Solver:
         if isinstance(outputs, TemporalVar):
             return outputs.t, outputs.values
         else:
-            return list(map(self.unwrap_leaves, (el for el in outputs)))
+            return list(map(self._unwrap_leaves, (el for el in outputs)))
 
     def _get_remaining_named_variables(self):
         frame = inspect.currentframe().f_back
