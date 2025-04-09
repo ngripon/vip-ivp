@@ -18,8 +18,14 @@ K = TypeVar("K")
 @overload
 def create_source(value: List[T]) -> TemporalVar[NDArray[T]]: ...
 
+
 @overload
 def create_source(value: Callable[[Union[float, NDArray]], T]) -> TemporalVar: ...
+
+
+@overload
+def create_source(value: int) -> TemporalVar[float]: ...
+
 
 @overload
 def create_source(value: T) -> TemporalVar[T]: ...
@@ -88,6 +94,16 @@ def create_scenario(scenario_table: Union["pd.DataFrame", str, dict], time_key: 
         return TemporalVar.from_scenario(solver, scenario_table, time_key, interpolation_kind)
     else:
         raise ValueError("Unsupported input type")
+
+
+@overload
+def integrate(input_value: Union[int, float], x0: Union[int, float], minimum: Union[TemporalVar[T], T, None] = None,
+              maximum: Union[TemporalVar[T], T, None] = None) -> IntegratedVar[float]: ...
+
+
+@overload
+def integrate(input_value: Union[TemporalVar[T], T], x0: Union[T, List], minimum: Union[TemporalVar[T], T, None] = None,
+              maximum: Union[TemporalVar[T], T, None] = None) -> IntegratedVar[T]: ...
 
 
 def integrate(input_value: Union[TemporalVar[T], T], x0: Union[T, List], minimum: Union[TemporalVar[T], T, None] = None,
