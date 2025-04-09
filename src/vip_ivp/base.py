@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Callable, Union, TypeVar, Generic
 
 import numpy as np
+from numpy.typing import NDArray
 
 from .solver_utils import *
 from .utils import add_necessary_brackets, convert_to_string, operator_call
@@ -911,9 +912,11 @@ class TemporalVar(Generic[T]):
         )
 
     @overload
-    def __eq__(
-            self, other: "TemporalVar[np.ndarray[T]]"
-    ) -> "TemporalVar[np.ndarray[bool]]":
+    def __eq__(self, other: "TemporalVar[NDArray[T]]") -> "TemporalVar[NDArray[bool]]":
+        ...
+
+    @overload
+    def __eq__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
         ...
 
     def __eq__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
@@ -926,9 +929,11 @@ class TemporalVar(Generic[T]):
         )
 
     @overload
-    def __ne__(
-            self, other: "TemporalVar[np.ndarray[T]]"
-    ) -> "TemporalVar[np.ndarray[bool]]":
+    def __ne__(self, other: "TemporalVar[NDArray[T]]") -> "TemporalVar[NDArray[bool]]":
+        ...
+
+    @overload
+    def __ne__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
         ...
 
     def __ne__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
@@ -941,9 +946,11 @@ class TemporalVar(Generic[T]):
         )
 
     @overload
-    def __lt__(
-            self, other: "TemporalVar[np.ndarray[T]]"
-    ) -> "TemporalVar[np.ndarray[bool]]":
+    def __lt__(self, other: "TemporalVar[NDArray[T]]") -> "TemporalVar[NDArray[bool]]":
+        ...
+
+    @overload
+    def __lt__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
         ...
 
     def __lt__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
@@ -956,9 +963,11 @@ class TemporalVar(Generic[T]):
         )
 
     @overload
-    def __le__(
-            self, other: "TemporalVar[np.ndarray[T]]"
-    ) -> "TemporalVar[np.ndarray[bool]]":
+    def __le__(self, other: "TemporalVar[NDArray[T]]") -> "TemporalVar[NDArray[bool]]":
+        ...
+
+    @overload
+    def __le__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
         ...
 
     def __le__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
@@ -971,9 +980,11 @@ class TemporalVar(Generic[T]):
         )
 
     @overload
-    def __gt__(
-            self, other: "TemporalVar[np.ndarray[T]]"
-    ) -> "TemporalVar[np.ndarray[bool]]":
+    def __gt__(self, other: "TemporalVar[NDArray[T]]") -> "TemporalVar[NDArray[bool]]":
+        ...
+
+    @overload
+    def __gt__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
         ...
 
     def __gt__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
@@ -986,9 +997,11 @@ class TemporalVar(Generic[T]):
         )
 
     @overload
-    def __ge__(
-            self, other: "TemporalVar[np.ndarray[T]]"
-    ) -> "TemporalVar[np.ndarray[bool]]":
+    def __ge__(self, other: "TemporalVar[NDArray[T]]") -> "TemporalVar[NDArray[bool]]":
+        ...
+
+    @overload
+    def __ge__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
         ...
 
     def __ge__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
