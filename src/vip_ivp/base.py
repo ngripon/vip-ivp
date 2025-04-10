@@ -692,11 +692,11 @@ class TemporalVar(Generic[T]):
                     current = to_visit.pop()
                     for var in current.source:
                         if isinstance(var, TemporalVar):
-                            inverse_refs[var] = current
+                            inverse_refs[id(var)] = current
                             if var is self:
                                 path = [var]
-                                while path[-1] in inverse_refs:
-                                    path.append(inverse_refs[path[-1]])
+                                while id(path[-1]) in inverse_refs:
+                                    path.append(inverse_refs[id(path[-1])])
                                 path.reverse()
                                 # Replace all source variables of the path in value by copies
                                 current_variable = path.pop(0)
