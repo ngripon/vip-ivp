@@ -2,9 +2,9 @@
 sidebar_position: 3
 ---
 
-# Tutorial
+# Quick Start: Tutorial
 
-In this 5-minute tutorial, we will solve the equation of a mass-spring-damper system using `vip-ivp`. Then, we'll demonstrate the event system by counting the number of oscillations.
+In this 10-minute tutorial, we will solve the equation of a mass-spring-damper system using `vip-ivp`. Then, we'll demonstrate the event system by counting the number of oscillations.
 
 ## Problem Statement
 
