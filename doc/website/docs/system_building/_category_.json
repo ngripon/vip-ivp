@@ -1,8 +1,8 @@
 {
-    "label": "Build a system",
-    "position": 1,
+    "label": "System Building",
+    "position": 4,
     "link": {
       "type": "generated-index",
-      "description": "Learn how to build a dynamical system with available functions."
+      "description": "Learn how to build a dynamical system with the available functions."
     }
   }
