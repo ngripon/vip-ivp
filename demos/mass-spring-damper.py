@@ -35,5 +35,5 @@ plt.grid()
 plt.show()
 
 # Export the results to pandas
-dataframe = vip.export_to_df((v, x))
+dataframe = vip.export_to_df(v, x)
 print(dataframe)

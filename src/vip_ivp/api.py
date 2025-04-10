@@ -314,14 +314,14 @@ def new_system() -> None:
 AVAILABLE_EXPORT_FILE_FORMATS = ["csv", "json"]
 
 
-def export_to_df(variables: Iterable[TemporalVar] = None) -> "pd.DataFrame":
+def export_to_df(*variables: TemporalVar) -> "pd.DataFrame":
     import pandas as pd
 
     solver = _get_current_solver()
     if not solver.solved:
         raise Exception("System must be solved before exporting the results. Please call 'vip.solve(t_end)'.")
     variables_dict = {"Time (s)": solver.t}
-    if variables is None:
+    if not variables:
         variable_dict = {**variables_dict, **{key: var.values for key, var in solver.named_vars.items()}}
     else:
         variable_dict = {**variables_dict, **{get_expression(var): var.values for var in variables}}
