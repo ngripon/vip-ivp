@@ -31,11 +31,13 @@ def create_source(value: int) -> TemporalVar[float]: ...
 def create_source(value: T) -> TemporalVar[T]: ...
 
 
-def create_source(value: Union[Callable[[Union[float, NDArray]], T], T]) -> TemporalVar[T]:
+def create_source(value: Union[Callable[[NDArray], T], T]) -> TemporalVar[T]:
     """
-    Create a source signal from a temporal function or a scalar value.
+    Create a source variable from a temporal function, a scalar value, a dict, a list or a NumPy array.
+    If the input value is a list, the variable content will be converted to a NumPy array. As a consequence, a nested
+    list must represent a valid rectangular matrix.
 
-    :param value: A function f(t) or a scalar value.
+    :param value: A function f(t), a scalar value, a dict, a list or a NumPy array.
     :return: The created TemporalVar.
     """
     solver = _get_current_solver()
@@ -59,9 +61,13 @@ def create_scenario(scenario_table: Union["pd.DataFrame", str, dict], time_key: 
     :param time_key: The key (column) to use as time for the scenario.
     :type time_key: str
 
-    :param interpolation_kind: The kind of interpolation to use. Default is "linear". This determines how values are
-        interpolated between time points.
-    :type interpolation_kind: str, optional
+    :param interpolation_kind: Specifies the kind of interpolation as a string or as an integer specifying the order of
+    the spline interpolator to use. The string has to be one of ‘linear’, ‘nearest’, ‘nearest-up’, ‘zero’, ‘slinear’,
+    ‘quadratic’, ‘cubic’, ‘previous’, or ‘next’. ‘zero’, ‘slinear’, ‘quadratic’ and ‘cubic’ refer to a spline
+    interpolation of zeroth, first, second or third order; ‘previous’ and ‘next’ simply return the previous or next
+    value of the point; ‘nearest-up’ and ‘nearest’ differ when interpolating half-integers (e.g. 0.5, 1.5) in that
+    ‘nearest-up’ rounds up and ‘nearest’ rounds down. Default is ‘linear’.
+    :type interpolation_kind: str or int, optional
 
     :param sep: The separator to use when reading CSV files. Default is a comma.
     :type sep: str, optional
