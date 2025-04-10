@@ -144,13 +144,13 @@ def test_transformations():
 
 def test_condition():
     a = vip.create_source(1)
-    b=vip.integrate(5,0)
+    b = vip.integrate(5, 0)
 
-    cond=a<5
-    other_cond=a>2
+    cond = a < 5
+    other_cond = a > 2
 
     event_constant = a.on_crossing(10)
-    event_temporalvar=a.on_crossing(b)
+    event_temporalvar = a.on_crossing(b)
     event_cond = cond.on_crossing(True)
     event_cond_temporalvar = cond.on_crossing(other_cond)
 
@@ -168,8 +168,8 @@ def test_actions():
 
     vip.solve(10)
 
-    assert repr(ia.set_value(0)) == "Action(Reset ia to 0)"
-    assert repr(a.change_behavior(1)) == "Action(Change a's value to 1)"
-    assert repr(ia.set_value(5.5) + a.change_behavior(2)) == "Action(Reset ia to 5.5 + Change a's value to 2)"
-    assert repr(vip.where(ia > 5, ia.set_value(0),
+    assert repr(ia.action_reset_to(0)) == "Action(Reset ia to 0)"
+    assert repr(a.action_set_to(1)) == "Action(Change a's value to 1)"
+    assert repr(ia.action_reset_to(5.5) + a.action_set_to(2)) == "Action(Reset ia to 5.5 + Change a's value to 2)"
+    assert repr(vip.where(ia > 5, ia.action_reset_to(0),
                           vip.terminate)) == "Action((Reset ia to 0) if ia > 5 else (Terminate simulation))"

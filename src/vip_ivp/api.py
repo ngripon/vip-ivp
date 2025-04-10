@@ -1,7 +1,8 @@
 import json
-from typing import Dict, Union, ParamSpec
+from typing import Dict, Union
 
 from varname import argname
+from typing_extensions import ParamSpec
 
 from .base import *
 from .utils import *
@@ -14,7 +15,23 @@ T = TypeVar('T')
 K = TypeVar("K")
 
 
-def create_source(value: Union[Callable[[Union[float, np.ndarray]], T], T]) -> TemporalVar[T]:
+@overload
+def create_source(value: List[T]) -> TemporalVar[NDArray[T]]: ...
+
+
+@overload
+def create_source(value: Callable[[Union[float, NDArray]], T]) -> TemporalVar: ...
+
+
+@overload
+def create_source(value: int) -> TemporalVar[float]: ...
+
+
+@overload
+def create_source(value: T) -> TemporalVar[T]: ...
+
+
+def create_source(value: Union[Callable[[Union[float, NDArray]], T], T]) -> TemporalVar[T]:
     """
     Create a source signal from a temporal function or a scalar value.
 
@@ -79,8 +96,18 @@ def create_scenario(scenario_table: Union["pd.DataFrame", str, dict], time_key: 
         raise ValueError("Unsupported input type")
 
 
-def integrate(input_value: Union[TemporalVar[T], T], x0: T, minimum: Union[TemporalVar[T], T] = None,
-              maximum: Union[TemporalVar[T], T] = None) -> IntegratedVar:
+@overload
+def integrate(input_value: Union[int, float], x0: Union[int, float], minimum: Union[TemporalVar[T], T, None] = None,
+              maximum: Union[TemporalVar[T], T, None] = None) -> IntegratedVar[float]: ...
+
+
+@overload
+def integrate(input_value: Union[TemporalVar[T], T], x0: Union[T, List], minimum: Union[TemporalVar[T], T, None] = None,
+              maximum: Union[TemporalVar[T], T, None] = None) -> IntegratedVar[T]: ...
+
+
+def integrate(input_value: Union[TemporalVar[T], T], x0: Union[T, List], minimum: Union[TemporalVar[T], T, None] = None,
+              maximum: Union[TemporalVar[T], T, None] = None) -> IntegratedVar[T]:
     """
     Integrate the input value starting from the initial condition x0.
 
@@ -94,6 +121,14 @@ def integrate(input_value: Union[TemporalVar[T], T], x0: T, minimum: Union[Tempo
     _check_solver_discrepancy(input_value, solver)
     integral_value = solver.integrate(input_value, x0, minimum, maximum)
     return integral_value
+
+
+@overload
+def loop_node(shape: None = None, strict: bool = True) -> LoopNode[float]: ...
+
+
+@overload
+def loop_node(shape: Union[int, tuple[int, ...]] = None, strict: bool = True) -> LoopNode[NDArray]: ...
 
 
 def loop_node(shape: Union[int, tuple[int, ...]] = None, strict: bool = True) -> LoopNode:
@@ -151,7 +186,7 @@ def delay(input_value: TemporalVar[T], n_steps: int, initial_value: T = 0) -> Te
 
     return TemporalVar(input_value.solver, (create_delay, input_value),
                        expression=f"#DELAY({n_steps}) {get_expression(input_value)}",
-                       operator=operator.call,
+                       operator=operator_call,
                        call_mode=CallMode.CALL_FUN_RESULT)
 
 
@@ -187,8 +222,8 @@ def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
             expression += ", ".join(kwargs_expr)
         expression += ")"
 
-        return TemporalVar(_get_current_solver(), [func, *args, kwargs],
-                           expression=expression, operator=operator.call)
+        return TemporalVar(_get_current_solver(), (func, *args, kwargs),
+                           expression=expression, operator=operator_call)
 
     functools.update_wrapper(wrapper, func)
     return wrapper
@@ -215,7 +250,7 @@ def set_timeout(action: Union[Action, Callable], delay: float) -> Event:
     time_variable = create_source(lambda t: t)
     time_variable.name = "Time"
     event = time_variable.on_crossing(current_time + delay, action)
-    event.action += event.delete_action
+    event.action += event.action_disable
     return event
 
 
@@ -226,7 +261,7 @@ def set_interval(action: Union[Action, Callable], delay: float) -> Event:
     time_variable.name = f"Time % {delay}"
 
     def reset_timer(t_reset, y):
-        time_variable.change_behavior(lambda t: t - t_reset)(t_reset, y)
+        time_variable.action_set_to(lambda t: t - t_reset)(t_reset, y)
 
     reset_timer_action = Action(reset_timer, "RESET TIMER")
     event = time_variable.on_crossing((current_time + delay), action + reset_timer_action)
@@ -235,7 +270,7 @@ def set_interval(action: Union[Action, Callable], delay: float) -> Event:
 
 # Solving
 
-def solve(t_end: float, time_step: Union[Number, None] = 0.1, method='RK45', t_eval: Union[List, np.ndarray] = None,
+def solve(t_end: float, time_step: Union[float, None] = 0.1, method='RK45', t_eval: Union[List, NDArray] = None,
           include_events_times: bool = True, verbose: bool = False, **options) -> None:
     """
     Solve the equations of the dynamical system through an integration scheme.
@@ -358,7 +393,7 @@ def _get_current_solver() -> "Solver":
     return _solver_list[-1]
 
 
-def _check_solver_discrepancy(input_value: Union["TemporalVar", Number], solver: "Solver") -> None:
+def _check_solver_discrepancy(input_value: Union["TemporalVar", float], solver: "Solver") -> None:
     """
     Raise an exception if there is a discrepancy between the input solver and the solver of the input variable.
     :param input_value:

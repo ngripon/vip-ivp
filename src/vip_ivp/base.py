@@ -6,15 +6,15 @@ import time
 import warnings
 from collections import abc
 from copy import copy
-from typing import overload, Literal, Iterable, Dict, Tuple, List
-from numbers import Number
+from typing import overload, Literal, Iterable, Dict, Tuple, List, Any
 from pathlib import Path
 from typing import Callable, Union, TypeVar, Generic
 
-import numpy as np
+from numpy.typing import NDArray
+from typing_extensions import deprecated
 
 from .solver_utils import *
-from .utils import add_necessary_brackets, convert_to_string
+from .utils import add_necessary_brackets, convert_to_string, operator_call
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -41,8 +41,8 @@ class Solver:
         self.vars_to_plot: Dict[str, TemporalVar] = {}
         self.status: Union[int, None] = None
 
-    def integrate(self, input_value: "TemporalVar[T]", x0: T, minimum: Union[T, "TemporalVar[T]"] = None,
-                  maximum: Union[T, "TemporalVar[T]"] = None) -> "IntegratedVar[T]":
+    def integrate(self, input_value: "TemporalVar[T]", x0: T, minimum: Union[T, "TemporalVar[T]", None] = None,
+                  maximum: Union[T, "TemporalVar[T]", None] = None) -> "IntegratedVar[T]":
         """
         Integrate the input value starting from the initial condition x0.
 
@@ -138,7 +138,7 @@ class Solver:
                     "If this is intentional, instantiate the LoopNode object with parameter 'strict = False' to "
                     "disable this exception.")
         # Reinit values
-        [var.reset() for var in self.vars]
+        [var.clear_values() for var in self.vars]
         start = time.time()
         # Set t_eval
         if time_step is not None and t_eval is None:
@@ -213,7 +213,7 @@ class Solver:
             self.clear()
             outputs = f(*args, **kwargs)
             self.solve(t_end, time_step=time_step)
-            transformed_outputs = self.unwrap_leaves(outputs)
+            transformed_outputs = self._unwrap_leaves(outputs)
             return transformed_outputs
 
         functools.update_wrapper(wrapper, f)
@@ -234,7 +234,7 @@ class Solver:
     def _dy(self, t, y):
         return [var(t, y) if callable(var) else var for var in self.feed_vars]
 
-    def unwrap_leaves(self, outputs):
+    def _unwrap_leaves(self, outputs):
         """
         Transform all TemporalVar in an iterable into (x.t, x.values) pairs.
 
@@ -244,7 +244,7 @@ class Solver:
         if isinstance(outputs, TemporalVar):
             return outputs.t, outputs.values
         else:
-            return list(map(self.unwrap_leaves, (el for el in outputs)))
+            return list(map(self._unwrap_leaves, (el for el in outputs)))
 
     def _get_remaining_named_variables(self):
         frame = inspect.currentframe().f_back
@@ -466,7 +466,7 @@ class Solver:
             success=self.status >= 0,
         )
 
-    def _bound_sol(self, t, y: np.ndarray):
+    def _bound_sol(self, t, y: NDArray):
         upper, lower = self._get_bounds(t, y)
         y_bounded_max = np.where(y < upper, y, upper)
         y_bounded = np.where(y_bounded_max > lower, y_bounded_max, lower)
@@ -490,7 +490,7 @@ class Solver:
         return upper, lower
 
     def _sol_wrapper(self, sol):
-        def output_fun(t: Union[float, np.ndarray]):
+        def output_fun(t: Union[float, NDArray]):
             return self._bound_sol(t, sol(t))
 
         return output_fun
@@ -510,11 +510,11 @@ class TemporalVar(Generic[T]):
             self,
             solver: "Solver",
             source: Union[
-                Callable[[Union[float, np.ndarray], np.ndarray], T],
-                Callable[[Union[float, np.ndarray]], T],
-                np.ndarray,
+                Callable[[Union[float, NDArray], NDArray], T],
+                Callable[[Union[float, NDArray]], T],
+                NDArray,
                 Dict,
-                Number,
+                float,
                 Tuple
             ] = None,
             expression: str = None,
@@ -566,7 +566,7 @@ class TemporalVar(Generic[T]):
         self.solver.vars.append(self)
 
     @property
-    def values(self) -> np.ndarray:
+    def values(self) -> NDArray:
         if not self.solver.solved:
             raise Exception(
                 "The differential system has not been solved. "
@@ -577,7 +577,7 @@ class TemporalVar(Generic[T]):
         return self._values
 
     @property
-    def t(self) -> np.ndarray:
+    def t(self) -> NDArray:
         if not self.solver.solved:
             raise Exception(
                 "The differential system has not been solved. "
@@ -651,12 +651,19 @@ class TemporalVar(Generic[T]):
     def on_crossing(self, value: Union["TemporalVar[T]", T], action: Union["Action", Callable] = None,
                     direction: Literal["rising", "falling", "both"] = "both",
                     terminal: Union[bool, int] = False) -> "Event":
+        """
+        Execute the specified action when the signal crosses the specified value in the specified direction.
+        :param value: Value to be crossed to trigger the event action.
+        :param action: Action that is triggered when the crossing condition is met.
+        :param direction: Direction of the crossing that will trigger the event.
+        :param terminal: If True, the simulation will terminate when the crossing occurs. If it is an integer, it
+        specifies the number of occurrences of the event after which the simulation will be terminated.
+        :return: Crossing event
+        """
         if self.output_type in (bool, np.bool, str):
             crossed_variable = self == value
             crossed_variable._expression = f"on {self.name} == {value.name if isinstance(value, TemporalVar) else value}"
         elif issubclass(self.output_type, abc.Iterable):
-            print(self.output_type)
-            print(self._first_value())
             raise ValueError(
                 "Can not apply crossing detection to a variable containing a collection of values because it is ambiguous."
             )
@@ -667,9 +674,15 @@ class TemporalVar(Generic[T]):
         self.events.append(event)
         return event
 
-    def change_behavior(self, new_value: Union["TemporalVar[T]", T]) -> "Action":
+    def action_set_to(self, new_value: Union["TemporalVar[T]", T]) -> "Action":
+        """
+        Create an action that, when its event is triggered, change the TemporalVar value.
+        This action works with recursive statements. For example, `count.action_set_to(count+1)` is valid.
+        :param new_value: New value
+        :return: Action to be put into an Event.
+        """
+
         def change_value(t):
-            print(self)
             if isinstance(new_value, TemporalVar):
                 value = copy(new_value)
                 # Check if it references self
@@ -681,7 +694,6 @@ class TemporalVar(Generic[T]):
                         if isinstance(var, TemporalVar):
                             inverse_refs[var] = current
                             if var is self:
-                                print("Autoref!")
                                 path = [var]
                                 while path[-1] in inverse_refs:
                                     path.append(inverse_refs[path[-1]])
@@ -708,7 +720,7 @@ class TemporalVar(Generic[T]):
 
         return Action(lambda t, y: change_value(t), f"Change {self.name}'s value to {get_expression(new_value)}")
 
-    def reset(self):
+    def clear_values(self):
         self._values = None
 
     def _first_value(self):
@@ -725,7 +737,7 @@ class TemporalVar(Generic[T]):
     def __hash__(self):
         return hash(self.source)
 
-    def __call__(self, t: Union[float, np.ndarray], y: np.ndarray) -> T:
+    def __call__(self, t: Union[float, NDArray], y: NDArray) -> T:
         if self.operator is not None:
             if self._call_mode == CallMode.CALL_ARGS_FUN:
                 args = [x(t, y) if isinstance(x, TemporalVar) else x for x in self.source if not isinstance(x, dict)]
@@ -911,9 +923,11 @@ class TemporalVar(Generic[T]):
         )
 
     @overload
-    def __eq__(
-            self, other: "TemporalVar[np.ndarray[T]]"
-    ) -> "TemporalVar[np.ndarray[bool]]":
+    def __eq__(self, other: "TemporalVar[NDArray[T]]") -> "TemporalVar[NDArray[bool]]":
+        ...
+
+    @overload
+    def __eq__(self, other: Any) -> "TemporalVar[bool]":
         ...
 
     def __eq__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
@@ -926,9 +940,11 @@ class TemporalVar(Generic[T]):
         )
 
     @overload
-    def __ne__(
-            self, other: "TemporalVar[np.ndarray[T]]"
-    ) -> "TemporalVar[np.ndarray[bool]]":
+    def __ne__(self, other: "TemporalVar[NDArray[T]]") -> "TemporalVar[NDArray[bool]]":
+        ...
+
+    @overload
+    def __ne__(self, other: Any) -> "TemporalVar[bool]":
         ...
 
     def __ne__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
@@ -941,9 +957,11 @@ class TemporalVar(Generic[T]):
         )
 
     @overload
-    def __lt__(
-            self, other: "TemporalVar[np.ndarray[T]]"
-    ) -> "TemporalVar[np.ndarray[bool]]":
+    def __lt__(self, other: "TemporalVar[NDArray[T]]") -> "TemporalVar[NDArray[bool]]":
+        ...
+
+    @overload
+    def __lt__(self, other: Any) -> "TemporalVar[bool]":
         ...
 
     def __lt__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
@@ -956,9 +974,11 @@ class TemporalVar(Generic[T]):
         )
 
     @overload
-    def __le__(
-            self, other: "TemporalVar[np.ndarray[T]]"
-    ) -> "TemporalVar[np.ndarray[bool]]":
+    def __le__(self, other: "TemporalVar[NDArray[T]]") -> "TemporalVar[NDArray[bool]]":
+        ...
+
+    @overload
+    def __le__(self, other: Any) -> "TemporalVar[bool]":
         ...
 
     def __le__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
@@ -971,9 +991,11 @@ class TemporalVar(Generic[T]):
         )
 
     @overload
-    def __gt__(
-            self, other: "TemporalVar[np.ndarray[T]]"
-    ) -> "TemporalVar[np.ndarray[bool]]":
+    def __gt__(self, other: "TemporalVar[NDArray[T]]") -> "TemporalVar[NDArray[bool]]":
+        ...
+
+    @overload
+    def __gt__(self, other: Any) -> "TemporalVar[bool]":
         ...
 
     def __gt__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
@@ -986,9 +1008,11 @@ class TemporalVar(Generic[T]):
         )
 
     @overload
-    def __ge__(
-            self, other: "TemporalVar[np.ndarray[T]]"
-    ) -> "TemporalVar[np.ndarray[bool]]":
+    def __ge__(self, other: "TemporalVar[NDArray[T]]") -> "TemporalVar[NDArray[bool]]":
+        ...
+
+    @overload
+    def __ge__(self, other: Any) -> "TemporalVar[bool]":
         ...
 
     def __ge__(self, other: Union["TemporalVar[T]", T]) -> "TemporalVar[bool]":
@@ -1027,7 +1051,7 @@ class TemporalVar(Generic[T]):
                 self.solver,
                 (ufunc, *inputs, kwargs),
                 expression=expression,
-                operator=operator.call
+                operator=operator_call
             )
 
         return NotImplemented
@@ -1088,7 +1112,7 @@ def temporal_var_where(solver, condition: TemporalVar[bool], a: Union[T, Tempora
         solver,
         (where, condition, a, b),
         expression=f"({get_expression(a)} if {get_expression(condition)} else {get_expression(b)})",
-        operator=operator.call
+        operator=operator_call
     )
 
 
@@ -1103,7 +1127,7 @@ class LoopNode(TemporalVar[T]):
         self._is_set = False
         self._is_strict = strict
 
-    def loop_into(self, value: Union[TemporalVar[T], T], force: bool = False):
+    def loop_into(self, value: Union[TemporalVar[T], T, List], force: bool = False):
         """
         Set the input value of the loop node.
 
@@ -1125,7 +1149,7 @@ class LoopNode(TemporalVar[T]):
         self.source = self._input_var.source
         self.operator = self._input_var.operator
 
-    def __call__(self, t: Union[float, np.ndarray], y: np.ndarray) -> T:
+    def __call__(self, t: Union[float, NDArray], y: NDArray) -> T:
         return self._input_var(t, y)
 
     def is_valid(self) -> bool:
@@ -1136,13 +1160,24 @@ class LoopNode(TemporalVar[T]):
         """
         return not self._is_strict or self._is_set
 
+    def action_set_to(self) -> None:
+        """
+        Not implemented
+        :return: Raise an exception
+        """
+        raise NotImplementedError(
+            "This method is forbidden for a Loop Node.\n"
+            "If you want really want to change the behavior of a Loop Node, create a new variable by doing "
+            "'new_var = 1 * loop_node'. You will be able to call `action_set_to()` on `new_var`."
+        )
+
 
 class IntegratedVar(TemporalVar[T]):
     def __init__(
             self,
             solver: "Solver",
             fun: Union[
-                Callable[[Union[float, np.ndarray], np.ndarray], T], np.ndarray, dict
+                Callable[[Union[float, NDArray], NDArray], T], NDArray, dict
             ] = None,
             expression: str = None,
             x0: T = None,
@@ -1172,7 +1207,12 @@ class IntegratedVar(TemporalVar[T]):
             return self._y_idx
         raise ValueError("The argument 'y_idx' should be set for IntegratedVar containing a single value.")
 
-    def set_value(self, value: Union[TemporalVar[T], T]) -> "Action":
+    def action_reset_to(self, value: Union[TemporalVar[T], T]) -> "Action":
+        """
+        Create an action that, when its event is triggered, reset the IntegratedVar output to the specified value.
+        :param value: Value at which the integrator output is reset to
+        :return: Action to be put into an Event.
+        """
         if not isinstance(value, TemporalVar):
             value = TemporalVar(self.solver, value)
 
@@ -1193,11 +1233,16 @@ class IntegratedVar(TemporalVar[T]):
 
         return Action(action_fun, f"Reset {self.name} to {value.expression}")
 
-    def change_behavior(self, new_value: T) -> None:
+    def action_set_to(self) -> None:
+        """
+        Not implemented
+        :return: Raise an exception
+        """
         raise NotImplementedError(
-            "This method is irrelevant for an integrated variable. "
+            "This method is forbidden for an integrated variable.\n"
+            "If you want to reset the integrator output, use `action_reset_to()`.\n"
             "If you want really want to change the behavior of an integrated variable, create a new variable by doing "
-            "'new_var = 1*integrated_variable'."
+            "'new_var = 1 * integrated_variable'. You will be able to call `action_set_to()` on `new_var`."
         )
 
 
@@ -1272,7 +1317,11 @@ class Event:
         self.g = self(t, y)
 
     @property
-    def delete_action(self) -> "Action":
+    def action_disable(self) -> "Action":
+        """
+        Create an action that disable the event, so it will not execute its action anymore.
+        :return: Action
+        """
         def delete_event(t):
             self.deletion_time = t
 

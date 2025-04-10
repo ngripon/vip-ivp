@@ -1,6 +1,3 @@
-import os
-from dataclasses import dataclass
-
 import matplotlib
 import numpy as np
 import pandas as pd
@@ -270,7 +267,7 @@ def test_delete_event():
     a = vip.create_source(lambda t: t)
 
     event = a.on_crossing(6, terminal=True)
-    a.on_crossing(3, event.delete_action)
+    a.on_crossing(3, event.action_disable)
 
     # a.to_plot("Hey")
 
@@ -298,7 +295,7 @@ def test_action_adding():
     a = vip.create_source(5)
     ia = vip.integrate(a, 0)
 
-    ia.on_crossing(10, ia.set_value(0) + vip.terminate)
+    ia.on_crossing(10, ia.action_reset_to(0) + vip.terminate)
 
     ia.to_plot("IA")
 
@@ -311,7 +308,7 @@ def test_set_timeout():
     a = vip.create_source(1)
     ia = vip.integrate(a, 0)
 
-    timeout_event = vip.set_timeout(ia.set_value(0), 3)
+    timeout_event = vip.set_timeout(ia.action_reset_to(0), 3)
 
     ia.to_plot()
 
@@ -325,7 +322,7 @@ def test_set_interval():
     a = vip.create_source(1)
     ia = vip.integrate(a, 0)
 
-    e1 = vip.set_interval(ia.set_value(0), 2)
+    e1 = vip.set_interval(ia.action_reset_to(0), 2)
 
     ia.to_plot()
 
@@ -339,7 +336,7 @@ def test_create_event():
     a = vip.create_source(1)
     ia = vip.integrate(a, 0)
 
-    event=vip.set_timeout(lambda: vip.set_timeout(ia.set_value(0), 2), 3)
+    event=vip.set_timeout(lambda: vip.set_timeout(ia.action_reset_to(0), 2), 3)
 
     ia.to_plot()
 
@@ -350,7 +347,7 @@ def test_create_event():
 def test_increment_timeout():
     count=vip.create_source(0)
 
-    vip.set_timeout(count.change_behavior(count+1),2)
+    vip.set_timeout(count.action_set_to(count+1),2)
 
     count.to_plot()
     vip.solve(10, time_step=1)
@@ -361,7 +358,7 @@ def test_increment_timeout():
 
 def test_increment_interval():
     count=vip.create_source(0)
-    vip.set_interval(count.change_behavior(count+1),2)
+    vip.set_interval(count.action_set_to(count+1),2)
 
     count.to_plot()
     vip.solve(10, time_step=1)
