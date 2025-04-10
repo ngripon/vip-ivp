@@ -734,9 +734,6 @@ class TemporalVar(Generic[T]):
             return value
         return TemporalVar(self.solver, value)
 
-    def __hash__(self):
-        return hash(self.source)
-
     def __call__(self, t: Union[float, NDArray], y: NDArray) -> T:
         if self.operator is not None:
             if self._call_mode == CallMode.CALL_ARGS_FUN:
