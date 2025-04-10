@@ -1,4 +1,5 @@
 import vip_ivp as vip
+import matplotlib.pyplot as plt
 
 # System parameters
 m = 1.0  # Mass (kg)
@@ -12,7 +13,7 @@ v0 = 0.0  # Initial velocity (m/s)
 a = vip.loop_node()  # Acceleration
 v = vip.integrate(a, v0)  # Velocity
 x = vip.integrate(v, x0)  # Displacement
-a.loop_into(-(c * v + k * x) / m) # Set acceleration value
+a.loop_into(-(c * v + k * x) / m)  # Set acceleration value
 
 # Create a variable to count the number of oscillations
 count = vip.create_source(0)
@@ -24,3 +25,15 @@ x.to_plot("Displacement (m)")
 count.to_plot("Oscillations count")
 # Solve the system
 vip.solve(10, time_step=0.01)
+
+# Create a phase space diagram
+plt.plot(x.values, v.values)
+plt.xlabel('Position x (m)')
+plt.ylabel('Velocity v (m/s)')
+plt.title('Phase Space Diagram')
+plt.grid()
+plt.show()
+
+# Export the results to pandas
+dataframe = vip.export_to_df((v, x))
+print(dataframe)
