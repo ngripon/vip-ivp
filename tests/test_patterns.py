@@ -81,7 +81,7 @@ def test_multidimensional_integration_source():
     assert np.allclose(d2["b"].values, a1_fun(a[1].t))
 
 
-def test_multidimensional_integration_loop_node():
+def test_array_integration_loop_node():
     dx = vip.loop_node(shape=2)
     x = vip.integrate(dx, [1, 2])
     dx.loop_into([-0.5 * x[0], -0.4 * x[1]])
@@ -98,6 +98,17 @@ def test_multidimensional_integration_loop_node():
 
     assert np.array_equal(x[0].values, x1.values)
     assert np.array_equal(x[1].values, x2.values)
+
+
+def test_multidimensional_integration_loop_node():
+    lambdas = np.linspace(0.1, 1, 6).reshape(2, 3)
+    d_n = vip.loop_node(shape=(2, 3))
+    n = vip.integrate(d_n, np.ones((2, 3)))
+    d_n.loop_into(-n * lambdas)
+
+    n.to_plot()
+
+    vip.solve(10, time_step=0.001)
 
 
 def test_set_loop_node_multiple_times():
@@ -336,7 +347,7 @@ def test_create_event():
     a = vip.create_source(1)
     ia = vip.integrate(a, 0)
 
-    event=vip.set_timeout(lambda: vip.set_timeout(ia.action_reset_to(0), 2), 3)
+    event = vip.set_timeout(lambda: vip.set_timeout(ia.action_reset_to(0), 2), 3)
 
     ia.to_plot()
 
@@ -344,21 +355,23 @@ def test_create_event():
 
     assert ia.values[5] == 0
 
-def test_increment_timeout():
-    count=vip.create_source(0)
 
-    vip.set_timeout(count.action_set_to(count+1),2)
+def test_increment_timeout():
+    count = vip.create_source(0)
+
+    vip.set_timeout(count.action_set_to(count + 1), 2)
 
     count.to_plot()
     vip.solve(10, time_step=1)
 
-    assert count.values[0]==0
-    assert count.values[2]==1
-    assert count.values[-1]==1
+    assert count.values[0] == 0
+    assert count.values[2] == 1
+    assert count.values[-1] == 1
+
 
 def test_increment_interval():
-    count=vip.create_source(0)
-    vip.set_interval(count.action_set_to(count+1),2)
+    count = vip.create_source(0)
+    vip.set_interval(count.action_set_to(count + 1), 2)
 
     count.to_plot()
     vip.solve(10, time_step=1)
@@ -366,11 +379,9 @@ def test_increment_interval():
     print(count.values)
     print(count.t)
 
-    assert count.values[0]==0
-    assert count.values[2]==1
-    assert count.values[4]==2
+    assert count.values[0] == 0
+    assert count.values[2] == 1
+    assert count.values[4] == 2
     assert count.values[6] == 3
     assert count.values[8] == 4
     assert count.values[10] == 5
-
-
