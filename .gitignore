@@ -18,3 +18,8 @@ tests/__pycache__/test_invalid_systems.cpython-310-pytest-8.3.3.pyc
 tests/__pycache__/test_known_solutions.cpython-310-pytest-8.3.3.pyc
 tests/__pycache__/test_valid_systems.cpython-310-pytest-8.3.3.pyc
 .idea/.gitignore
+/doc/Sphinx-docs/build/doctrees/environment.pickle
+/doc/Sphinx-docs/build/doctrees/index.doctree
+/doc/Sphinx-docs/build/doctrees/vip_ivp.doctree
+/dist/vip_ivp-0.2.0.tar.gz
+/dist/vip_ivp-0.2.0-py3-none-any.whl

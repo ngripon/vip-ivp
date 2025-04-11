@@ -43,7 +43,7 @@ Temporal variables also support comparison operators:
 - Greater than or equal to: `x >= y`
 - Less than or equal to: `x <= y`
 
-These operations do not return booleans; instead, they return new TemporalVar instances representing the condition's value over time.
+These operations do not return booleans; instead, they return new TemporalVar instances containing a boolean and representing the condition's value over time.
 
 ```python
 condition = x > threshold
