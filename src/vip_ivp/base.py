@@ -144,17 +144,12 @@ class Solver:
         if time_step is not None and t_eval is None:
             t_eval = np.arange(0, t_end + time_step / 2,
                                time_step)  # Add half a time step to get an array that stops on t_end
-        try:
-            res = self._solve_ivp((0, t_end), self.x0, method=method, t_eval=t_eval,
-                                  include_events_times=include_events_times, **options)
-            if not res.success:
-                raise Exception(res.message)
-        except RecursionError:
-            raise RecursionError(
-                "An algebraic loop has been detected in the system. "
-                "Please check in the set_value() methods if a variable use itself for computing "
-                "its value."
-            )
+
+        res = self._solve_ivp((0, t_end), self.x0, method=method, t_eval=t_eval,
+                              include_events_times=include_events_times, **options)
+        if not res.success:
+            raise Exception(res.message)
+
 
         self.solved = True
         if verbose:
@@ -232,7 +227,17 @@ class Solver:
         self.__init__()
 
     def _dy(self, t, y):
-        return [var(t, y) if callable(var) else var for var in self.feed_vars]
+        result_list=[]
+        for var in self.feed_vars:
+            try:
+                result=var(t, y) if callable(var) else var
+                result_list.append(result)
+            except RecursionError:
+                raise RecursionError(
+                    f"An algebraic loop has been detected when trying to compute the value of variable {var.name}.\n"
+                    f"Make sure that a variable does not reference itself in `.loop_into()` methods."
+                )
+        return result_list
 
     def _unwrap_leaves(self, outputs):
         """
@@ -572,8 +577,14 @@ class TemporalVar(Generic[T]):
                 "The differential system has not been solved. "
                 "Call the solve() method before inquiring the variable values."
             )
-        if self._values is None:
-            self._values = self(self.t, self.solver.y)
+        try:
+            if self._values is None:
+                self._values = self(self.t, self.solver.y)
+        except RecursionError:
+            raise RecursionError(
+                f"An algebraic loop has been detected when trying to compute the value of variable {self.name}.\n"
+                f"Make sure that a variable does not reference itself in `.loop_into()` methods."
+            )
         return self._values
 
     @property
