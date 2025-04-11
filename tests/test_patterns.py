@@ -108,7 +108,7 @@ def test_multidimensional_integration_loop_node():
 
     n.to_plot()
 
-    vip.solve(10, time_step=0.001)
+    vip.solve(10, time_step=0.001, plot=False)
 
 
 def test_set_loop_node_multiple_times():

@@ -294,3 +294,20 @@ def test_demos():
             runpy.run_path(str(script_path), run_name="__main__")
         except Exception as e:
             pytest.fail(f"Demo script {script_path.name} raised an exception: {e}")
+
+
+def test_forgiving_temporal_functions():
+    """
+    Test if the create_source function can accept functions that do not support array inputs
+    """
+    # Data map
+    voltage_per_soc = {0.0: 3.0, 0.2: 3.4, 0.5: 3.6, 0.8: 3.8, 1.0: 4.2}
+    # Create input
+    soc = vip.create_source(lambda t: max(1.0 - 0.0004 * t, 0))
+    # Create output with np.interp
+    voltage = vip.f(np.interp)(soc, list(voltage_per_soc.keys()), list(voltage_per_soc.values()))
+
+    voltage.to_plot("Voltage (V)")
+    soc.to_plot("State of Charge (-)")
+
+    vip.solve(3600, time_step=0.1)
