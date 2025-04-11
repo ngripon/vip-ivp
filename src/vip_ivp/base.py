@@ -10,6 +10,7 @@ from typing import overload, Literal, Iterable, Dict, Tuple, List, Any
 from pathlib import Path
 from typing import Callable, Union, TypeVar, Generic
 
+import numpy as np
 from numpy.typing import NDArray
 from typing_extensions import deprecated
 
@@ -67,11 +68,10 @@ class Solver:
                 maximum = np.full(data.shape, maximum)
             if not isinstance(minimum, np.ndarray):
                 minimum = np.full(data.shape, minimum)
-            return [
-                self._get_integrated_structure(data[idx], np.array(x0)[idx], minimum[idx], maximum[idx])
-                for idx in np.ndindex(data.shape)
-            ]
-
+            result = np.empty(data.shape, dtype=object)
+            for idx in np.ndindex(data.shape):
+                result[idx] = self._get_integrated_structure(data[idx], np.array(x0)[idx], minimum[idx], maximum[idx])
+            return result
         elif data.output_type is dict:
             if not isinstance(maximum, dict):
                 maximum = {key: maximum for key in data.keys()}
@@ -1330,6 +1330,7 @@ class Event:
         Create an action that disable the event, so it will not execute its action anymore.
         :return: Action
         """
+
         def delete_event(t):
             self.deletion_time = t
 
