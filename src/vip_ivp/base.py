@@ -150,7 +150,6 @@ class Solver:
         if not res.success:
             raise Exception(res.message)
 
-
         self.solved = True
         if verbose:
             output_str = f"Solving time = {time.time() - start} s\n"
@@ -227,10 +226,10 @@ class Solver:
         self.__init__()
 
     def _dy(self, t, y):
-        result_list=[]
+        result_list = []
         for var in self.feed_vars:
             try:
-                result=var(t, y) if callable(var) else var
+                result = var(t, y) if callable(var) else var
                 result_list.append(result)
             except RecursionError:
                 raise RecursionError(
@@ -540,7 +539,19 @@ class TemporalVar(Generic[T]):
             if callable(source) and not isinstance(source, child_cls):
                 n_args = len(inspect.signature(source).parameters)
                 if n_args == 1:
-                    self.source = lambda t, y: source(t)
+                    try:
+                        # Check if it supports array inputs.
+                        source(np.linspace(0, 000.1, 3))
+                        self.source = lambda t, y: source(t)
+                    except ValueError:
+                        def vectorized_source(t: Union[float, NDArray], y) -> Union[float, NDArray]:
+                            result = np.vectorize(lambda t_inner: source(t_inner))(t)
+                            if result.size == 1:
+                                result = result.item()
+                            return result
+
+                        # If array inputs are not supported, vectorize
+                        self.source = vectorized_source
                 else:
                     self.source = lambda t, y: source(t, y)
             elif np.isscalar(source):
@@ -598,7 +609,7 @@ class TemporalVar(Generic[T]):
     @property
     def output_type(self):
         if self._output_type is None:
-            self._output_type = type(self(0, self.solver.x0))
+            self._output_type = type(self._first_value())
         return self._output_type
 
     def save(self, name: str) -> None:
@@ -734,7 +745,7 @@ class TemporalVar(Generic[T]):
         self._values = None
 
     def _first_value(self):
-        return self(0, self.solver.x0)
+        return self(0, self.solver.x0 if len(self.solver.x0) else 0)
 
     def _from_arg(self, value: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
         """
