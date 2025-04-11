@@ -26,22 +26,36 @@ d_n = vip.loop_node()
 n = vip.integrate(d_n, 1)
 # 3. Set the loop node value when all the needed variables are available.
 d_n.loop_into(-lambda_value * n)
+
+n.to_plot()
+
+vip.solve(10, time_step=0.001)
 ```
+![Exponential decay](../images/exponential_decay.png)
 
 ## Loop Nodes containing a NumPy array
 
 Loop Nodes possesses a shape that must be initialized. When calling `vip.loop_node()` without arguments, it creates a scalar Temporal Variable. To instantiate a Loop Node containing a Numpy array, fill the `shape` argument of `vip.loop_node()`:
 
 ```python
-# Array of coefficients
-lambdas = np.linspace(0, 1, 6).reshape(2, 3)
+# Multidimensional exponential decay:
+import numpy as np
 
-# Build the system
+# Array of lambda coefficients
+lambdas = np.linspace(0, 1, 6).reshape(2, 3)
+# Building the system
 d_n = vip.loop_node(shape=(2, 3))
 n = vip.integrate(d_n, np.zeros((2, 3)))
-# Loop into an array of shape (2,3)
+# Loop into an array of shape (2, 3)
 d_n.loop_into(n * lambdas)
+
+n.to_plot()
+
+vip.solve(10, time_step=0.001)
 ```
+![Multidimensional exponential decay](../images/exponential_decay_multidim.png)
+
+Loop Nodes containing an array are especially useful for physical quantities modelled by vectors, for example a position in a 2D or 3D space.
 
 ### Example: Projectile motion with air drag
 

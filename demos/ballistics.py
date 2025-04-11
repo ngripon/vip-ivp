@@ -20,12 +20,16 @@ v_norm = np.sqrt(velocity[0] ** 2 + velocity[1] ** 2)
 acceleration.loop_into([-mu * velocity[0] * v_norm,
                         GRAVITY - mu * velocity[1] * v_norm])
 
-vip.solve(10, time_step=0.01)
+position[1].on_crossing(0, direction="falling", terminal=True)
 
+vip.solve(10, time_step=0.2)
+
+print(position[1].values)
+print(position[1].t)
 
 # Plot results
 x, y = position.values
-plt.plot(x[y >= 0], y[y >= 0])
+plt.plot(x, y)
 plt.title("Projectile motion")
 plt.xlabel("X (m)")
 plt.ylabel("Height (m)")

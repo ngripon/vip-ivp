@@ -413,8 +413,7 @@ class Solver:
                     t_eval_i = t_eval_i_new
                 # Add time events
                 if events:
-                    if active_events_indices.size > 0 and self.status != 1:
-
+                    if active_events_indices.size > 0:
                         if self.t[-1] == te:
                             if self.dim != 0:
                                 self.y[-1] = ye
