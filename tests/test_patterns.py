@@ -38,6 +38,22 @@ def test_use_numpy_function():
 
     assert np.all(error_array == 0)
 
+def test_use_basic_function():
+
+    def basic_function(x):
+        if x>0:
+            return 1
+        else:
+            return -1
+
+    input=vip.create_source(lambda t:np.cos(t))
+    output=vip.f(basic_function)(input)
+
+    input.to_plot()
+    output.to_plot()
+
+    vip.solve(10)
+
 
 def test_multidimensional_integration_source():
     arr = np.array([5, 4])
