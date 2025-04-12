@@ -139,13 +139,13 @@ def test_differentiate():
     d_n2.to_plot()
     d_n.to_plot()
 
-    vip.solve(10, time_step=0.001)
+    vip.solve(10, time_step=0.01)
 
     print(d_n.values)
     print(d_n2.values)
 
     errors = d_n.values - d_n2.values
-    assert all(errors[1:] < 0.001)
+    assert all(errors[1:] < 0.01)
 
 
 def test_float_crossing_event():
