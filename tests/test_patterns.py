@@ -39,7 +39,6 @@ def test_use_numpy_function():
     assert np.all(error_array == 0)
 
 def test_use_basic_function():
-
     def basic_function(x):
         if x>0:
             return 1
@@ -52,7 +51,7 @@ def test_use_basic_function():
     input.to_plot()
     output.to_plot()
 
-    vip.solve(10)
+    vip.solve(10, plot=False)
 
 
 def test_multidimensional_integration_source():

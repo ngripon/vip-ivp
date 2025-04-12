@@ -781,9 +781,20 @@ class TemporalVar(Generic[T]):
         return TemporalVar(self.solver, value)
 
     def __call__(self, t: Union[float, NDArray], y: NDArray) -> T:
-        if not np.isscalar(t):
+        # Handle collections in a recursive way
+        if isinstance(self.source, np.ndarray):
+            if np.isscalar(t):
+                return np.stack(np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source))
+            else:
+                return np.stack(
+                    np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source.ravel())
+                ).reshape((*self.source.shape, *np.array(t).shape))
+        elif isinstance(self.source, dict):
+            return {key: val(t, y) for key, val in self.source.items()}
+        # Handle the termination leaves of the recursion
+        elif not np.isscalar(t):
             return np.array([self(t[i], y[..., i]) for i in range(len(t))])
-        if self.operator is not None:
+        elif self.operator is not None:
             if self._call_mode == CallMode.CALL_ARGS_FUN:
                 args = [x(t, y) if isinstance(x, TemporalVar) else x for x in self.source if not isinstance(x, dict)]
                 kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
@@ -795,15 +806,6 @@ class TemporalVar(Generic[T]):
                 return self.operator(*args, **kwargs)(t, y)
             else:
                 raise ValueError(f"Unknown call mode: {self._call_mode}.")
-
-        if isinstance(self.source, np.ndarray):
-            if np.isscalar(t):
-                return np.stack(np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source))
-            return np.stack(
-                np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source.ravel())
-            ).reshape((*self.source.shape, *np.array(t).shape))
-        elif isinstance(self.source, dict):
-            return {key: val(t, y) for key, val in self.source.items()}
         else:
             return self.source(t, y)
 
