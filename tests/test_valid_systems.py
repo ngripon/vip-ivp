@@ -135,6 +135,10 @@ def test_differentiate():
     n = vip.integrate(d_n, 1)
     d_n.loop_into(-0.5 * n)
     d_n2 = vip.differentiate(n)
+
+    d_n2.to_plot()
+    d_n.to_plot()
+
     vip.solve(10, time_step=0.001)
 
     print(d_n.values)

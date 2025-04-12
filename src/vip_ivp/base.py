@@ -539,19 +539,7 @@ class TemporalVar(Generic[T]):
             if callable(source) and not isinstance(source, child_cls):
                 n_args = len(inspect.signature(source).parameters)
                 if n_args == 1:
-                    try:
-                        # Check if it supports array inputs.
-                        source(np.linspace(0, 000.1, 3))
-                        self.source = lambda t, y: source(t)
-                    except ValueError:
-                        def vectorized_source(t: Union[float, NDArray], y) -> Union[float, NDArray]:
-                            result = np.vectorize(lambda t_inner: source(t_inner))(t)
-                            if result.size == 1:
-                                result = result.item()
-                            return result
-
-                        # If array inputs are not supported, vectorize
-                        self.source = vectorized_source
+                    self.source = lambda t, y: source(t)
                 else:
                     self.source = lambda t, y: source(t, y)
             elif np.isscalar(source):
@@ -756,6 +744,8 @@ class TemporalVar(Generic[T]):
         return TemporalVar(self.solver, value)
 
     def __call__(self, t: Union[float, NDArray], y: NDArray) -> T:
+        if not np.isscalar(t):
+            return np.array([self(t[i], y[..., i]) for i in range(len(t))])
         if self.operator is not None:
             if self._call_mode == CallMode.CALL_ARGS_FUN:
                 args = [x(t, y) if isinstance(x, TemporalVar) else x for x in self.source if not isinstance(x, dict)]
