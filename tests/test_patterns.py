@@ -86,6 +86,8 @@ def test_multidimensional_integration_source():
     # Evaluate integration from source
     assert np.allclose(a[0].values, a0_fun(a[0].t))
     assert np.allclose(a[1].values, a1_fun(a[1].t))
+    assert np.allclose(a.values[0], a0_fun(a[0].t))
+    assert np.allclose(a.values[1], a1_fun(a[1].t))
     assert np.allclose(d["a"].values, a0_fun(a[0].t))
     assert np.allclose(d["b"].values, a1_fun(a[1].t))
     # Evaluate integration from python variables
