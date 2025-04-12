@@ -154,7 +154,7 @@ class Solver:
         if verbose:
             output_str = f"Solving time = {time.time() - start} s\n"
             if self.events:
-                output_str += f"Number of triggered events = {np.sum(len(t) for t in res.t_events)}\n"
+                output_str += f"Number of triggered events = {sum(len(t) for t in res.t_events)}\n"
             print(output_str)
         if plot:
             self.plot()

@@ -8,30 +8,9 @@ import src.vip_ivp as vip
 def true_drag(v):
     return -0.1 * v * np.abs(v)
 
-def torch_model_as_numpy_fn(model: torch.nn.Module):
-    def wrapped(x):
-        x_np = np.atleast_1d(x)
-        is_scalar = np.isscalar(x) or x_np.ndim == 0
-
-        # Ensure input is 2D (batch_size, in_features)
-        if x_np.ndim == 1:
-            x_np = x_np.reshape(-1, 1)
-
-        x_tensor = torch.tensor(x_np, dtype=torch.float32)
-        with torch.no_grad():
-            y_tensor = model(x_tensor)
-        y = y_tensor.numpy()
-
-        if is_scalar:
-            return y.flat[0]
-        elif y.shape[-1] == 1:
-            return y[...,0]  # Return a 1D array
-        return y  # Return a 2D array
-    return wrapped
-
 
 # Training data
-v_train = np.linspace(-100, 100, 200).reshape(-1, 1)
+v_train = np.linspace(-20, 20, 200).reshape(-1, 1)
 drag_train = true_drag(v_train)
 
 # Torch tensors
@@ -64,32 +43,46 @@ for epoch in range(300):
     loss.backward()
     optimizer.step()
 
+# Plotting the results of the learning
 print(f"Final loss: {loss.item():.4f}")
-
 plt.plot(v_train, drag_train)
-np_fun=torch_model_as_numpy_fn(model)
-plt.plot(v_train[0], np_fun(v_train[0]))
+with torch.no_grad():
+    plt.plot(v_train, model(v_tensor).numpy())
 plt.grid()
 plt.show()
 
-print(np_fun(np.linspace(0,10,11)))
-print(np_fun(5))
-print(np_fun(5).shape)
+
+def torch_model_as_vip_fn(model: torch.nn.Module):
+    def wrapped(x):
+        x_np = np.atleast_1d(x)
+        x_tensor = torch.tensor(x_np, dtype=torch.float32)
+        with torch.no_grad():
+            y_tensor = model(x_tensor)
+        y = y_tensor.numpy()
+        return y.item()
+    return wrapped
+
+
+
+
 
 # Set up the system
 mass = 1.0
 g = -9.81
 
 acc = vip.loop_node()
-v = vip.integrate(acc, x0=0)  # Start with upward speed
-y = vip.integrate(v, x0=10)
-
-drag = vip.f(torch_model_as_numpy_fn(model))(v)
-
+v = vip.integrate(acc, x0=0)
+y = vip.integrate(v, x0=50)
+# Compute drag with the neural network
+drag = vip.f(torch_model_as_vip_fn(model))(v)
 acc.loop_into(g + drag / mass)
 
+# Terminate the simulation on hitting the ground
+y.on_crossing(0, direction="falling", terminal=True)
+
+# Plotting
 v.to_plot()
 drag.to_plot()
 y.to_plot()
 
-vip.solve(5, time_step=0.01)
+vip.solve(100, time_step=0.01, verbose=True)
