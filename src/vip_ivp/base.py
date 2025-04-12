@@ -172,6 +172,7 @@ class Solver:
         if not self.vars_to_plot:
             return
         # Plot data
+        plt.figure("Results for VIP")
         for variable_name, var in self.vars_to_plot.items():
             plt.plot(var.t, var.values, label=variable_name)
         # Label and axis

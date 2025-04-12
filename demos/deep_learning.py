@@ -51,21 +51,6 @@ with torch.no_grad():
 plt.grid()
 plt.show()
 
-
-def torch_model_as_vip_fn(model: torch.nn.Module):
-    def wrapped(x):
-        x_np = np.atleast_1d(x)
-        x_tensor = torch.tensor(x_np, dtype=torch.float32)
-        with torch.no_grad():
-            y_tensor = model(x_tensor)
-        y = y_tensor.numpy()
-        return y.item()
-    return wrapped
-
-
-
-
-
 # Set up the system
 mass = 1.0
 g = -9.81
@@ -74,7 +59,11 @@ acc = vip.loop_node()
 v = vip.integrate(acc, x0=0)
 y = vip.integrate(v, x0=50)
 # Compute drag with the neural network
-drag = vip.f(torch_model_as_vip_fn(model))(v)
+v_np = vip.f(np.atleast_1d)(v)
+v_tensor = vip.f(torch.tensor)(v_np, dtype=torch.float32)
+drag_tensor = vip.f(model)(v_tensor)
+drag = vip.f(float)(drag_tensor)
+
 acc.loop_into(g + drag / mass)
 
 # Terminate the simulation on hitting the ground

@@ -4,6 +4,14 @@ sidebar_position: 6
 
 # Applying Functions
 
+## Wrapping Functions with `vip.f()`
+
+`vip-ivp` provides the `vip.f(fun)` function. It creates a wrapper that makes any function compatible with Temporal Variables by:
+
+- Accepting `TemporalVar` inputs
+- Returning a `TemporalVar` result
+
+
 ## When Wrapping is not needed
 
 A system is composed of `TemporalVar` instances. Because it is a custom class that do not possess values before the solving, many functions are not compatible out-of-the-box with `TemporalVar` inputs.
@@ -17,12 +25,9 @@ Functions are compatible out-of-the-box with `TemporalVar` in only 2 cases:
 
 For all the other functions, you will need wrapping.
 
-## Wrapping Functions with `vip.f()`
 
-`vip-ivp` provides the `vip.f(fun)` function. It creates a wrapper that makes any function compatible with Temporal Variables by:
 
-- Accepting `TemporalVar` inputs
-- Returning a `TemporalVar` result
+## Examples
 
 ### Example 1: Apply a empirical map with `np.interp()`
 
