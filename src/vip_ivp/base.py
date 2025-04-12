@@ -672,8 +672,12 @@ class TemporalVar(Generic[T]):
             def previous_value(t, y):
                 if np.isscalar(t):
                     if len(input_variable.solver.t) >= delay:
-                        previous_t = input_variable.solver.t[-delay]
-                        previous_y = input_variable.solver.y[-delay]
+                        index = next((i for i, ts in enumerate(input_variable.solver.t) if t <= ts),
+                                     len(input_variable.solver.t))
+                        if index - delay < 0:
+                            return initial_value
+                        previous_t = input_variable.solver.t[index - delay]
+                        previous_y = input_variable.solver.y[..., index - delay]
 
                         return input_variable(previous_t, previous_y)
                     else:
