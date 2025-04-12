@@ -15,7 +15,7 @@ from numpy.typing import NDArray
 from typing_extensions import deprecated
 
 from .solver_utils import *
-from .utils import add_necessary_brackets, convert_to_string, operator_call
+from .utils import add_necessary_brackets, convert_to_string, operator_call, shift_array
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -656,6 +656,39 @@ class TemporalVar(Generic[T]):
             )
             variables[col] = fun
         return cls(solver, variables)
+
+    def delayed(self, delay: int, initial_value: T = 0) -> "TemporalVar[T]":
+        """
+        Create a delayed version of the TemporalVar.
+        :param delay: Number of solver steps by which the new TemporalVar is delayed.
+        :param initial_value: Value of the delayed variable at the beginning when there is not any value for the
+            original value.
+        :return: Delayed version of the TemporalVar
+        """
+        if delay < 1:
+            raise Exception("Delay accept only a positive step.")
+
+        def create_delay(input_variable):
+            def previous_value(t, y):
+                if np.isscalar(t):
+                    if len(input_variable.solver.t) >= delay:
+                        previous_t = input_variable.solver.t[-delay]
+                        previous_y = input_variable.solver.y[-delay]
+
+                        return input_variable(previous_t, previous_y)
+                    else:
+                        return initial_value
+                else:
+                    delayed_t = shift_array(t, delay, 0)
+                    delayed_y = shift_array(y, delay, initial_value)
+                    return input_variable(delayed_t, delayed_y)
+
+            return previous_value
+
+        return TemporalVar(self.solver, (create_delay, self),
+                           expression=f"#DELAY({delay}) {get_expression(self)}",
+                           operator=operator_call,
+                           call_mode=CallMode.CALL_FUN_RESULT)
 
     def on_crossing(self, value: Union["TemporalVar[T]", T], action: Union["Action", Callable] = None,
                     direction: Literal["rising", "falling", "both"] = "both",

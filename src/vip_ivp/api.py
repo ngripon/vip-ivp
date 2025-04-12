@@ -167,35 +167,6 @@ def where(condition, a, b):
         return temporal_var_where(solver, condition, a, b)
 
 
-def delay(input_value: TemporalVar[T], n_steps: int, initial_value: T = 0) -> TemporalVar[T]:
-    if not isinstance(input_value, TemporalVar):
-        raise Exception("Only TemporalVars can be delayed.")
-    elif n_steps < 1:
-        raise Exception("Delay accept only a positive step.")
-
-    def create_delay(input_variable):
-        def previous_value(t, y):
-            if np.isscalar(t):
-                if len(input_variable.solver.t) >= n_steps:
-                    previous_t = input_variable.solver.t[-n_steps]
-                    previous_y = input_variable.solver.y[-n_steps]
-
-                    return input_variable(previous_t, previous_y)
-                else:
-                    return initial_value
-            else:
-                delayed_t = shift_array(t, n_steps, 0)
-                delayed_y = shift_array(y, n_steps, initial_value)
-                return input_variable(delayed_t, delayed_y)
-
-        return previous_value
-
-    return TemporalVar(input_value.solver, (create_delay, input_value),
-                       expression=f"#DELAY({n_steps}) {get_expression(input_value)}",
-                       operator=operator_call,
-                       call_mode=CallMode.CALL_FUN_RESULT)
-
-
 def differentiate(input_value: TemporalVar[float], initial_value=0) -> TemporalVar[float]:
     # Warn the user not to abuse the differentiate function
     warnings.warn("It is recommended to use 'integrate' instead of 'differentiate' for solving IVPs, "
@@ -203,9 +174,9 @@ def differentiate(input_value: TemporalVar[float], initial_value=0) -> TemporalV
                   "If you choose to use 'differentiate', consider using a smaller step size for better accuracy.",
                   category=UserWarning, stacklevel=2)
 
-    previous_value = delay(input_value, 1, initial_value)
+    previous_value = input_value.delayed(1, initial_value)
     time_value = create_source(lambda t: t)
-    previous_time = delay(time_value, 1)
+    previous_time = time_value.delayed(1)
     d_y = input_value - previous_value
     d_t = time_value - previous_time
     derived_value = np.divide(d_y, d_t, where=d_t != 0)
@@ -349,7 +320,7 @@ def export_file(filename: str, variables: Iterable[TemporalVar] = None,
             f"Unsupported file format: {file_format}. "
             f"The available file formats are {', '.join(AVAILABLE_EXPORT_FILE_FORMATS)}"
         )
-    df = export_to_df(variables)
+    df = export_to_df(*variables)
     if file_format == "csv":
         df.to_csv(filename, index=False)
     elif file_format == "json":

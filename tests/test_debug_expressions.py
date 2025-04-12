@@ -129,7 +129,7 @@ def test_transformations():
 
     da = vip.differentiate(a)
     ia = vip.integrate(a, 0)
-    delay_a = vip.delay(a, 1)
+    delay_a = a.delayed(1)
 
     def foo(bar):
         return bar + 1
