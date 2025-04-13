@@ -720,7 +720,8 @@ class TemporalVar(Generic[T]):
         previous_time = time_value.delayed(1)
         d_y = self - previous
         d_t = time_value - previous_time
-        derived_value = temporal_var_where(self.solver,time_value != 0, np.divide(d_y, d_t, where=d_t != 0), initial_value)
+        derived_value = temporal_var_where(self.solver, time_value != 0, np.divide(d_y, d_t, where=d_t != 0),
+                                           initial_value)
         derived_value._expression = f"#D/DT {get_expression(self)}"
         return derived_value
 
@@ -828,19 +829,18 @@ class TemporalVar(Generic[T]):
         return TemporalVar(self.solver, value)
 
     def __call__(self, t: Union[float, NDArray], y: NDArray) -> T:
-        # Handle collections in a recursive way
-        if isinstance(self.source, np.ndarray):
-            if np.isscalar(t):
-                return np.stack(np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source))
-            else:
-                return np.stack(
-                    np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source.ravel())
-                ).reshape((*self.source.shape, *np.array(t).shape))
-        elif isinstance(self.source, dict):
+        # Handle dict in a recursive way
+        if isinstance(self.source, dict):
             return {key: val(t, y) for key, val in self.source.items()}
-        # Handle the termination leaves of the recursion
         elif not np.isscalar(t):
-            return np.array([self(t[i], y[i]) for i in range(len(t))])
+            result = np.array([self(t[i], y[i]) for i in range(len(t))])
+            # If the result is a multidimensional array, make the time dimension the last instead of the first
+            if result.ndim > 1:
+                result = np.moveaxis(result, 0, -1)
+            return result
+        # Handle the termination leaves of the recursion
+        elif isinstance(self.source, np.ndarray):
+            return np.stack(np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source))
         elif self.operator is not None:
             if self._call_mode == CallMode.CALL_ARGS_FUN:
                 args = [x(t, y) if isinstance(x, TemporalVar) else x for x in self.source if not isinstance(x, dict)]
