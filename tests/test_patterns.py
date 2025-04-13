@@ -38,27 +38,29 @@ def test_use_numpy_function():
 
     assert np.all(error_array == 0)
 
+
 def test_use_basic_function():
-    def basic_function(x):
-        if x>0:
+    def basic_function(x: float) -> int:
+        if x > 0:
             return 1
         else:
             return -1
 
-    input=vip.create_source(lambda t:np.cos(t))
-    output=vip.f(basic_function)(input)
+    input = vip.create_source(lambda t: np.cos(t))
+    output = vip.f(basic_function)(input)
 
     input.to_plot()
     output.to_plot()
 
-    vip.solve(10, plot=False)
+    vip.solve(10, plot=True)
+
 
 def test_use_numpy_method():
-    array_source = vip.create_source([lambda t:t,lambda t:2*t,lambda t:3*t,lambda t:4*t])
-    reshaped_array = array_source.m(np.ndarray.reshape)((2, 2))
+    array_source = vip.create_source([lambda t: t, lambda t: 2 * t, lambda t: 3 * t, lambda t: 4 * t])
+    reshaped_array = array_source.m(array_source.output_type.reshape)((2, 2))
     square_array_source = vip.create_source([[lambda t: t, lambda t: 2 * t], [lambda t: 3 * t, lambda t: 4 * t]])
     # reshaped_array.to_plot()
-    vip.solve(10,1)
+    vip.solve(10, 1)
     print(array_source.values[0])
     print(reshaped_array.values[0])
     print(square_array_source.values[0])
