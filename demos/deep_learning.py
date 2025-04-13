@@ -1,6 +1,8 @@
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
+from torch import Tensor
+
 import src.vip_ivp as vip
 
 
@@ -62,7 +64,7 @@ y = vip.integrate(v, x0=50)
 v_np = vip.f(np.atleast_1d)(v)
 v_tensor = vip.f(torch.tensor)(v_np, dtype=torch.float32)
 drag_tensor = vip.f(model)(v_tensor)
-drag = vip.f(float)(drag_tensor)
+drag = drag_tensor.m(Tensor.item)()
 
 acc.loop_into(g + drag / mass)
 

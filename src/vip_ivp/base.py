@@ -12,7 +12,7 @@ from typing import Callable, Union, TypeVar, Generic
 
 import numpy as np
 from numpy.typing import NDArray
-from typing_extensions import deprecated
+from typing_extensions import deprecated, ParamSpec
 
 from .solver_utils import *
 from .utils import add_necessary_brackets, convert_to_string, operator_call, shift_array
@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     import pandas as pd
 
 T = TypeVar("T")
+P = ParamSpec("P")
 
 
 class Solver:
@@ -698,6 +699,22 @@ class TemporalVar(Generic[T]):
                            operator=operator_call,
                            call_mode=CallMode.CALL_FUN_RESULT)
 
+    def m(self, method: Callable[P, T]) -> Callable[P, "TemporalVar[T]"]:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> TemporalVar:
+            inputs_expr = [get_expression(inp) if isinstance(inp, TemporalVar) else str(inp) for inp in args]
+            kwargs_expr = [
+                f"{key}={get_expression(value) if isinstance(value, TemporalVar) else str(value)}"
+                for key, value in kwargs.items()
+            ]
+            expression = f"{method.__name__}({', '.join(inputs_expr)}"
+            if kwargs_expr:
+                expression += ", ".join(kwargs_expr)
+            expression += ")"
+            return TemporalVar(self.solver, (method, self, *args, kwargs),
+                               expression=expression, operator=operator_call)
+        functools.update_wrapper(wrapper, method)
+        return wrapper
+
     def on_crossing(self, value: Union["TemporalVar[T]", T], action: Union["Action", Callable] = None,
                     direction: Literal["rising", "falling", "both"] = "both",
                     terminal: Union[bool, int] = False) -> "Event":
@@ -1113,7 +1130,7 @@ class TemporalVar(Generic[T]):
 
     def __repr__(self) -> str:
         if self.solver.solved:
-            return f"{self.values}"
+            return f"{self.name or self._expression} = {self.values}"
         else:
             return f"{self._expression}"
 

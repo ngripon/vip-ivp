@@ -53,6 +53,20 @@ def test_use_basic_function():
 
     vip.solve(10, plot=False)
 
+def test_use_numpy_method():
+    array_source = vip.create_source([lambda t:t,lambda t:2*t,lambda t:3*t,lambda t:4*t])
+    reshaped_array = array_source.m(np.ndarray.reshape)((2, 2))
+    square_array_source = vip.create_source([[lambda t: t, lambda t: 2 * t], [lambda t: 3 * t, lambda t: 4 * t]])
+    # reshaped_array.to_plot()
+    vip.solve(10,1)
+    print(array_source.values[0])
+    print(reshaped_array.values[0])
+    print(square_array_source.values[0])
+    # Bug explanation: When the TemporalVariable possess a numpy array that is computed from an operation, it does not
+    # manipulate the shape to have the time dimensions the last instead of the first.
+
+    assert np.array_equal(reshaped_array.values, square_array_source.values)
+
 
 def test_multidimensional_integration_source():
     arr = np.array([5, 4])
