@@ -173,7 +173,7 @@ vip.solve(10, time_step=0.01, include_events_times=False)
 
 ## Complete example
 
-```python
+```python showLineNumbers
 import vip_ivp as vip
 import matplotlib.pyplot as plt
 

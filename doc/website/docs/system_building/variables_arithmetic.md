@@ -26,10 +26,10 @@ z = x + 2 * y
 ```
 
 :::tip
-They also work with Temporal Variables containing NumPy arrays !
+These operations also work with Temporal Variables containing NumPy arrays and all other objects types that support arithmetic !
 :::
 :::warning
-However, arithmetic does not work with Temporal Variables containing a dictionary.
+However, arithmetic does **not** work with Temporal Variables containing a **dictionary**.
 :::
 
 ## Comparison Operator Support
