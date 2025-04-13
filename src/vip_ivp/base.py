@@ -42,6 +42,9 @@ class Solver:
         self.vars_to_plot: Dict[str, TemporalVar] = {}
         self.status: Union[int, None] = None
 
+        # Special solver TemporalVars
+        self.time_variable: TemporalVar[float] = TemporalVar(self, lambda t: t, "Time")
+
     def integrate(self, input_value: "TemporalVar[T]", x0: T, minimum: Union[T, "TemporalVar[T]", None] = None,
                   maximum: Union[T, "TemporalVar[T]", None] = None) -> "IntegratedVar[T]":
         """

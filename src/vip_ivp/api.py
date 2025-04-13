@@ -175,7 +175,7 @@ def differentiate(input_value: TemporalVar[float], initial_value=0) -> TemporalV
                   category=UserWarning, stacklevel=2)
 
     previous_value = input_value.delayed(1, initial_value)
-    time_value = create_source(lambda t: t)
+    time_value = get_time_variable()
     previous_time = time_value.delayed(1)
     d_y = input_value - previous_value
     d_t = time_value - previous_time
@@ -211,6 +211,15 @@ def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
     return wrapper
 
 
+def get_time_variable() -> TemporalVar[float]:
+    """
+    Return the time variable of the system.
+    :return: Time variable that returns the time value of each simulation step.
+    """
+    solver = _get_current_solver()
+    return solver.time_variable
+
+
 # Events
 
 def get_events() -> List[Event]:
@@ -229,8 +238,7 @@ terminate = Action(_terminate, "Terminate simulation")
 def set_timeout(action: Union[Action, Callable], delay: float) -> Event:
     solver = _get_current_solver()
     current_time = solver.t_current
-    time_variable = create_source(lambda t: t)
-    time_variable.name = "Time"
+    time_variable = get_time_variable()
     event = time_variable.on_crossing(current_time + delay, action)
     event.action += event.action_disable
     return event
@@ -239,7 +247,7 @@ def set_timeout(action: Union[Action, Callable], delay: float) -> Event:
 def set_interval(action: Union[Action, Callable], delay: float) -> Event:
     solver = _get_current_solver()
     current_time = solver.t_current
-    time_variable = create_source(lambda t: t)
+    time_variable = copy(get_time_variable())
     time_variable.name = f"Time % {delay}"
 
     def reset_timer(t_reset, y):
