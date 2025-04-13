@@ -683,7 +683,6 @@ class TemporalVar(Generic[T]):
                         if index - delay < 0:
                             return initial_value
                         previous_t = input_variable.solver.t[index - delay]
-                        print(np.asarray(input_variable.solver.y).shape)
                         previous_y = input_variable.solver.y[index - delay]
 
                         return input_variable(previous_t, previous_y)
@@ -716,12 +715,12 @@ class TemporalVar(Generic[T]):
                       "If you choose to use 'differentiate', consider using a smaller step size for better accuracy.",
                       category=UserWarning, stacklevel=2)
 
-        previous = self.delayed(1, initial_value)
+        previous = self.delayed(1)
         time_value = self.solver.time_variable
         previous_time = time_value.delayed(1)
         d_y = self - previous
         d_t = time_value - previous_time
-        derived_value = np.divide(d_y, d_t, where=d_t != 0)
+        derived_value = temporal_var_where(self.solver,time_value != 0, np.divide(d_y, d_t, where=d_t != 0), initial_value)
         derived_value._expression = f"#D/DT {get_expression(self)}"
         return derived_value
 
