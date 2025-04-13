@@ -230,7 +230,7 @@ class Solver:
         result_list = []
         for var in self.feed_vars:
             try:
-                result = var(t, y) if callable(var) else var
+                result = var(t, y)
                 result_list.append(result)
             except RecursionError:
                 raise RecursionError(
@@ -544,7 +544,7 @@ class TemporalVar(Generic[T]):
                 else:
                     self.source = lambda t, y: source(t, y)
             elif np.isscalar(source):
-                self.source = lambda t, y: source if np.isscalar(t) else np.full(t.shape, source)
+                self.source = source
                 self._output_type = type(source)
             elif isinstance(source, (list, np.ndarray)):
                 self._output_type = np.ndarray
@@ -808,7 +808,7 @@ class TemporalVar(Generic[T]):
             else:
                 raise ValueError(f"Unknown call mode: {self._call_mode}.")
         else:
-            return self.source(t, y)
+            return self.source(t, y) if callable(self.source) else self.source
 
     def __copy__(self):
         return TemporalVar(self.solver, self.source, self.expression, operator=self.operator)
