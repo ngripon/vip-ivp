@@ -143,6 +143,20 @@ def test_multidimensional_integration_loop_node():
 
     vip.solve(10, time_step=0.001, plot=False)
 
+def test_multidimensional_differentiation():
+    source=[lambda t: t, lambda t: 2 * t, lambda t: 3 * t, lambda t: 4 * t]
+    array_source = vip.create_source(source)
+    diff=array_source.derivative()
+    truth=[array_source[i].derivative() for i in range(len(source))]
+
+    array_source.to_plot()
+    diff.to_plot()
+
+    vip.solve(10, time_step=1, plot=False)
+    for i in range(len(source)):
+        assert np.array_equal(diff[i].values,truth[i].values)
+
+
 
 def test_set_loop_node_multiple_times():
     source1 = vip.create_source(lambda t: t)
