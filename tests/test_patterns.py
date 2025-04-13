@@ -52,7 +52,7 @@ def test_use_basic_function():
     input.to_plot()
     output.to_plot()
 
-    vip.solve(10, plot=True)
+    vip.solve(10, plot=False)
 
 
 def test_use_numpy_method():

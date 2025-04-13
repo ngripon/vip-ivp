@@ -167,23 +167,6 @@ def where(condition, a, b):
         return temporal_var_where(solver, condition, a, b)
 
 
-def differentiate(input_value: TemporalVar[float], initial_value=0) -> TemporalVar[float]:
-    # Warn the user not to abuse the differentiate function
-    warnings.warn("It is recommended to use 'integrate' instead of 'differentiate' for solving IVPs, "
-                  "because the solver cannot guarantee precision when computing derivatives.\n"
-                  "If you choose to use 'differentiate', consider using a smaller step size for better accuracy.",
-                  category=UserWarning, stacklevel=2)
-
-    previous_value = input_value.delayed(1, initial_value)
-    time_value = get_time_variable()
-    previous_time = time_value.delayed(1)
-    d_y = input_value - previous_value
-    d_t = time_value - previous_time
-    derived_value = np.divide(d_y, d_t, where=d_t != 0)
-    derived_value._expression = f"#D/DT {get_expression(input_value)}"
-    return derived_value
-
-
 P = ParamSpec("P")
 
 

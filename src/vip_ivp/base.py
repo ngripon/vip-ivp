@@ -699,6 +699,30 @@ class TemporalVar(Generic[T]):
                            operator=operator_call,
                            call_mode=CallMode.CALL_FUN_RESULT)
 
+    def derivative(self, initial_value=0) -> "TemporalVar[T]":
+        """
+        Return the derivative of the Temporal Variable.
+
+        Warning: Contrary to integration, this derivative method does not guarantee precision. Use it only as an escape
+        hatch.
+        :param initial_value: value at t=0
+        :return: TemporalVar containing the derivative.
+        """
+        # Warn the user not to abuse the differentiate function
+        warnings.warn("It is recommended to use 'integrate' instead of 'differentiate' for solving IVPs, "
+                      "because the solver cannot guarantee precision when computing derivatives.\n"
+                      "If you choose to use 'differentiate', consider using a smaller step size for better accuracy.",
+                      category=UserWarning, stacklevel=2)
+
+        previous = self.delayed(1, initial_value)
+        time_value = self.solver.time_variable
+        previous_time = time_value.delayed(1)
+        d_y = self - previous
+        d_t = time_value - previous_time
+        derived_value = np.divide(d_y, d_t, where=d_t != 0)
+        derived_value._expression = f"#D/DT {get_expression(self)}"
+        return derived_value
+
     def m(self, method: Callable[P, T]) -> Callable[P, "TemporalVar[T]"]:
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> TemporalVar:
             inputs_expr = [get_expression(inp) if isinstance(inp, TemporalVar) else str(inp) for inp in args]
@@ -712,6 +736,7 @@ class TemporalVar(Generic[T]):
             expression += ")"
             return TemporalVar(self.solver, (method, self, *args, kwargs),
                                expression=expression, operator=operator_call)
+
         functools.update_wrapper(wrapper, method)
         return wrapper
 

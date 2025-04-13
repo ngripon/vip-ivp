@@ -134,7 +134,7 @@ def test_differentiate():
     d_n = vip.loop_node()
     n = vip.integrate(d_n, 1)
     d_n.loop_into(-0.5 * n)
-    d_n2 = vip.differentiate(n)
+    d_n2 = n.derivative()
 
     d_n2.to_plot()
     d_n.to_plot()
