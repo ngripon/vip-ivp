@@ -247,15 +247,22 @@ def solve(t_end: float, time_step: Union[float, None] = 0.1, method='RK45', t_ev
           include_events_times: bool = True, plot: bool = True, rtol: float = 1e-3,
           atol: float = 1e-6, max_step=np.inf, verbose: bool = False) -> None:
     """
-    Solve the equations of the dynamical system through an integration scheme.
+    Solve the equations of the dynamical system through a hybrid solver.
 
+    The hybrid solver is a modified version of SciPy's solve_ivp() function.
+
+    :param max_step: Maximum allowed step size. Default is np.inf, i.e., the step size is not bounded and determined
+        solely by the solver.
     :param plot: If True, a plot will show the result of the simulation for variables that were registered to plot.
     :param verbose: If True, print solving information to the console.
     :param include_events_times: If True, include time points at which events are triggered.
     :param t_end: Time at which the integration stops.
-    :param method: Integration method to use. Default is 'RK45'.
+    :param method: Integration method to use. Default is 'RK45'. For a list of available methods, see SciPy's
+        `solve_ivp()` documentation.
     :param time_step: Time step for the integration. If None, use points selected by the solver.
     :param t_eval: Times at which to store the computed solution. If None, use points selected by the solver.
+    :param rtol: Relative tolerance. The solver keeps the local error estimates less than `atol + rtol * abs(y)`.
+    :param atol: Absolute tolerance. The solver keeps the local error estimates less than `atol + rtol * abs(y)`.
     """
     solver = _get_current_solver()
     solver.solve(t_end, method, time_step, t_eval, include_events_times=include_events_times, verbose=verbose,
