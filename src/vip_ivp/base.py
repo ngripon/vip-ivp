@@ -335,6 +335,10 @@ class Solver:
         while self.status is None:
             message = solver.step()
 
+            if solver.status == "failed":
+                self.status = -1
+                break
+
             t_old = solver.t_old
             t = solver.t
             y = self._bound_sol(t, solver.y)
@@ -411,7 +415,7 @@ class Solver:
                         sol = self._sol_wrapper(solver.dense_output())
                     self.t.extend(t_eval_step)
                     if self.dim != 0:
-                        self.y.extend(np.vstack(sol(t_eval_step)).T)
+                        self.y.extend([sol(t_ev) for t_ev in t_eval_step])
                     else:
                         self.y.extend([0] * len(t_eval_step))
                     t_eval_i = t_eval_i_new
@@ -431,9 +435,6 @@ class Solver:
 
             if solver.status == "finished":
                 self.status = 0
-            elif solver.status == "failed":
-                self.status = -1
-                break
 
         message = MESSAGES.get(self.status, message)
         if self.events:
@@ -442,7 +443,7 @@ class Solver:
 
         if self.t:
             self.t = np.array(self.t)
-            self.y = np.vstack(self.y).T
+            self.y = np.vstack(self.y)
 
         if dense_output:
             if t_eval is None:
@@ -499,7 +500,7 @@ class Solver:
 
     def _sol_wrapper(self, sol):
         def output_fun(t: Union[float, NDArray]):
-            return self._bound_sol(t, sol(t))
+            return self._bound_sol(t, sol(t).T)
 
         return output_fun
 
@@ -682,7 +683,8 @@ class TemporalVar(Generic[T]):
                         if index - delay < 0:
                             return initial_value
                         previous_t = input_variable.solver.t[index - delay]
-                        previous_y = input_variable.solver.y[..., index - delay]
+                        print(np.asarray(input_variable.solver.y).shape)
+                        previous_y = input_variable.solver.y[index - delay]
 
                         return input_variable(previous_t, previous_y)
                     else:
@@ -839,7 +841,7 @@ class TemporalVar(Generic[T]):
             return {key: val(t, y) for key, val in self.source.items()}
         # Handle the termination leaves of the recursion
         elif not np.isscalar(t):
-            return np.array([self(t[i], y[..., i]) for i in range(len(t))])
+            return np.array([self(t[i], y[i]) for i in range(len(t))])
         elif self.operator is not None:
             if self._call_mode == CallMode.CALL_ARGS_FUN:
                 args = [x(t, y) if isinstance(x, TemporalVar) else x for x in self.source if not isinstance(x, dict)]

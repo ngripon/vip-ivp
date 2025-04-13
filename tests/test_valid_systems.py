@@ -139,6 +139,7 @@ def test_differentiate():
     d_n2.to_plot()
     d_n.to_plot()
 
+
     vip.solve(10, time_step=0.01)
 
     print(d_n.values)
@@ -146,6 +147,23 @@ def test_differentiate():
 
     errors = d_n.values - d_n2.values
     assert all(errors[1:] < 0.01)
+
+def test_integrated_differentiation():
+    step = vip.create_source(lambda t: 0 if t < 1 else 1)
+    # Differentiate then integrate
+    d_step_bad = step.derivative()
+    step_bad = vip.integrate(d_step_bad, 0)
+
+    # Integrate then differentiate
+    i_step = vip.integrate(step, 0)
+    step_ok = i_step.derivative()
+
+    step.to_plot()
+    step_ok.to_plot()
+    # d_step_bad.to_plot()
+    step_bad.to_plot()
+
+    vip.solve(2, time_step=0.01)
 
 
 def test_float_crossing_event():
