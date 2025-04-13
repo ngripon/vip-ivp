@@ -25,7 +25,7 @@ velocity = vip.integrate(acceleration, x0=0)
 height = vip.integrate(velocity, x0=initial_height)
 
 # Define bounce action: reverse velocity if it's large enough, else stop
-bounce = vip.where(abs(velocity) > v_min, velocity.set_value(-k * velocity), vip.terminate)
+bounce = vip.where(abs(velocity) > v_min, velocity.action_reset_to(-k * velocity), vip.terminate)
 # Define the event that triggers bounce when height crosses 0 downward (falling)
 height.on_crossing(0, bounce, terminal=False, direction="falling")
 
