@@ -1156,7 +1156,7 @@ class TemporalVar(Generic[T]):
 
     def __repr__(self) -> str:
         if self.solver.solved:
-            return f"{self.name or self._expression} = {self.values}"
+            return f"{self.name or self._expression} = {self._values}"
         else:
             return f"{self._expression}"
 
