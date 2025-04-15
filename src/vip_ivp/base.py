@@ -143,6 +143,7 @@ class Solver:
                     "disable this exception.")
         # Reinit values
         [var.clear_values() for var in self.vars]
+        [e.clear() for e in self.events]
         start = time.time()
         # Set t_eval
         if time_step is not None and t_eval is None:
@@ -1429,6 +1430,12 @@ class Event:
         if self.action is not None:
             self.action(t, y)
 
+    def clear(self):
+        self.count = 0
+        self.g = None
+        self.t_events = []
+        self.y_events = []
+        self.deletion_time = None
 
 class Action:
     def __init__(self, fun: Callable, expression: str = None):
