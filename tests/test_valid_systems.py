@@ -1,5 +1,6 @@
 import pathlib
 import runpy
+import sys
 from typing import Sequence
 
 import matplotlib
@@ -333,3 +334,17 @@ def test_forgiving_temporal_functions():
     soc.to_plot("State of Charge (-)")
 
     vip.solve(3600, time_step=0.1)
+
+def test_loads_of_recursion():
+    # sys.setrecursionlimit(10000)
+    a=vip.loop_node()
+    b=a.delayed(1)
+
+    a.loop_into(b+1)
+
+    # a.to_plot()
+    # b.to_plot()
+
+    vip.solve(100)
+
+    print(a.values)
