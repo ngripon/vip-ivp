@@ -6,13 +6,13 @@ sidebar_position: 5
 
 ## How to create a conditional statement
 
-Avoid using Python `if` statements to define `TemporalVar` instances. Instead, use `vip.where(condition, a, b)`.
+Python `if` statements won't work when applied to `TemporalVar` instances. To implement conditional Temporal Variables, use `vip.where(condition, a, b)`.
 
 The expression  `variable = vip.where(condition, a, b)` means that the value of `variable` is `a` at times when the condition is `True`, and `b` otherwise.
 
 ## Why `if` doesn't work
 
-`TemporalVar` instances don't behave correctly with regular `if` statements. Using `if` will evaluate the entire `TemporalVar` object as a boolean, which ignores its temporal nature and always returns `True`.
+`TemporalVar` instances can't behave correctly with regular `if` statements. Using `if` will evaluate the entire `TemporalVar` object as a boolean, which ignores its temporal nature. Because it is ambiguous, a `ValueError` is raised when an `if` is applied to a `TemporalVar`.
 
 To illustrate the issue, let's say we want to create the following step function:
 
@@ -37,20 +37,7 @@ else:
     step = vip.create_source(1)
 
 vip.solve(10, time_step=1)
-
-print(step.values)
 ```
-
-It prints:
-
-```
-[0 0 0 0 0 0 0 0 0 0 0]
-```
-
-The variable stays at `0` for the entire simulation, silently failing.  
-This happens because only one execution path runs in an `if` block, and `vip.create_source(1)` is never called.
-
-You need a way to define both outcomes at once, not conditionally.
 :::
 
 ### ✅ Do this instead

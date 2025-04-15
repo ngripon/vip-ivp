@@ -1150,6 +1150,9 @@ class TemporalVar(Generic[T]):
 
         return NotImplemented
 
+    def __bool__(self):
+        raise ValueError("The truth value of a Temporal Variable is ambiguous. Use vip.where() instead.")
+
     @property
     def expression(self):
         return self._expression
@@ -1344,10 +1347,10 @@ def get_expression(value) -> str:
     if isinstance(value, TemporalVar):
         frame = inspect.currentframe().f_back.f_back
         while (
-                frame.f_locals.get("self")
+                "self" in frame.f_locals
                 and (
-                        isinstance(frame.f_locals.get("self"), TemporalVar)
-                        or isinstance(frame.f_locals.get("self"), Solver)
+                        isinstance(frame.f_locals["self"], TemporalVar)
+                        or isinstance(frame.f_locals["self"], Solver)
                 )
                 or Path(frame.f_code.co_filename).as_posix().endswith("vip_ivp/api.py")
         ):

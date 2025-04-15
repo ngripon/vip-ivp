@@ -47,3 +47,13 @@ def test_crossing_integration_bounds():
         except Exception as e:
             print(e)
             raise e
+
+def test_if_statement():
+    time = vip.create_source(lambda t: t)
+    with pytest.raises(ValueError):
+        if time < 5:
+            step = vip.create_source(0)
+        else:
+            step = vip.create_source(1)
+
+        vip.solve(10, time_step=1)
