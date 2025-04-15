@@ -31,11 +31,13 @@ def create_source(value: int) -> TemporalVar[float]: ...
 def create_source(value: T) -> TemporalVar[T]: ...
 
 
-def create_source(value: Union[Callable[[Union[float, NDArray]], T], T]) -> TemporalVar[T]:
+def create_source(value: Union[Callable[[NDArray], T], T]) -> TemporalVar[T]:
     """
-    Create a source signal from a temporal function or a scalar value.
+    Create a source variable from a temporal function, a scalar value, a dict, a list or a NumPy array.
+    If the input value is a list, the variable content will be converted to a NumPy array. As a consequence, a nested
+    list must represent a valid rectangular matrix.
 
-    :param value: A function f(t) or a scalar value.
+    :param value: A function f(t), a scalar value, a dict, a list or a NumPy array.
     :return: The created TemporalVar.
     """
     solver = _get_current_solver()
@@ -59,9 +61,13 @@ def create_scenario(scenario_table: Union["pd.DataFrame", str, dict], time_key: 
     :param time_key: The key (column) to use as time for the scenario.
     :type time_key: str
 
-    :param interpolation_kind: The kind of interpolation to use. Default is "linear". This determines how values are
-        interpolated between time points.
-    :type interpolation_kind: str, optional
+    :param interpolation_kind: Specifies the kind of interpolation as a string or as an integer specifying the order of
+    the spline interpolator to use. The string has to be one of ‘linear’, ‘nearest’, ‘nearest-up’, ‘zero’, ‘slinear’,
+    ‘quadratic’, ‘cubic’, ‘previous’, or ‘next’. ‘zero’, ‘slinear’, ‘quadratic’ and ‘cubic’ refer to a spline
+    interpolation of zeroth, first, second or third order; ‘previous’ and ‘next’ simply return the previous or next
+    value of the point; ‘nearest-up’ and ‘nearest’ differ when interpolating half-integers (e.g. 0.5, 1.5) in that
+    ‘nearest-up’ rounds up and ‘nearest’ rounds down. Default is ‘linear’.
+    :type interpolation_kind: str or int, optional
 
     :param sep: The separator to use when reading CSV files. Default is a comma.
     :type sep: str, optional
@@ -161,52 +167,6 @@ def where(condition, a, b):
         return temporal_var_where(solver, condition, a, b)
 
 
-def delay(input_value: TemporalVar[T], n_steps: int, initial_value: T = 0) -> TemporalVar[T]:
-    if not isinstance(input_value, TemporalVar):
-        raise Exception("Only TemporalVars can be delayed.")
-    elif n_steps < 1:
-        raise Exception("Delay accept only a positive step.")
-
-    def create_delay(input_variable):
-        def previous_value(t, y):
-            if np.isscalar(t):
-                if len(input_variable.solver.t) >= n_steps:
-                    previous_t = input_variable.solver.t[-n_steps]
-                    previous_y = input_variable.solver.y[-n_steps]
-
-                    return input_variable(previous_t, previous_y)
-                else:
-                    return initial_value
-            else:
-                delayed_t = shift_array(t, n_steps, 0)
-                delayed_y = shift_array(y, n_steps, initial_value)
-                return input_variable(delayed_t, delayed_y)
-
-        return previous_value
-
-    return TemporalVar(input_value.solver, (create_delay, input_value),
-                       expression=f"#DELAY({n_steps}) {get_expression(input_value)}",
-                       operator=operator_call,
-                       call_mode=CallMode.CALL_FUN_RESULT)
-
-
-def differentiate(input_value: TemporalVar[float], initial_value=0) -> TemporalVar[float]:
-    # Warn the user not to abuse the differentiate function
-    warnings.warn("It is recommended to use 'integrate' instead of 'differentiate' for solving IVPs, "
-                  "because the solver cannot guarantee precision when computing derivatives.\n"
-                  "If you choose to use 'differentiate', consider using a smaller step size for better accuracy.",
-                  category=UserWarning, stacklevel=2)
-
-    previous_value = delay(input_value, 1, initial_value)
-    time_value = create_source(lambda t: t)
-    previous_time = delay(time_value, 1)
-    d_y = input_value - previous_value
-    d_t = time_value - previous_time
-    derived_value = np.divide(d_y, d_t, where=d_t != 0)
-    derived_value._expression = f"#D/DT {get_expression(input_value)}"
-    return derived_value
-
-
 P = ParamSpec("P")
 
 
@@ -217,7 +177,12 @@ def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
             f"{key}={get_expression(value) if isinstance(value, TemporalVar) else str(value)}"
             for key, value in kwargs.items()
         ]
-        expression = f"{func.__name__}({', '.join(inputs_expr)}"
+        if inspect.isclass(func):
+            expression = f"{func.__class__.__name__}({', '.join(inputs_expr)}"
+        elif inspect.isfunction(func):
+            expression = f"{func.__name__}({', '.join(inputs_expr)}"
+        else:
+            expression = f"{repr(func)}({', '.join(inputs_expr)}"
         if kwargs_expr:
             expression += ", ".join(kwargs_expr)
         expression += ")"
@@ -227,6 +192,15 @@ def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
 
     functools.update_wrapper(wrapper, func)
     return wrapper
+
+
+def get_time_variable() -> TemporalVar[float]:
+    """
+    Return the time variable of the system.
+    :return: Time variable that returns the time value of each simulation step.
+    """
+    solver = _get_current_solver()
+    return solver.time_variable
 
 
 # Events
@@ -247,8 +221,7 @@ terminate = Action(_terminate, "Terminate simulation")
 def set_timeout(action: Union[Action, Callable], delay: float) -> Event:
     solver = _get_current_solver()
     current_time = solver.t_current
-    time_variable = create_source(lambda t: t)
-    time_variable.name = "Time"
+    time_variable = get_time_variable()
     event = time_variable.on_crossing(current_time + delay, action)
     event.action += event.action_disable
     return event
@@ -257,7 +230,7 @@ def set_timeout(action: Union[Action, Callable], delay: float) -> Event:
 def set_interval(action: Union[Action, Callable], delay: float) -> Event:
     solver = _get_current_solver()
     current_time = solver.t_current
-    time_variable = create_source(lambda t: t)
+    time_variable = copy(get_time_variable())
     time_variable.name = f"Time % {delay}"
 
     def reset_timer(t_reset, y):
@@ -271,21 +244,29 @@ def set_interval(action: Union[Action, Callable], delay: float) -> Event:
 # Solving
 
 def solve(t_end: float, time_step: Union[float, None] = 0.1, method='RK45', t_eval: Union[List, NDArray] = None,
-          include_events_times: bool = True, verbose: bool = False, **options) -> None:
+          include_events_times: bool = True, plot: bool = True, rtol: float = 1e-3,
+          atol: float = 1e-6, max_step=np.inf, verbose: bool = False) -> None:
     """
-    Solve the equations of the dynamical system through an integration scheme.
+    Solve the equations of the dynamical system through a hybrid solver.
 
+    The hybrid solver is a modified version of SciPy's solve_ivp() function.
+
+    :param max_step: Maximum allowed step size. Default is np.inf, i.e., the step size is not bounded and determined
+        solely by the solver.
+    :param plot: If True, a plot will show the result of the simulation for variables that were registered to plot.
     :param verbose: If True, print solving information to the console.
     :param include_events_times: If True, include time points at which events are triggered.
     :param t_end: Time at which the integration stops.
-    :param method: Integration method to use. Default is 'RK45'.
+    :param method: Integration method to use. Default is 'RK45'. For a list of available methods, see SciPy's
+        `solve_ivp()` documentation.
     :param time_step: Time step for the integration. If None, use points selected by the solver.
     :param t_eval: Times at which to store the computed solution. If None, use points selected by the solver.
-    :param options: Additional options for the solver.
+    :param rtol: Relative tolerance. The solver keeps the local error estimates less than `atol + rtol * abs(y)`.
+    :param atol: Absolute tolerance. The solver keeps the local error estimates less than `atol + rtol * abs(y)`.
     """
     solver = _get_current_solver()
     solver.solve(t_end, method, time_step, t_eval, include_events_times=include_events_times, verbose=verbose,
-                 **options)
+                 plot=plot, rtol=rtol, atol=atol, max_step=max_step)
 
 
 def explore(fun: Callable[..., T], t_end: float, bounds=(), time_step: float = None, title: str = "") -> None:
@@ -314,14 +295,14 @@ def new_system() -> None:
 AVAILABLE_EXPORT_FILE_FORMATS = ["csv", "json"]
 
 
-def export_to_df(variables: Iterable[TemporalVar] = None) -> "pd.DataFrame":
+def export_to_df(*variables: TemporalVar) -> "pd.DataFrame":
     import pandas as pd
 
     solver = _get_current_solver()
     if not solver.solved:
         raise Exception("System must be solved before exporting the results. Please call 'vip.solve(t_end)'.")
     variables_dict = {"Time (s)": solver.t}
-    if variables is None:
+    if not variables:
         variable_dict = {**variables_dict, **{key: var.values for key, var in solver.named_vars.items()}}
     else:
         variable_dict = {**variables_dict, **{get_expression(var): var.values for var in variables}}
@@ -338,7 +319,7 @@ def export_file(filename: str, variables: Iterable[TemporalVar] = None,
             f"Unsupported file format: {file_format}. "
             f"The available file formats are {', '.join(AVAILABLE_EXPORT_FILE_FORMATS)}"
         )
-    df = export_to_df(variables)
+    df = export_to_df(*variables)
     if file_format == "csv":
         df.to_csv(filename, index=False)
     elif file_format == "json":

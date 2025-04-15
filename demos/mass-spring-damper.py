@@ -1,25 +1,39 @@
 import vip_ivp as vip
+import matplotlib.pyplot as plt
 
 # System parameters
-m = 300.0  # Mass (kg)
-c = 1500  # Damping coefficient (N.s/m)
-k = 25000  # Spring stiffness (N/m)
-displacement_x0 = 0.2  # Initial value of displacement (m)
+m = 1.0  # Mass (kg)
+k = 10.0  # Spring constant (N/m)
+c = 0.5  # Damping coefficient (N·s/m)
 
-# Create simulation
-# System equation is : m * acc + c * vel + k * disp = 0 <=> acc = - 1 / m * (c * vel + k * disp)
-# We do not have access to velocity and displacement at this stage, so we create a loop node.
-acceleration = vip.loop_node()
-velocity = vip.integrate(acceleration, 0.0)
-displacement = vip.integrate(velocity, displacement_x0)
-# Now we can set the acceleration
-acceleration.loop_into(-(c * velocity + k * displacement) / m)
+x0 = 1.0  # Initial position (m)
+v0 = 0.0  # Initial velocity (m/s)
+
+# Build the system
+a = vip.loop_node()  # Acceleration
+v = vip.integrate(a, v0)  # Velocity
+x = vip.integrate(v, x0)  # Displacement
+a.loop_into(-(c * v + k * x) / m)  # Set acceleration value
+
+# Create a variable to count the number of oscillations
+count = vip.create_source(0)
+# Create event that triggers when x crosses 0 (from negative to positive)
+x.on_crossing(0, count.action_set_to(count + 1), direction="rising")
 
 # Choose results to plot
-displacement.to_plot("Displacement (m)")
-velocity.to_plot("Velocity (m/s)")
-
+x.to_plot("Displacement (m)")
+count.to_plot("Oscillations count")
 # Solve the system
-t_simulation = 10  # s
-time_step = 0.001
-vip.solve(t_simulation, time_step=time_step)
+vip.solve(10, time_step=0.01)
+
+# Create a phase space diagram
+plt.plot(x.values, v.values)
+plt.xlabel('Position x (m)')
+plt.ylabel('Velocity v (m/s)')
+plt.title('Phase Space Diagram')
+plt.grid()
+plt.show()
+
+# Export the results to pandas
+dataframe = vip.export_to_df()
+print(dataframe)

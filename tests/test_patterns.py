@@ -1,3 +1,5 @@
+import time
+
 import matplotlib
 import numpy as np
 import pandas as pd
@@ -39,6 +41,37 @@ def test_use_numpy_function():
     assert np.all(error_array == 0)
 
 
+def test_use_basic_function():
+    def basic_function(x: float) -> int:
+        if x > 0:
+            return 1
+        else:
+            return -1
+
+    input = vip.create_source(lambda t: np.cos(t))
+    output = vip.f(basic_function)(input)
+
+    input.to_plot()
+    output.to_plot()
+
+    vip.solve(10, plot=False)
+
+
+def test_use_numpy_method():
+    array_source = vip.create_source([lambda t: t, lambda t: 2 * t, lambda t: 3 * t, lambda t: 4 * t])
+    reshaped_array = array_source.m(array_source.output_type.reshape)((2, 2))
+    square_array_source = vip.create_source([[lambda t: t, lambda t: 2 * t], [lambda t: 3 * t, lambda t: 4 * t]])
+    # reshaped_array.to_plot()
+    vip.solve(10, 1)
+    print(array_source.values[0])
+    print(reshaped_array.values[0])
+    print(square_array_source.values[0])
+    # Bug explanation: When the TemporalVariable possess a numpy array that is computed from an operation, it does not
+    # manipulate the shape to have the time dimensions the last instead of the first.
+
+    assert np.array_equal(reshaped_array.values, square_array_source.values)
+
+
 def test_multidimensional_integration_source():
     arr = np.array([5, 4])
     arr_x0 = np.array([1, 0])
@@ -70,6 +103,8 @@ def test_multidimensional_integration_source():
     # Evaluate integration from source
     assert np.allclose(a[0].values, a0_fun(a[0].t))
     assert np.allclose(a[1].values, a1_fun(a[1].t))
+    assert np.allclose(a.values[0], a0_fun(a[0].t))
+    assert np.allclose(a.values[1], a1_fun(a[1].t))
     assert np.allclose(d["a"].values, a0_fun(a[0].t))
     assert np.allclose(d["b"].values, a1_fun(a[1].t))
     # Evaluate integration from python variables
@@ -108,7 +143,21 @@ def test_multidimensional_integration_loop_node():
 
     n.to_plot()
 
-    vip.solve(10, time_step=0.001)
+    vip.solve(10, time_step=0.001, plot=False)
+
+def test_multidimensional_differentiation():
+    source=[lambda t: t, lambda t: 2 * t, lambda t: 3 * t, lambda t: 4 * t]
+    array_source = vip.create_source(source)
+    diff=array_source.derivative()
+    truth=[array_source[i].derivative() for i in range(len(source))]
+
+    array_source.to_plot()
+    diff.to_plot()
+
+    vip.solve(10, time_step=1, plot=False)
+    for i in range(len(source)):
+        assert np.array_equal(diff[i].values,truth[i].values)
+
 
 
 def test_set_loop_node_multiple_times():
@@ -141,12 +190,12 @@ def test_scenario_interpolation():
     for scenario in scenarii_inputs:
         print(f"Test scenario: {scenario}")
         vip.new_system()
-        variables = vip.create_scenario(scenario, "t", sep=";")
+        scenario_variable = vip.create_scenario(scenario, time_key="t", sep=";", interpolation_kind="linear")
 
         vip.solve(4, time_step=0.5)
 
-        a = variables["a"]
-        b = variables["b"]
+        a = scenario_variable["a"]
+        b = scenario_variable["b"]
 
         assert a.values[0] == 1
         assert a.values[1] == 1.5
@@ -385,3 +434,17 @@ def test_increment_interval():
     assert count.values[6] == 3
     assert count.values[8] == 4
     assert count.values[10] == 5
+
+def test_loop_with_delay():
+    start=time.time()
+    a=vip.loop_node()
+    b=a.delayed(1)
+
+    a.loop_into(b+1)
+
+    # a.to_plot()
+    # b.to_plot()
+
+    vip.solve(10,time_step=1)
+    print(a.values)
+    print(time.time()-start)

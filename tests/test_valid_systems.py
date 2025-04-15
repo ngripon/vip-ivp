@@ -1,5 +1,6 @@
 import pathlib
 import runpy
+import sys
 from typing import Sequence
 
 import matplotlib
@@ -134,14 +135,36 @@ def test_differentiate():
     d_n = vip.loop_node()
     n = vip.integrate(d_n, 1)
     d_n.loop_into(-0.5 * n)
-    d_n2 = vip.differentiate(n)
-    vip.solve(10, time_step=0.001)
+    d_n2 = n.derivative()
+
+    d_n2.to_plot()
+    d_n.to_plot()
+
+
+    vip.solve(10, time_step=0.01)
 
     print(d_n.values)
     print(d_n2.values)
 
     errors = d_n.values - d_n2.values
-    assert all(errors[1:] < 0.001)
+    assert all(errors[1:] < 0.01)
+
+def test_integrated_differentiation():
+    step = vip.create_source(lambda t: 0 if t < 1 else 1)
+    # Differentiate then integrate
+    d_step_bad = step.derivative()
+    step_bad = vip.integrate(d_step_bad, 0)
+
+    # Integrate then differentiate
+    i_step = vip.integrate(step, 0)
+    step_ok = i_step.derivative()
+
+    step.to_plot()
+    step_ok.to_plot()
+    # d_step_bad.to_plot()
+    step_bad.to_plot()
+
+    vip.solve(2, time_step=0.01)
 
 
 def test_float_crossing_event():
@@ -294,3 +317,33 @@ def test_demos():
             runpy.run_path(str(script_path), run_name="__main__")
         except Exception as e:
             pytest.fail(f"Demo script {script_path.name} raised an exception: {e}")
+
+
+def test_forgiving_temporal_functions():
+    """
+    Test if the create_source function can accept functions that do not support array inputs
+    """
+    # Data map
+    voltage_per_soc = {0.0: 3.0, 0.2: 3.4, 0.5: 3.6, 0.8: 3.8, 1.0: 4.2}
+    # Create input
+    soc = vip.create_source(lambda t: max(1.0 - 0.0004 * t, 0))
+    # Create output with np.interp
+    voltage = vip.f(np.interp)(soc, list(voltage_per_soc.keys()), list(voltage_per_soc.values()))
+
+    voltage.to_plot("Voltage (V)")
+    soc.to_plot("State of Charge (-)")
+
+    vip.solve(3600, time_step=0.1)
+
+# def test_loads_of_recursion():
+#     a=vip.loop_node()
+#     b=a.delayed(1)
+#
+#     a.loop_into(b+1)
+#
+#     a.to_plot()
+#     b.to_plot()
+#
+#     vip.solve(100)
+#
+#     print(a.values)

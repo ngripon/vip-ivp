@@ -12,15 +12,16 @@ from typing import Callable, Union, TypeVar, Generic
 
 import numpy as np
 from numpy.typing import NDArray
-from typing_extensions import deprecated
+from typing_extensions import deprecated, ParamSpec
 
 from .solver_utils import *
-from .utils import add_necessary_brackets, convert_to_string, operator_call
+from .utils import add_necessary_brackets, convert_to_string, operator_call, shift_array
 
 if TYPE_CHECKING:
     import pandas as pd
 
 T = TypeVar("T")
+P = ParamSpec("P")
 
 
 class Solver:
@@ -41,6 +42,9 @@ class Solver:
         self.named_vars: Dict[str, TemporalVar] = {}
         self.vars_to_plot: Dict[str, TemporalVar] = {}
         self.status: Union[int, None] = None
+
+        # Special solver TemporalVars
+        self.time_variable: TemporalVar[float] = TemporalVar(self, lambda t: t, "Time")
 
     def integrate(self, input_value: "TemporalVar[T]", x0: T, minimum: Union[T, "TemporalVar[T]", None] = None,
                   maximum: Union[T, "TemporalVar[T]", None] = None) -> "IntegratedVar[T]":
@@ -144,23 +148,17 @@ class Solver:
         if time_step is not None and t_eval is None:
             t_eval = np.arange(0, t_end + time_step / 2,
                                time_step)  # Add half a time step to get an array that stops on t_end
-        try:
-            res = self._solve_ivp((0, t_end), self.x0, method=method, t_eval=t_eval,
-                                  include_events_times=include_events_times, **options)
-            if not res.success:
-                raise Exception(res.message)
-        except RecursionError:
-            raise RecursionError(
-                "An algebraic loop has been detected in the system. "
-                "Please check in the set_value() methods if a variable use itself for computing "
-                "its value."
-            )
+
+        res = self._solve_ivp((0, t_end), self.x0, method=method, t_eval=t_eval,
+                              include_events_times=include_events_times, **options)
+        if not res.success:
+            raise Exception(res.message)
 
         self.solved = True
         if verbose:
             output_str = f"Solving time = {time.time() - start} s\n"
             if self.events:
-                output_str += f"Number of triggered events = {np.sum(len(t) for t in res.t_events)}\n"
+                output_str += f"Number of triggered events = {sum(len(t) for t in res.t_events)}\n"
             print(output_str)
         if plot:
             self.plot()
@@ -178,6 +176,7 @@ class Solver:
         if not self.vars_to_plot:
             return
         # Plot data
+        plt.figure("Results for VIP")
         for variable_name, var in self.vars_to_plot.items():
             plt.plot(var.t, var.values, label=variable_name)
         # Label and axis
@@ -232,7 +231,17 @@ class Solver:
         self.__init__()
 
     def _dy(self, t, y):
-        return [var(t, y) if callable(var) else var for var in self.feed_vars]
+        result_list = []
+        for var in self.feed_vars:
+            try:
+                result = var(t, y)
+                result_list.append(result)
+            except RecursionError:
+                raise RecursionError(
+                    f"An algebraic loop has been detected when trying to compute the value of variable {var.name}.\n"
+                    f"Make sure that a variable does not reference itself in `.loop_into()` methods."
+                )
+        return result_list
 
     def _unwrap_leaves(self, outputs):
         """
@@ -326,6 +335,10 @@ class Solver:
         while self.status is None:
             message = solver.step()
 
+            if solver.status == "failed":
+                self.status = -1
+                break
+
             t_old = solver.t_old
             t = solver.t
             y = self._bound_sol(t, solver.y)
@@ -402,14 +415,13 @@ class Solver:
                         sol = self._sol_wrapper(solver.dense_output())
                     self.t.extend(t_eval_step)
                     if self.dim != 0:
-                        self.y.extend(np.vstack(sol(t_eval_step)).T)
+                        self.y.extend([sol(t_ev) for t_ev in t_eval_step])
                     else:
                         self.y.extend([0] * len(t_eval_step))
                     t_eval_i = t_eval_i_new
                 # Add time events
                 if events:
-                    if active_events_indices.size > 0 and self.status != 1:
-
+                    if active_events_indices.size > 0:
                         if self.t[-1] == te:
                             if self.dim != 0:
                                 self.y[-1] = ye
@@ -423,9 +435,6 @@ class Solver:
 
             if solver.status == "finished":
                 self.status = 0
-            elif solver.status == "failed":
-                self.status = -1
-                break
 
         message = MESSAGES.get(self.status, message)
         if self.events:
@@ -434,7 +443,7 @@ class Solver:
 
         if self.t:
             self.t = np.array(self.t)
-            self.y = np.vstack(self.y).T
+            self.y = np.vstack(self.y)
 
         if dense_output:
             if t_eval is None:
@@ -491,7 +500,7 @@ class Solver:
 
     def _sol_wrapper(self, sol):
         def output_fun(t: Union[float, NDArray]):
-            return self._bound_sol(t, sol(t))
+            return self._bound_sol(t, sol(t).T)
 
         return output_fun
 
@@ -540,7 +549,7 @@ class TemporalVar(Generic[T]):
                 else:
                     self.source = lambda t, y: source(t, y)
             elif np.isscalar(source):
-                self.source = lambda t, y: source if np.isscalar(t) else np.full(t.shape, source)
+                self.source = source
                 self._output_type = type(source)
             elif isinstance(source, (list, np.ndarray)):
                 self._output_type = np.ndarray
@@ -572,8 +581,14 @@ class TemporalVar(Generic[T]):
                 "The differential system has not been solved. "
                 "Call the solve() method before inquiring the variable values."
             )
-        if self._values is None:
-            self._values = self(self.t, self.solver.y)
+        try:
+            if self._values is None:
+                self._values = self(self.t, self.solver.y)
+        except RecursionError:
+            raise RecursionError(
+                f"An algebraic loop has been detected when trying to compute the value of variable {self.name}.\n"
+                f"Make sure that a variable does not reference itself in `.loop_into()` methods."
+            )
         return self._values
 
     @property
@@ -588,7 +603,7 @@ class TemporalVar(Generic[T]):
     @property
     def output_type(self):
         if self._output_type is None:
-            self._output_type = type(self(0, self.solver.x0))
+            self._output_type = type(self._first_value())
         return self._output_type
 
     def save(self, name: str) -> None:
@@ -648,6 +663,85 @@ class TemporalVar(Generic[T]):
             variables[col] = fun
         return cls(solver, variables)
 
+    def delayed(self, delay: int, initial_value: T = 0) -> "TemporalVar[T]":
+        """
+        Create a delayed version of the TemporalVar.
+        :param delay: Number of solver steps by which the new TemporalVar is delayed.
+        :param initial_value: Value of the delayed variable at the beginning when there is not any value for the
+            original value.
+        :return: Delayed version of the TemporalVar
+        """
+        if delay < 1:
+            raise Exception("Delay accept only a positive step.")
+
+        def create_delay(input_variable):
+            def previous_value(t, y):
+                if np.isscalar(t):
+                    if len(input_variable.solver.t) >= delay:
+                        index = next((i for i, ts in enumerate(input_variable.solver.t) if t <= ts),
+                                     len(input_variable.solver.t))
+                        if index - delay < 0:
+                            return initial_value
+                        previous_t = input_variable.solver.t[index - delay]
+                        previous_y = input_variable.solver.y[index - delay]
+
+                        return input_variable(previous_t, previous_y)
+                    else:
+                        return initial_value
+                else:
+                    delayed_t = shift_array(t, delay, 0)
+                    delayed_y = shift_array(y, delay, initial_value)
+                    return input_variable(delayed_t, delayed_y)
+
+            return previous_value
+
+        return TemporalVar(self.solver, (create_delay, self),
+                           expression=f"#DELAY({delay}) {get_expression(self)}",
+                           operator=operator_call,
+                           call_mode=CallMode.CALL_FUN_RESULT)
+
+    def derivative(self, initial_value=0) -> "TemporalVar[T]":
+        """
+        Return the derivative of the Temporal Variable.
+
+        Warning: Contrary to integration, this derivative method does not guarantee precision. Use it only as an escape
+        hatch.
+        :param initial_value: value at t=0
+        :return: TemporalVar containing the derivative.
+        """
+        # Warn the user not to abuse the differentiate function
+        warnings.warn("It is recommended to use 'integrate' instead of 'differentiate' for solving IVPs, "
+                      "because the solver cannot guarantee precision when computing derivatives.\n"
+                      "If you choose to use 'differentiate', consider using a smaller step size for better accuracy.",
+                      category=UserWarning, stacklevel=2)
+
+        previous = self.delayed(1)
+        time_value = self.solver.time_variable
+        previous_time = time_value.delayed(1)
+        d_y = self - previous
+        d_t = time_value - previous_time
+        derived_value = temporal_var_where(self.solver, time_value != 0, np.divide(d_y, d_t, where=d_t != 0),
+                                           initial_value)
+        derived_value._expression = f"#D/DT {get_expression(self)}"
+        return derived_value
+
+    def m(self, method: Callable[P, T]) -> Callable[P, "TemporalVar[T]"]:
+        def wrapper(*args: P.args, **kwargs: P.kwargs) -> TemporalVar:
+            inputs_expr = [get_expression(inp) if isinstance(inp, TemporalVar) else str(inp) for inp in args]
+            kwargs_expr = [
+                f"{key}={get_expression(value) if isinstance(value, TemporalVar) else str(value)}"
+                for key, value in kwargs.items()
+            ]
+            expression = f"{method.__name__}({', '.join(inputs_expr)}"
+            if kwargs_expr:
+                expression += ", ".join(kwargs_expr)
+            expression += ")"
+            return TemporalVar(self.solver, (method, self, *args, kwargs),
+                               expression=expression, operator=operator_call)
+
+        functools.update_wrapper(wrapper, method)
+        return wrapper
+
     def on_crossing(self, value: Union["TemporalVar[T]", T], action: Union["Action", Callable] = None,
                     direction: Literal["rising", "falling", "both"] = "both",
                     terminal: Union[bool, int] = False) -> "Event":
@@ -692,11 +786,11 @@ class TemporalVar(Generic[T]):
                     current = to_visit.pop()
                     for var in current.source:
                         if isinstance(var, TemporalVar):
-                            inverse_refs[var] = current
+                            inverse_refs[id(var)] = current
                             if var is self:
                                 path = [var]
-                                while path[-1] in inverse_refs:
-                                    path.append(inverse_refs[path[-1]])
+                                while id(path[-1]) in inverse_refs:
+                                    path.append(inverse_refs[id(path[-1])])
                                 path.reverse()
                                 # Replace all source variables of the path in value by copies
                                 current_variable = path.pop(0)
@@ -724,7 +818,7 @@ class TemporalVar(Generic[T]):
         self._values = None
 
     def _first_value(self):
-        return self(0, self.solver.x0)
+        return self(0, self.solver.x0 if len(self.solver.x0) else 0)
 
     def _from_arg(self, value: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
         """
@@ -734,11 +828,20 @@ class TemporalVar(Generic[T]):
             return value
         return TemporalVar(self.solver, value)
 
-    def __hash__(self):
-        return hash(self.source)
-
     def __call__(self, t: Union[float, NDArray], y: NDArray) -> T:
-        if self.operator is not None:
+        # Handle dict in a recursive way
+        if isinstance(self.source, dict):
+            return {key: val(t, y) for key, val in self.source.items()}
+        elif not np.isscalar(t):
+            result = np.array([self(t[i], y[i]) for i in range(len(t))])
+            # If the result is a multidimensional array, make the time dimension the last instead of the first
+            if result.ndim > 1:
+                result = np.moveaxis(result, 0, -1)
+            return result
+        # Handle the termination leaves of the recursion
+        elif isinstance(self.source, np.ndarray):
+            return np.stack(np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source))
+        elif self.operator is not None:
             if self._call_mode == CallMode.CALL_ARGS_FUN:
                 args = [x(t, y) if isinstance(x, TemporalVar) else x for x in self.source if not isinstance(x, dict)]
                 kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
@@ -750,17 +853,8 @@ class TemporalVar(Generic[T]):
                 return self.operator(*args, **kwargs)(t, y)
             else:
                 raise ValueError(f"Unknown call mode: {self._call_mode}.")
-
-        if isinstance(self.source, np.ndarray):
-            if np.isscalar(t):
-                return np.stack(np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source))
-            return np.stack(
-                np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source.ravel())
-            ).reshape((*self.source.shape, *np.array(t).shape))
-        elif isinstance(self.source, dict):
-            return {key: val(t, y) for key, val in self.source.items()}
         else:
-            return self.source(t, y)
+            return self.source(t, y) if callable(self.source) else self.source
 
     def __copy__(self):
         return TemporalVar(self.solver, self.source, self.expression, operator=self.operator)
@@ -1062,7 +1156,7 @@ class TemporalVar(Generic[T]):
 
     def __repr__(self) -> str:
         if self.solver.solved:
-            return f"{self.values}"
+            return f"{self.name or self._expression} = {self._values}"
         else:
             return f"{self._expression}"
 
