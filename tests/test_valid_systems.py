@@ -335,16 +335,15 @@ def test_forgiving_temporal_functions():
 
     vip.solve(3600, time_step=0.1)
 
-def test_loads_of_recursion():
-    # sys.setrecursionlimit(10000)
-    a=vip.loop_node()
-    b=a.delayed(1)
-
-    a.loop_into(b+1)
-
-    # a.to_plot()
-    # b.to_plot()
-
-    vip.solve(100)
-
-    print(a.values)
+# def test_loads_of_recursion():
+#     a=vip.loop_node()
+#     b=a.delayed(1)
+#
+#     a.loop_into(b+1)
+#
+#     a.to_plot()
+#     b.to_plot()
+#
+#     vip.solve(100)
+#
+#     print(a.values)

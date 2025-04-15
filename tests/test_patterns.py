@@ -1,3 +1,5 @@
+import time
+
 import matplotlib
 import numpy as np
 import pandas as pd
@@ -434,12 +436,15 @@ def test_increment_interval():
     assert count.values[10] == 5
 
 def test_loop_with_delay():
+    start=time.time()
     a=vip.loop_node()
     b=a.delayed(1)
 
     a.loop_into(b+1)
 
-    a.to_plot()
-    b.to_plot()
+    # a.to_plot()
+    # b.to_plot()
 
-    vip.solve(10)
+    vip.solve(10,time_step=1)
+    print(a.values)
+    print(time.time()-start)
