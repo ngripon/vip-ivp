@@ -573,6 +573,8 @@ class TemporalVar(Generic[T]):
 
         self.events: List[Event] = []
 
+        self._cache = {}
+
         self.solver.vars.append(self)
 
     @property
@@ -840,22 +842,27 @@ class TemporalVar(Generic[T]):
                 result = np.moveaxis(result, 0, -1)
             return result
         # Handle the termination leaves of the recursion
+        elif t in self._cache:
+            return self._cache[t]
         elif isinstance(self.source, np.ndarray):
-            return np.stack(np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source))
+            output = np.stack(np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source))
         elif self.operator is not None:
             if self._call_mode == CallMode.CALL_ARGS_FUN:
                 args = [x(t, y) if isinstance(x, TemporalVar) else x for x in self.source if not isinstance(x, dict)]
                 kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
                 kwargs = {k: (x(t, y) if isinstance(x, TemporalVar) else x) for k, x in kwargs.items()}
-                return self.operator(*args, **kwargs)
+                output = self.operator(*args, **kwargs)
             elif self._call_mode == CallMode.CALL_FUN_RESULT:
                 args = [x for x in self.source if not isinstance(x, dict)]
                 kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
-                return self.operator(*args, **kwargs)(t, y)
+                output = self.operator(*args, **kwargs)(t, y)
             else:
                 raise ValueError(f"Unknown call mode: {self._call_mode}.")
         else:
-            return self.source(t, y) if callable(self.source) else self.source
+            output = self.source(t, y) if callable(self.source) else self.source
+        if t in self.solver.t:
+            self._cache[t] = output
+        return output
 
     def __copy__(self):
         return TemporalVar(self.solver, self.source, self.expression, operator=self.operator)
@@ -1436,6 +1443,7 @@ class Event:
         self.t_events = []
         self.y_events = []
         self.deletion_time = None
+
 
 class Action:
     def __init__(self, fun: Callable, expression: str = None):

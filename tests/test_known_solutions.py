@@ -25,7 +25,7 @@ def test_rc_circuit():
                 t = np.linspace(0, t_end, 1001)
                 exact_solution = q0 * np.exp(-t / (R * C))
                 # Compute solver solution
-                vip.clear()
+                vip.new_system()
                 dq = vip.loop_node()
                 q = vip.integrate(dq, q0)
                 dq.loop_into(-q / (R * C))
