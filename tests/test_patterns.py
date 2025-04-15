@@ -432,3 +432,14 @@ def test_increment_interval():
     assert count.values[6] == 3
     assert count.values[8] == 4
     assert count.values[10] == 5
+
+def test_loop_with_delay():
+    a=vip.loop_node()
+    b=a.delayed(1)
+
+    a.loop_into(b+1)
+
+    a.to_plot()
+    b.to_plot()
+
+    vip.solve(10)
