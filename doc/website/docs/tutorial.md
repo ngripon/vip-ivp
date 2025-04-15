@@ -214,3 +214,25 @@ plt.show()
 dataframe = vip.export_to_df(v, x)
 print(dataframe)
 ```
+
+## Using Jupyter Notebook
+### Jupyter Notebook Compatibility
+
+`vip-ivp` works seamlessly with Jupyter Notebook, but to ensure correct behavior, especially when re-running cells, you must **initialize a new system** before creating any `TemporalVar` instances:
+
+```python
+import vip_ivp as vip
+
+vip.new_system()
+```
+
+This line resets the internal state of the solver and avoids unintentional accumulation of old variables from previous runs.
+
+:::warning
+**Always rerun `vip.new_system()`** before creating Temporal Variables if you're re-executing a notebook cell.  
+Failing to do so will cause the simulation graph to grow with each run, which can **drastically slow down solving times**.
+:::
+
+### Complete example in a Notebook
+
+[Bouncing ball example in a Notebook](https://github.com/ngripon/vip-ivp/blob/main/demos/bouncing_ball.ipynb)
