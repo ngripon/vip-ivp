@@ -379,19 +379,19 @@ class Solver:
                         self.t_current = te
                         # Get all events that happens at te and execute their action
                         triggering_events = [active_events[i] for i in range(len(active_events)) if roots[i] == te]
-                        triggered_events=[]
+                        triggered_events = []
                         for event in triggering_events:
                             event.t_events.append(te)
                             event.y_events.append(ye)
-                            event.execute_action(te, ye) # Some actions mutate ye
+                            event.execute_action(te, ye)  # Some actions mutate ye
                             triggered_events.append(event)
                         # Create a loop to check if other events has triggered
                         while True:
-                            t_latest=t_eval[np.searchsorted(t_eval, te, side="left")]
-                            g_latest=[e(t_latest, sol(t_latest)) for e in events]
-                            g_current=[e(te, ye) for e in events]
+                            t_latest = t_eval[np.searchsorted(t_eval, te, side="left")]
+                            g_latest = [e(t_latest, sol(t_latest)) for e in events]
+                            g_current = [e(te, ye) for e in events]
                             direction = np.array([e.direction for e in events])
-                            active_events_indices_cascade=find_active_events_in_step(g_latest, g_current, direction)
+                            active_events_indices_cascade = find_active_events_in_step(g_latest, g_current, direction)
                             triggering_events = [self.events[i] for i in active_events_indices_cascade if
                                                  self.events[i] not in triggered_events]
                             if triggering_events:
@@ -601,7 +601,7 @@ class TemporalVar(Generic[T]):
 
         self.events: List[Event] = []
 
-        self._cache = LRUCache(maxsize=16)
+        self._cache = LRUCache(maxsize=128)
 
         self.solver.vars.append(self)
 
@@ -725,6 +725,9 @@ class TemporalVar(Generic[T]):
                     return input_variable(delayed_t, delayed_y)
 
             return previous_value
+
+        if delay > self._cache.maxsize:
+            self._cache = LRUCache(maxsize=delay+5)
 
         return TemporalVar(self.solver, (create_delay, self),
                            expression=f"#DELAY({delay}) {get_expression(self)}",
@@ -878,7 +881,8 @@ class TemporalVar(Generic[T]):
                 output = np.stack(np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source))
             elif self.operator is not None:
                 if self._call_mode == CallMode.CALL_ARGS_FUN:
-                    args = [x(t, y) if isinstance(x, TemporalVar) else x for x in self.source if not isinstance(x, dict)]
+                    args = [x(t, y) if isinstance(x, TemporalVar) else x for x in self.source if
+                            not isinstance(x, dict)]
                     kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
                     kwargs = {k: (x(t, y) if isinstance(x, TemporalVar) else x) for k, x in kwargs.items()}
                     output = self.operator(*args, **kwargs)
