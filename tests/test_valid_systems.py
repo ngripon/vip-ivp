@@ -350,6 +350,20 @@ def test_loads_of_recursion():
 
     print(a.values)
 
+def test_big_delay():
+    a = vip.loop_node()
+    b = a.delayed(100)
+    a.loop_into(b + 1)
+    c = vip.integrate(a, 0)
+
+    a.to_plot()
+    b.to_plot()
+    c.to_plot()
+
+    vip.solve(100, time_step=0.001)
+
+    print(a.values)
+
 
 def test_cascading_events():
     # Parameters
