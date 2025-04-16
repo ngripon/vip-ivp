@@ -90,8 +90,8 @@ class Solver:
 
         return self._add_integration_variable(data, x0, minimum, maximum)
 
-    def _add_integration_variable(self, var: Union["TemporalVar[T]", T], x0: T, minimum: T,
-                                  maximum: T) -> "IntegratedVar[T]":
+    def _add_integration_variable(self, var: Union["TemporalVar[T]", T], x0: T, minimum: Union["TemporalVar[T]", T],
+                                  maximum: Union["TemporalVar[T]", T]) -> "IntegratedVar[T]":
         self.feed_vars.append(var)
         # Manage min and max
         if maximum is None:
@@ -99,9 +99,12 @@ class Solver:
         if minimum is None:
             minimum = -np.inf
 
-        if not minimum <= x0 <= maximum:
+        # Evaluate bounds at t = 0
+        low_0 = minimum(0, self.x0) if isinstance(minimum, TemporalVar) else minimum
+        up_0 = maximum(0, self.x0) if isinstance(maximum, TemporalVar) else maximum
+        if not low_0 <= x0 <= up_0:
             raise ValueError(
-                f"x0 is outside the specified bounds [{minimum} ; {maximum}] at t=0. Please provide a value within these bounds.")
+                f"x0 is outside the specified bounds [{low_0} ; {up_0}] at t=0. Please provide a value within these bounds.")
 
         # Add integration value
         integrated_variable = IntegratedVar(
