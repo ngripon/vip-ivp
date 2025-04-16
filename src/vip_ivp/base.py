@@ -104,7 +104,7 @@ class Solver:
         up_0 = maximum(0, self.x0) if isinstance(maximum, TemporalVar) else maximum
         if not low_0 <= x0 <= up_0:
             raise ValueError(
-                f"x0 is outside the specified bounds [{low_0} ; {up_0}] at t=0. Please provide a value within these bounds.")
+                f"x0 = {x0} is outside the specified bounds [{low_0} ; {up_0}] at t=0. Please provide a value within these bounds.")
 
         # Add integration value
         integrated_variable = IntegratedVar(
