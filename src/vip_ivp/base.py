@@ -406,11 +406,11 @@ class Solver:
                         t = te
                         y = ye
                         [e.evaluate(t, y) for e in self.get_events(t)]
-                        for event in triggering_events:
+                        for event in triggered_events:
                             event.g = 0
                         solver = method(self._dy, t, y, tf, vectorized=vectorized, **options)
 
-                        if any(e.terminal for e in triggering_events):
+                        if any(e.terminal for e in triggered_events):
                             self.status = 1
                     else:
                         warnings.warn(
