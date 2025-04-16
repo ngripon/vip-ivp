@@ -140,7 +140,6 @@ def test_differentiate():
     d_n2.to_plot()
     d_n.to_plot()
 
-
     vip.solve(10, time_step=0.01)
 
     print(d_n.values)
@@ -148,6 +147,7 @@ def test_differentiate():
 
     errors = d_n.values - d_n2.values
     assert all(errors[1:] < 0.01)
+
 
 def test_integrated_differentiation():
     step = vip.create_source(lambda t: 0 if t < 1 else 1)
@@ -292,7 +292,7 @@ def test_multiple_events_at_the_same_instant():
     ia = vip.integrate(a, 0)
 
     e1 = vip.set_interval(ia.action_reset_to(0), 2)
-    e2=vip.set_timeout(e1.action_disable, 6)
+    e2 = vip.set_timeout(e1.action_disable, 6)
 
     ia.to_plot()
 
@@ -307,7 +307,7 @@ def test_demos():
 
     # Get all .py files in demo folder
     demo_scripts = list(demo_dir.glob("*.py"))
-    demo_scripts=[path for path in demo_scripts if "explore" not in str(path)]
+    demo_scripts = [path for path in demo_scripts if "explore" not in str(path)]
     print(demo_scripts)
 
     for script_path in demo_scripts:
@@ -335,11 +335,12 @@ def test_forgiving_temporal_functions():
 
     vip.solve(3600, time_step=0.1)
 
-def test_loads_of_recursion():
-    a=vip.loop_node()
-    b=a.delayed(1)
 
-    a.loop_into(b+1)
+def test_loads_of_recursion():
+    a = vip.loop_node()
+    b = a.delayed(1)
+
+    a.loop_into(b + 1)
 
     a.to_plot()
     b.to_plot()
@@ -347,3 +348,33 @@ def test_loads_of_recursion():
     vip.solve(100)
 
     print(a.values)
+
+
+def test_cascading_events():
+    # Parameters
+    initial_height = 1  # m
+    GRAVITY = -9.81
+    k = 0.7  # Bouncing coefficient
+    v_min = 0.01  # Minimum velocity need to bounce
+
+    # Create the system
+    acceleration = vip.create_source(GRAVITY)
+    velocity = vip.integrate(acceleration, x0=0)
+    height = vip.integrate(velocity, x0=initial_height)
+
+    count = vip.create_source(0)
+
+    # Create the bouncing event
+    bounce = vip.where(abs(velocity) > v_min, velocity.action_reset_to(-k * velocity), vip.terminate)
+    height.on_crossing(0, bounce, terminal=False, direction="falling")
+    velocity.on_crossing(0, count.action_set_to(count + 1), direction="rising")
+
+    # Add variables to plot
+    height.to_plot("Height (m)")
+    velocity.to_plot()
+    count.to_plot()
+
+    # Solve the system
+    vip.solve(20, time_step=0.001)
+
+    assert count.values[-1] == 13
