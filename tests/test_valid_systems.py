@@ -377,4 +377,4 @@ def test_cascading_events():
     # Solve the system
     vip.solve(20, time_step=0.001)
 
-    assert count.values[-1] == 13
+    assert count.values[-1] == 18

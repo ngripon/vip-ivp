@@ -378,10 +378,30 @@ class Solver:
                         self.t_current = te
                         # Get all events that happens at te and execute their action
                         triggering_events = [active_events[i] for i in range(len(active_events)) if roots[i] == te]
+                        triggered_events=[]
                         for event in triggering_events:
                             event.t_events.append(te)
                             event.y_events.append(ye)
-                            event.execute_action(te, ye)
+                            event.execute_action(te, ye) # Some actions mutate ye
+                            triggered_events.append(event)
+                        # Create a loop to check if other events has triggered
+                        while True:
+                            t_latest=t_eval[np.searchsorted(t_eval, te, side="left")]
+                            g_latest=[e(t_latest, sol(t_latest)) for e in events]
+                            g_current=[e(te, ye) for e in events]
+                            direction = np.array([e.direction for e in events])
+                            active_events_indices_cascade=find_active_events_in_step(g_latest, g_current, direction)
+                            triggering_events = [self.events[i] for i in active_events_indices_cascade if
+                                                 self.events[i] not in triggered_events]
+                            if triggering_events:
+                                for event in triggering_events:
+                                    event.t_events.append(te)
+                                    event.y_events.append(ye)
+                                    event.execute_action(te, ye)  # Some actions mutate ye
+                                    triggered_events.append(event)
+                            else:
+                                break
+
                         # Reset the solver and events evaluation to begin at te for the next step
                         t = te
                         y = ye
