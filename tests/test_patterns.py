@@ -448,3 +448,28 @@ def test_loop_with_delay():
     vip.solve(10,time_step=1)
     print(a.values)
     print(time.time()-start)
+
+def test_state_variable():
+    def relay(u, previous_state):
+        u_up = 0.5
+        u_low = -0.5
+        if u > u_up:
+            state = 1
+        elif u < u_low:
+            state = -1
+        else:
+            state = previous_state
+        y = 5 * state
+        return y, state
+
+    u = vip.create_source(lambda t: np.sin(t))
+    relay_state = vip.loop_node()
+    previous_state = relay_state.delayed(1, 1)
+    o = vip.f(relay)(u, previous_state)[:]
+    y = o[0]
+    relay_state.loop_into(o[1])
+
+    u.to_plot()
+    relay_state.to_plot()
+
+    vip.solve(10)
