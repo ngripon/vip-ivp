@@ -14,6 +14,7 @@ from typing import Callable, Union, TypeVar, Generic
 import numpy as np
 from numpy.typing import NDArray
 from typing_extensions import deprecated, ParamSpec
+from cachetools import LRUCache
 
 from .solver_utils import *
 from .utils import add_necessary_brackets, convert_to_string, operator_call, shift_array
@@ -600,7 +601,7 @@ class TemporalVar(Generic[T]):
 
         self.events: List[Event] = []
 
-        self._cache = {}
+        self._cache = LRUCache(maxsize=16)
 
         self.solver.vars.append(self)
 
@@ -846,7 +847,7 @@ class TemporalVar(Generic[T]):
 
     def clear(self):
         self._values = None
-        self._cache = {}
+        self._cache.clear()
 
     def _first_value(self):
         return self(0, self.solver.x0 if len(self.solver.x0) else 0)
@@ -869,27 +870,28 @@ class TemporalVar(Generic[T]):
             if result.ndim > 1:
                 result = np.moveaxis(result, 0, -1)
             return result
-        # Handle the termination leaves of the recursion
-        elif t in self._cache:
-            return self._cache[t]
-        elif isinstance(self.source, np.ndarray):
-            output = np.stack(np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source))
-        elif self.operator is not None:
-            if self._call_mode == CallMode.CALL_ARGS_FUN:
-                args = [x(t, y) if isinstance(x, TemporalVar) else x for x in self.source if not isinstance(x, dict)]
-                kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
-                kwargs = {k: (x(t, y) if isinstance(x, TemporalVar) else x) for k, x in kwargs.items()}
-                output = self.operator(*args, **kwargs)
-            elif self._call_mode == CallMode.CALL_FUN_RESULT:
-                args = [x for x in self.source if not isinstance(x, dict)]
-                kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
-                output = self.operator(*args, **kwargs)(t, y)
-            else:
-                raise ValueError(f"Unknown call mode: {self._call_mode}.")
         else:
-            output = self.source(t, y) if callable(self.source) else self.source
-        if t in self.solver.t:
-            self._cache[t] = output
+            # Handle the termination leaves of the recursion
+            if t in self._cache:
+                return self._cache[t]
+            elif isinstance(self.source, np.ndarray):
+                output = np.stack(np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source))
+            elif self.operator is not None:
+                if self._call_mode == CallMode.CALL_ARGS_FUN:
+                    args = [x(t, y) if isinstance(x, TemporalVar) else x for x in self.source if not isinstance(x, dict)]
+                    kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
+                    kwargs = {k: (x(t, y) if isinstance(x, TemporalVar) else x) for k, x in kwargs.items()}
+                    output = self.operator(*args, **kwargs)
+                elif self._call_mode == CallMode.CALL_FUN_RESULT:
+                    args = [x for x in self.source if not isinstance(x, dict)]
+                    kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
+                    output = self.operator(*args, **kwargs)(t, y)
+                else:
+                    raise ValueError(f"Unknown call mode: {self._call_mode}.")
+            else:
+                output = self.source(t, y) if callable(self.source) else self.source
+            if self.solver.solved or len(self.solver.t) and t == self.solver.t[-1]:
+                self._cache[t] = output
         return output
 
     def __copy__(self):

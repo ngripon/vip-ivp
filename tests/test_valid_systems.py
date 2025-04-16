@@ -339,11 +339,12 @@ def test_forgiving_temporal_functions():
 def test_loads_of_recursion():
     a = vip.loop_node()
     b = a.delayed(1)
-
     a.loop_into(b + 1)
+    c = vip.integrate(a, 0)
 
     a.to_plot()
     b.to_plot()
+    c.to_plot()
 
     vip.solve(100)
 
