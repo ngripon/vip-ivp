@@ -3,6 +3,7 @@ import functools
 import inspect
 import operator
 import time
+import traceback
 import warnings
 from collections import abc
 from copy import copy
@@ -97,6 +98,10 @@ class Solver:
             maximum = np.inf
         if minimum is None:
             minimum = -np.inf
+
+        if not minimum <= x0 <= maximum:
+            raise ValueError(
+                f"x0 is outside the specified bounds [{minimum} ; {maximum}] at t=0. Please provide a value within these bounds.")
 
         # Add integration value
         integrated_variable = IntegratedVar(
@@ -478,8 +483,8 @@ class Solver:
 
     def _bound_sol(self, t, y: NDArray):
         upper, lower = self._get_bounds(t, y)
-        y_bounded_max = np.where(y < upper, y, upper)
-        y_bounded = np.where(y_bounded_max > lower, y_bounded_max, lower)
+        y_bounded_max = np.where(y <= upper, y, upper)
+        y_bounded = np.where(y_bounded_max >= lower, y_bounded_max, lower)
         return y_bounded
 
     def _get_bounds(self, t, y):
