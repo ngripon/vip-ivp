@@ -150,7 +150,7 @@ class Solver:
                     "If this is intentional, instantiate the LoopNode object with parameter 'strict = False' to "
                     "disable this exception.")
         # Reinit values
-        [var.clear_values() for var in self.vars]
+        [var.clear() for var in self.vars]
         [e.clear() for e in self.events]
         start = time.time()
         # Set t_eval
@@ -577,7 +577,6 @@ class TemporalVar(Generic[T]):
         # Variable definition
         self._expression = convert_to_string(source) if expression is None else expression
         self.name = None
-        self._inputs: list[TemporalVar] = []
 
         self.events: List[Event] = []
 
@@ -825,8 +824,9 @@ class TemporalVar(Generic[T]):
 
         return Action(lambda t, y: change_value(t), f"Change {self.name}'s value to {get_expression(new_value)}")
 
-    def clear_values(self):
+    def clear(self):
         self._values = None
+        self._cache = {}
 
     def _first_value(self):
         return self(0, self.solver.x0 if len(self.solver.x0) else 0)
