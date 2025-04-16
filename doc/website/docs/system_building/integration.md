@@ -63,7 +63,7 @@ The following result is obtained:
 ![Integration bounds](../images/integration_bounds.png)
 
 :::warning
-If `x0` lies outside the [`minimum`, `maximum`] bounds, it will automatically be clamped to the nearest valid limit.
+If `x0` lies outside the [`minimum`, `maximum`] bounds, it will raise a `ValueError`.
 :::
 
 ### Variable bounds
