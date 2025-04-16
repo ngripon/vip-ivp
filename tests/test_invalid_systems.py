@@ -57,3 +57,7 @@ def test_if_statement():
             step = vip.create_source(1)
 
         vip.solve(10, time_step=1)
+
+def test_x0_outside_bound():
+    with pytest.raises(ValueError):
+        x = vip.integrate(5, 0, 2, 10)
