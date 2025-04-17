@@ -181,10 +181,10 @@ class Solver:
         """
         Plot the variables that have been marked for plotting.
         """
-        import matplotlib.pyplot as plt
-
         if not self.vars_to_plot:
             return
+
+        import matplotlib.pyplot as plt
         # Plot data
         plt.figure("Results for VIP")
         for variable_name, var in self.vars_to_plot.items():
