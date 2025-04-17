@@ -523,15 +523,15 @@ class Solver:
                 )
             upper.append(maximum)
             lower.append(minimum)
-        upper = np.moveaxis(np.array(upper),0,-1)
-        lower = np.moveaxis(np.array(lower),0,-1)
+        upper = np.moveaxis(np.array(upper), 0, -1)
+        lower = np.moveaxis(np.array(lower), 0, -1)
         return upper, lower
 
     def _sol_wrapper(self, sol):
         def output_fun(t: Union[float, NDArray]):
             y = sol(t)
             if not np.isscalar(t):
-                y=np.moveaxis(y,0,-1)
+                y = np.moveaxis(y, 0, -1)
             return self._bound_sol(t, y)
 
         return output_fun
@@ -620,6 +620,8 @@ class TemporalVar(Generic[T]):
         else:
             # Handle the termination leaves of the recursion
             if t in self._cache:
+                print(f"CACHED! {list(self._cache.keys())}")
+
                 return self._cache[t]
             elif isinstance(self.source, np.ndarray):
                 output = np.stack(np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source))
@@ -744,8 +746,8 @@ class TemporalVar(Generic[T]):
 
         def create_delay(input_variable):
             def previous_value(t, y):
+                print(t)
                 if np.isscalar(t):
-                    # print(t)
                     if len(input_variable.solver.t) >= delay:
                         index = np.searchsorted(input_variable.solver.t, t, "left")
                         # index = next((i for i, ts in enumerate(input_variable.solver.t) if t <= ts),
@@ -765,7 +767,7 @@ class TemporalVar(Generic[T]):
 
             return previous_value
 
-        if delay > self._cache.maxsize:
+        if 2 * delay > self._cache.maxsize:
             self._cache = LRUCache(maxsize=2 * delay)
 
         return TemporalVar(self.solver, (create_delay, self),
