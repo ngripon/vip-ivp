@@ -605,6 +605,41 @@ class TemporalVar(Generic[T]):
 
         self.solver.vars.append(self)
 
+    def __call__(self, t: Union[float, NDArray], y: NDArray) -> T:
+        # Handle dict in a recursive way
+        if isinstance(self.source, dict):
+            return {key: val(t, y) for key, val in self.source.items()}
+        elif not np.isscalar(t):
+            result = np.array([self(t[i], y[i]) for i in range(len(t))])
+            # If the result is a multidimensional array, make the time dimension the last instead of the first
+            if result.ndim > 1:
+                result = np.moveaxis(result, 0, -1)
+            return result
+        else:
+            # Handle the termination leaves of the recursion
+            if t in self._cache:
+                return self._cache[t]
+            elif isinstance(self.source, np.ndarray):
+                output = np.stack(np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source))
+            elif self.operator is not None:
+                if self._call_mode == CallMode.CALL_ARGS_FUN:
+                    args = [x(t, y) if isinstance(x, TemporalVar) else x for x in self.source if
+                            not isinstance(x, dict)]
+                    kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
+                    kwargs = {k: (x(t, y) if isinstance(x, TemporalVar) else x) for k, x in kwargs.items()}
+                    output = self.operator(*args, **kwargs)
+                elif self._call_mode == CallMode.CALL_FUN_RESULT:
+                    args = [x for x in self.source if not isinstance(x, dict)]
+                    kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
+                    output = self.operator(*args, **kwargs)(t, y)
+                else:
+                    raise ValueError(f"Unknown call mode: {self._call_mode}.")
+            else:
+                output = self.source(t, y) if callable(self.source) else self.source
+            if self.solver.solved or len(self.solver.t) and t == self.solver.t[-1]:
+                self._cache[t] = output
+        return output
+
     @property
     def values(self) -> NDArray:
         if not self.solver.solved:
@@ -708,9 +743,11 @@ class TemporalVar(Generic[T]):
         def create_delay(input_variable):
             def previous_value(t, y):
                 if np.isscalar(t):
+                    # print(t)
                     if len(input_variable.solver.t) >= delay:
-                        index = next((i for i, ts in enumerate(input_variable.solver.t) if t <= ts),
-                                     len(input_variable.solver.t))
+                        index=np.searchsorted(input_variable.solver.t,t, "left")
+                        # index = next((i for i, ts in enumerate(input_variable.solver.t) if t <= ts),
+                        #              len(input_variable.solver.t))
                         if index - delay < 0:
                             return initial_value
                         previous_t = input_variable.solver.t[index - delay]
@@ -862,41 +899,6 @@ class TemporalVar(Generic[T]):
         if isinstance(value, TemporalVar) and value.solver is self.solver:
             return value
         return TemporalVar(self.solver, value)
-
-    def __call__(self, t: Union[float, NDArray], y: NDArray) -> T:
-        # Handle dict in a recursive way
-        if isinstance(self.source, dict):
-            return {key: val(t, y) for key, val in self.source.items()}
-        elif not np.isscalar(t):
-            result = np.array([self(t[i], y[i]) for i in range(len(t))])
-            # If the result is a multidimensional array, make the time dimension the last instead of the first
-            if result.ndim > 1:
-                result = np.moveaxis(result, 0, -1)
-            return result
-        else:
-            # Handle the termination leaves of the recursion
-            if t in self._cache:
-                return self._cache[t]
-            elif isinstance(self.source, np.ndarray):
-                output = np.stack(np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source))
-            elif self.operator is not None:
-                if self._call_mode == CallMode.CALL_ARGS_FUN:
-                    args = [x(t, y) if isinstance(x, TemporalVar) else x for x in self.source if
-                            not isinstance(x, dict)]
-                    kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
-                    kwargs = {k: (x(t, y) if isinstance(x, TemporalVar) else x) for k, x in kwargs.items()}
-                    output = self.operator(*args, **kwargs)
-                elif self._call_mode == CallMode.CALL_FUN_RESULT:
-                    args = [x for x in self.source if not isinstance(x, dict)]
-                    kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
-                    output = self.operator(*args, **kwargs)(t, y)
-                else:
-                    raise ValueError(f"Unknown call mode: {self._call_mode}.")
-            else:
-                output = self.source(t, y) if callable(self.source) else self.source
-            if self.solver.solved or len(self.solver.t) and t == self.solver.t[-1]:
-                self._cache[t] = output
-        return output
 
     def __copy__(self):
         return TemporalVar(self.solver, self.source, self.expression, operator=self.operator)
