@@ -3,7 +3,6 @@ import functools
 import inspect
 import operator
 import time
-import traceback
 import warnings
 from collections import abc
 from copy import copy
@@ -11,9 +10,8 @@ from typing import overload, Literal, Iterable, Dict, Tuple, List, Any
 from pathlib import Path
 from typing import Callable, Union, TypeVar, Generic
 
-import numpy as np
 from numpy.typing import NDArray
-from typing_extensions import deprecated, ParamSpec
+from typing_extensions import ParamSpec
 from cachebox import LRUCache
 
 from .solver_utils import *
