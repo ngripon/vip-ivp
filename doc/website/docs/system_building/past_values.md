@@ -17,7 +17,7 @@ The `n_steps` argument specifies the **number of time steps** (not seconds) by w
 In the example below, we delay a variable by 2 time steps:
 
 ```python
-step = vip.create_source(lambda t: 0 if t < 5 else 1)
+step = vip.temporal(lambda t: 0 if t < 5 else 1)
 delayed_step = step.delayed(2)
 
 step.to_plot()
@@ -59,8 +59,8 @@ Because this method relies on past values, the result is **slightly delayed** co
 ```python
 import numpy as np
 
-sine = vip.create_source(lambda t: np.sin(t))
-cosine_true = vip.create_source(lambda t: np.cos(t))
+sine = vip.temporal(lambda t: np.sin(t))
+cosine_true = vip.temporal(lambda t: np.cos(t))
 cosine = sine.derivative(initial_value=1)
 
 sine.to_plot()
@@ -80,7 +80,7 @@ Integration provides **accurate** and **stable** results, while differentiation 
 The following example demonstrates how differentiation may lead to incorrect results:
 
 ```python
-step = vip.create_source(lambda t: 0 if t < 1 else 1)
+step = vip.temporal(lambda t: 0 if t < 1 else 1)
 # Integrate then differentiate → Just a slight delay
 i_step = vip.integrate(step, 0)
 step_ok = i_step.derivative()

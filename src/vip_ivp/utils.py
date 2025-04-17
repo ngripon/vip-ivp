@@ -21,8 +21,8 @@ def convert_to_string(content):
         if name != "<lambda>":
             return name + str(inspect.signature(content))
         fun_string = inspect.getsourcelines(content)[0][0].strip()
-        if "create_source" in fun_string:
-            lambda_content = fun_string.split("create_source")[1].strip()[1:-1]
+        if "temporal(" in fun_string:
+            lambda_content = fun_string.split("temporal(")[1].strip()[0:-1]
             return lambda_content
         for word in ["set_timeout", "set_interval"]:
             if word in fun_string:

@@ -30,11 +30,11 @@ $$
 This code does **not** work:
 
 ```python
-time = vip.create_source(lambda t: t)
+time = vip.temporal(lambda t: t)
 if time < 5:
-    step = vip.create_source(0)
+    step = vip.temporal(0)
 else:
-    step = vip.create_source(1)
+    step = vip.temporal(1)
 
 vip.solve(10, time_step=1)
 ```
@@ -46,7 +46,7 @@ vip.solve(10, time_step=1)
 Use `vip.where()` to define the conditional behavior in a single expression:
 
 ```python
-time = vip.create_source(lambda t: t)
+time = vip.temporal(lambda t: t)
 step = vip.where(time < 5, 0, 1)
 
 step.to_plot()

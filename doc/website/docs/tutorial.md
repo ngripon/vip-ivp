@@ -72,7 +72,7 @@ An **event action** is a side-effect function that will be executed when the eve
 
 ```python
 # Create a variable to count the number of oscillations
-count = vip.create_source(0)
+count = vip.temporal(0)
 # Create event that triggers when x crosses 0 (from negative to positive)
 x.on_crossing(0, count.action_set_to(count + 1), direction="rising")
 ```
@@ -192,7 +192,7 @@ x = vip.integrate(v, x0)  # Displacement
 a.loop_into(-(c * v + k * x) / m)  # Set acceleration value
 
 # Create a variable to count the number of oscillations
-count = vip.create_source(0)
+count = vip.temporal(0)
 # Create event that triggers when x crosses 0 (from negative to positive)
 x.on_crossing(0, count.action_set_to(count + 1), direction="rising")
 

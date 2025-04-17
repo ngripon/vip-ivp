@@ -7,7 +7,7 @@ k = 0.7  # Bouncing coefficient
 v_min = 0.01  # Minimum velocity need to bounce
 
 # Create the system
-acceleration = vip.create_source(GRAVITY)
+acceleration = vip.temporal(GRAVITY)
 velocity = vip.integrate(acceleration, x0=0)
 height = vip.integrate(velocity, x0=initial_height)
 

@@ -34,7 +34,7 @@ def test_pendulum():
 
 
 def test_source():
-    u = vip.create_source(lambda t: 5 * np.sin(5 * t))
+    u = vip.temporal(lambda t: 5 * np.sin(5 * t))
     dd_th = vip.loop_node()
     d_th = vip.integrate(dd_th, 0)
     th = vip.integrate(d_th, np.pi / 2)
@@ -57,7 +57,7 @@ def test_integrate_scalar():
 
 
 def test_no_integration():
-    a = vip.create_source(lambda t: t)
+    a = vip.temporal(lambda t: t)
     b = 2 * a
 
     # a.to_plot('A')
@@ -68,14 +68,14 @@ def test_no_integration():
 
 def test_system_without_integration():
     # Without time step
-    a = vip.create_source(lambda t: t)
+    a = vip.temporal(lambda t: t)
     b = 2 * a
     vip.solve(10)
     assert np.array_equal(2 * a.values, b.values)
 
     # With time step
     vip.new_system()
-    a = vip.create_source(lambda t: t)
+    a = vip.temporal(lambda t: t)
     b = 2 * a
     vip.solve(10, time_step=0.1)
     assert np.array_equal(2 * a.values, b.values)
@@ -150,7 +150,7 @@ def test_differentiate():
 
 
 def test_integrated_differentiation():
-    step = vip.create_source(lambda t: 0 if t < 1 else 1)
+    step = vip.temporal(lambda t: 0 if t < 1 else 1)
     # Differentiate then integrate
     d_step_bad = step.derivative()
     step_bad = vip.integrate(d_step_bad, 0)
@@ -168,7 +168,7 @@ def test_integrated_differentiation():
 
 
 def test_float_crossing_event():
-    a = vip.create_source(lambda t: t)
+    a = vip.temporal(lambda t: t)
 
     a.on_crossing(5, terminal=True)
 
@@ -180,7 +180,7 @@ def test_float_crossing_event():
 
 
 def test_boolean_crossing_event():
-    a = vip.create_source(lambda t: t)
+    a = vip.temporal(lambda t: t)
     cond = a >= 5
 
     cond.on_crossing(True, terminal=True)
@@ -193,7 +193,7 @@ def test_boolean_crossing_event():
 
 
 def test_string_crossing_event():
-    a = vip.create_source(lambda t: t)
+    a = vip.temporal(lambda t: t)
     string = vip.where(a >= 5, "Aa", "Ba")
 
     string.on_crossing("Aa", terminal=True)
@@ -288,7 +288,7 @@ def test_eval_events_at_all_time_points():
 
 
 def test_multiple_events_at_the_same_instant():
-    a = vip.create_source(1)
+    a = vip.temporal(1)
     ia = vip.integrate(a, 0)
 
     e1 = vip.set_interval(ia.action_reset_to(0), 2)
@@ -321,12 +321,12 @@ def test_demos():
 
 def test_forgiving_temporal_functions():
     """
-    Test if the create_source function can accept functions that do not support array inputs
+    Test if the temporal function can accept functions that do not support array inputs
     """
     # Data map
     voltage_per_soc = {0.0: 3.0, 0.2: 3.4, 0.5: 3.6, 0.8: 3.8, 1.0: 4.2}
     # Create input
-    soc = vip.create_source(lambda t: max(1.0 - 0.0004 * t, 0))
+    soc = vip.temporal(lambda t: max(1.0 - 0.0004 * t, 0))
     # Create output with np.interp
     voltage = vip.f(np.interp)(soc, list(voltage_per_soc.keys()), list(voltage_per_soc.values()))
 
@@ -369,11 +369,11 @@ def test_cascading_events():
     v_min = 0.01  # Minimum velocity need to bounce
 
     # Create the system
-    acceleration = vip.create_source(GRAVITY)
+    acceleration = vip.temporal(GRAVITY)
     velocity = vip.integrate(acceleration, x0=0)
     height = vip.integrate(velocity, x0=initial_height)
 
-    count = vip.create_source(0)
+    count = vip.temporal(0)
 
     # Create the bouncing event
     bounce = vip.where(abs(velocity) > v_min, velocity.action_reset_to(-k * velocity), vip.terminate)

@@ -16,24 +16,24 @@ K = TypeVar("K")
 
 
 @overload
-def create_source(value: List[T]) -> TemporalVar[NDArray[T]]: ...
+def temporal(value: List[T]) -> TemporalVar[NDArray[T]]: ...
 
 
 @overload
-def create_source(value: Callable[[Union[float, NDArray]], T]) -> TemporalVar: ...
+def temporal(value: Callable[[Union[float, NDArray]], T]) -> TemporalVar: ...
 
 
 @overload
-def create_source(value: int) -> TemporalVar[float]: ...
+def temporal(value: int) -> TemporalVar[float]: ...
 
 
 @overload
-def create_source(value: T) -> TemporalVar[T]: ...
+def temporal(value: T) -> TemporalVar[T]: ...
 
 
-def create_source(value: Union[Callable[[NDArray], T], T]) -> TemporalVar[T]:
+def temporal(value: Union[Callable[[NDArray], T], T]) -> TemporalVar[T]:
     """
-    Create a source variable from a temporal function, a scalar value, a dict, a list or a NumPy array.
+    Create a Temporal Variable from a temporal function, a scalar value, a dict, a list or a NumPy array.
     If the input value is a list, the variable content will be converted to a NumPy array. As a consequence, a nested
     list must represent a valid rectangular matrix.
 
@@ -386,5 +386,5 @@ def _check_solver_discrepancy(input_value: Union["TemporalVar", float], solver: 
 
 def _convert_to_temporal_var(value: Union[T, TemporalVar[T]]) -> TemporalVar[T]:
     if not isinstance(value, TemporalVar):
-        value = create_source(value)
+        value = temporal(value)
     return value

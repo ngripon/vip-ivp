@@ -8,9 +8,9 @@ import vip_ivp as vip
 
 
 def test_collections_get_methods():
-    l = vip.create_source([1, 2, 3, 4])
-    di = vip.create_source({"a": 5, "b": 6})
-    arr = vip.create_source(np.array([1, 2, 3, 4, 5]))
+    l = vip.temporal([1, 2, 3, 4])
+    di = vip.temporal({"a": 5, "b": 6})
+    arr = vip.temporal(np.array([1, 2, 3, 4, 5]))
     arr_slice = arr[2:]
 
     b = vip.integrate(l[0], 0)
@@ -25,7 +25,7 @@ def test_collections_get_methods():
 
 
 def test_use_numpy_function():
-    x = vip.create_source(5)
+    x = vip.temporal(5)
     a = vip.integrate(x, 0)
 
     np.random.seed(10)
@@ -48,7 +48,7 @@ def test_use_basic_function():
         else:
             return -1
 
-    input = vip.create_source(lambda t: np.cos(t))
+    input = vip.temporal(lambda t: np.cos(t))
     output = vip.f(basic_function)(input)
 
     input.to_plot()
@@ -58,9 +58,9 @@ def test_use_basic_function():
 
 
 def test_use_numpy_method():
-    array_source = vip.create_source([lambda t: t, lambda t: 2 * t, lambda t: 3 * t, lambda t: 4 * t])
+    array_source = vip.temporal([lambda t: t, lambda t: 2 * t, lambda t: 3 * t, lambda t: 4 * t])
     reshaped_array = array_source.m(array_source.output_type.reshape)((2, 2))
-    square_array_source = vip.create_source([[lambda t: t, lambda t: 2 * t], [lambda t: 3 * t, lambda t: 4 * t]])
+    square_array_source = vip.temporal([[lambda t: t, lambda t: 2 * t], [lambda t: 3 * t, lambda t: 4 * t]])
     # reshaped_array.to_plot()
     vip.solve(10, 1)
     print(array_source.values[0])
@@ -81,9 +81,9 @@ def test_multidimensional_integration_source():
     dic_x0 = {"a": 1, "b": 0}
 
     # Integrate with sources
-    da = vip.create_source(arr)
+    da = vip.temporal(arr)
     a = vip.integrate(da, arr_x0)
-    dd = vip.create_source(dic)
+    dd = vip.temporal(dic)
     d = vip.integrate(dd, dic_x0)
 
     # Integrate with python variables
@@ -147,7 +147,7 @@ def test_multidimensional_integration_loop_node():
 
 def test_multidimensional_differentiation():
     source=[lambda t: t, lambda t: 2 * t, lambda t: 3 * t, lambda t: 4 * t]
-    array_source = vip.create_source(source)
+    array_source = vip.temporal(source)
     diff=array_source.derivative()
     truth=[array_source[i].derivative() for i in range(len(source))]
 
@@ -161,8 +161,8 @@ def test_multidimensional_differentiation():
 
 
 def test_set_loop_node_multiple_times():
-    source1 = vip.create_source(lambda t: t)
-    source2 = vip.create_source(lambda t: 2 * t)
+    source1 = vip.temporal(lambda t: t)
+    source2 = vip.temporal(lambda t: 2 * t)
     loop = vip.loop_node()
     loop.loop_into(source1)
     loop.loop_into(source2, force=True)
@@ -172,8 +172,8 @@ def test_set_loop_node_multiple_times():
 
 
 def test_conditions():
-    a = vip.create_source(lambda t: t)
-    b = vip.create_source(5)
+    a = vip.temporal(lambda t: t)
+    b = vip.temporal(5)
     c = vip.where(a < 5, a, b)
     vip.solve(10, time_step=0.1)
     assert np.array_equal(c.values, np.where(a.values < 5, a.values, b.values))
@@ -212,11 +212,11 @@ def test_plot_collections():
     arr2 = np.arange(6).reshape(2, 3)
 
     # Integrate with sources
-    da = vip.create_source(arr)
+    da = vip.temporal(arr)
     a = vip.integrate(da, arr_x0)
-    dd = vip.create_source(dic)
+    dd = vip.temporal(dic)
     d = vip.integrate(dd, dic_x0)
-    a2 = vip.create_source(arr2)
+    a2 = vip.temporal(arr2)
 
     matplotlib.use('Agg')
     a.to_plot("Array")
@@ -230,8 +230,8 @@ def test_array_comparisons_operators():
     f1 = lambda t: t
     f2 = lambda t: 2.5 * t
 
-    a = vip.create_source([5, 5])
-    b = vip.create_source([f1, f2])
+    a = vip.temporal([5, 5])
+    b = vip.temporal([f1, f2])
 
     # Equality
     equ_arr = a == b
@@ -291,7 +291,7 @@ def test_array_comparisons_operators():
 
 
 def test_bounded_integration_by_constant():
-    a = vip.create_source(1)
+    a = vip.temporal(1)
     ia_inc = vip.integrate(a, 2, maximum=5, minimum=2)
     ia_dec = vip.integrate(-a, 5, maximum=5, minimum=2)
 
@@ -307,8 +307,8 @@ def test_bounded_integration_by_constant():
 
 
 def test_bounded_integration_by_variable():
-    a = vip.create_source(1)
-    signal = vip.create_source(lambda t: 6 - t)
+    a = vip.temporal(1)
+    signal = vip.temporal(lambda t: 6 - t)
     ia_inc = vip.integrate(a, 0, maximum=signal)
     ia_dec = vip.integrate(-a, 0, minimum=-signal)
 
@@ -324,7 +324,7 @@ def test_bounded_integration_by_variable():
 
 
 def test_delete_event():
-    a = vip.create_source(lambda t: t)
+    a = vip.temporal(lambda t: t)
 
     event = a.on_crossing(6, terminal=True)
     a.on_crossing(3, event.action_disable)
@@ -352,7 +352,7 @@ def test_variable_step_solving():
 
 
 def test_action_adding():
-    a = vip.create_source(5)
+    a = vip.temporal(5)
     ia = vip.integrate(a, 0)
 
     ia.on_crossing(10, ia.action_reset_to(0) + vip.terminate)
@@ -365,7 +365,7 @@ def test_action_adding():
 
 
 def test_set_timeout():
-    a = vip.create_source(1)
+    a = vip.temporal(1)
     ia = vip.integrate(a, 0)
 
     timeout_event = vip.set_timeout(ia.action_reset_to(0), 3)
@@ -379,7 +379,7 @@ def test_set_timeout():
 
 
 def test_set_interval():
-    a = vip.create_source(1)
+    a = vip.temporal(1)
     ia = vip.integrate(a, 0)
 
     e1 = vip.set_interval(ia.action_reset_to(0), 2)
@@ -393,7 +393,7 @@ def test_set_interval():
 
 
 def test_create_event():
-    a = vip.create_source(1)
+    a = vip.temporal(1)
     ia = vip.integrate(a, 0)
 
     event = vip.set_timeout(lambda: vip.set_timeout(ia.action_reset_to(0), 2), 3)
@@ -406,7 +406,7 @@ def test_create_event():
 
 
 def test_increment_timeout():
-    count = vip.create_source(0)
+    count = vip.temporal(0)
 
     vip.set_timeout(count.action_set_to(count + 1), 2)
 
@@ -419,7 +419,7 @@ def test_increment_timeout():
 
 
 def test_increment_interval():
-    count = vip.create_source(0)
+    count = vip.temporal(0)
     vip.set_interval(count.action_set_to(count + 1), 2)
 
     count.to_plot()
@@ -462,7 +462,7 @@ def test_state_variable():
         y = 5 * state
         return y, state
 
-    u = vip.create_source(lambda t: np.sin(t))
+    u = vip.temporal(lambda t: np.sin(t))
     relay_state = vip.loop_node()
     previous_state = relay_state.delayed(1, 1)
     o = vip.f(relay)(u, previous_state)[:]

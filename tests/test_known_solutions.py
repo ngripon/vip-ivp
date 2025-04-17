@@ -6,7 +6,7 @@ ABSOLUTE_TOLERANCE = 0.01
 
 
 def test_t_end():
-    a = vip.create_source(lambda t: t)
+    a = vip.temporal(lambda t: t)
     vip.solve(10, 2)
     assert a.t[-1] == 10
 
@@ -103,7 +103,7 @@ def test_bouncing_ball():
         t0 = t_g
         current_h = 0
 
-    acc = vip.create_source(gravity)
+    acc = vip.temporal(gravity)
     velocity = vip.integrate(acc, 0)
     h = vip.integrate(velocity, h)
 

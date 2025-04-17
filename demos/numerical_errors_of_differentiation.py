@@ -4,7 +4,7 @@ This example show how the use of .derivative() can introduce uncontrolled numeri
 
 import vip_ivp as vip
 
-step = vip.create_source(lambda t: 0 if t < 1 else 1)
+step = vip.temporal(lambda t: 0 if t < 1 else 1)
 # Integrate then differentiate → Just a slight delay
 i_step = vip.integrate(step, 0)
 step_ok = i_step.derivative()
