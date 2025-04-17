@@ -58,6 +58,9 @@ class Solver:
         """
         if not isinstance(input_value, TemporalVar):
             input_value = TemporalVar(self, input_value)
+        elif input_value.is_discrete:
+            raise NotImplementedError("Discrete integration is not supported yet.")
+
         integrated_structure = self._get_integrated_structure(input_value, x0, minimum, maximum)
         integrated_variable = IntegratedVar(
             self,
@@ -561,12 +564,14 @@ class TemporalVar(Generic[T]):
             expression: str = None,
             child_cls=None,
             operator=None,
-            call_mode: CallMode = CallMode.CALL_ARGS_FUN
+            call_mode: CallMode = CallMode.CALL_ARGS_FUN,
+            is_discrete=False
     ):
         self.solver = solver
         self._output_type = None
         self._is_source = False
         self._call_mode = call_mode
+        self.is_discrete = is_discrete
         # Recursive building
         self.operator = operator
         child_cls = child_cls or type(self)
@@ -620,8 +625,6 @@ class TemporalVar(Generic[T]):
         else:
             # Handle the termination leaves of the recursion
             if t in self._cache:
-                print(f"CACHED! {list(self._cache.keys())}")
-
                 return self._cache[t]
             elif isinstance(self.source, np.ndarray):
                 output = np.stack(np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source))
@@ -746,7 +749,6 @@ class TemporalVar(Generic[T]):
 
         def create_delay(input_variable):
             def previous_value(t, y):
-                print(t)
                 if np.isscalar(t):
                     if len(input_variable.solver.t) >= delay:
                         index = np.searchsorted(input_variable.solver.t, t, "left")
@@ -773,7 +775,8 @@ class TemporalVar(Generic[T]):
         return TemporalVar(self.solver, (create_delay, self),
                            expression=f"#DELAY({delay}) {get_expression(self)}",
                            operator=operator_call,
-                           call_mode=CallMode.CALL_FUN_RESULT)
+                           call_mode=CallMode.CALL_FUN_RESULT,
+                           is_discrete=True)
 
     def derivative(self, initial_value=0) -> "TemporalVar[T]":
         """
