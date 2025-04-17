@@ -340,26 +340,21 @@ def test_loads_of_recursion():
     a = vip.loop_node()
     b = a.delayed(10)
     a.loop_into(b + 1)
-    # c = vip.integrate(a, 0)
 
     a.to_plot()
     b.to_plot()
-    # c.to_plot()
 
     vip.solve(1000, plot=False, time_step=0.05)
 
     print(a.values)
-    # print(a._input_var._cache)
 
 def test_big_delay():
     a = vip.loop_node()
-    b = a.delayed(100)
+    b = a.delayed(1000)
     a.loop_into(b + 1)
-    c = vip.integrate(a, 0)
 
     a.to_plot()
     b.to_plot()
-    c.to_plot()
 
     vip.solve(100, time_step=0.005)
 

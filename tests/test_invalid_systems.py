@@ -61,3 +61,9 @@ def test_if_statement():
 def test_x0_outside_bound():
     with pytest.raises(ValueError):
         x = vip.integrate(5, 0, 2, 10)
+
+def test_integrate_discrete_signal():
+    a=vip.create_source(1)
+    a_d=a.delayed(1)
+    with pytest.raises(NotImplementedError):
+        iad=vip.integrate(a_d,0)
