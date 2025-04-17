@@ -601,7 +601,7 @@ class TemporalVar(Generic[T]):
 
         self.events: List[Event] = []
 
-        self._cache = LRUCache(maxsize=128)
+        self._cache = LRUCache(maxsize=4)
 
         self.solver.vars.append(self)
 
@@ -745,7 +745,7 @@ class TemporalVar(Generic[T]):
                 if np.isscalar(t):
                     # print(t)
                     if len(input_variable.solver.t) >= delay:
-                        index=np.searchsorted(input_variable.solver.t,t, "left")
+                        index = np.searchsorted(input_variable.solver.t, t, "left")
                         # index = next((i for i, ts in enumerate(input_variable.solver.t) if t <= ts),
                         #              len(input_variable.solver.t))
                         if index - delay < 0:
@@ -764,7 +764,7 @@ class TemporalVar(Generic[T]):
             return previous_value
 
         if delay > self._cache.maxsize:
-            self._cache = LRUCache(maxsize=delay+5)
+            self._cache = LRUCache(maxsize=5 * delay)
 
         return TemporalVar(self.solver, (create_delay, self),
                            expression=f"#DELAY({delay}) {get_expression(self)}",
@@ -1263,8 +1263,9 @@ class LoopNode(TemporalVar[T]):
             initial_value = np.zeros(shape)
         else:
             initial_value = 0
+        self._input_var_content = None
+        super().__init__(solver, 0, expression="", child_cls=TemporalVar)
         self._input_var: TemporalVar = TemporalVar(solver, initial_value)
-        super().__init__(solver, self._input_var, expression="", child_cls=TemporalVar)
         self._is_set = False
         self._is_strict = strict
 
@@ -1290,8 +1291,17 @@ class LoopNode(TemporalVar[T]):
         self.source = self._input_var.source
         self.operator = self._input_var.operator
 
-    def __call__(self, t: Union[float, NDArray], y: NDArray) -> T:
-        return self._input_var(t, y)
+    @property
+    def _input_var(self):
+        return self._input_var_content
+
+    @_input_var.setter
+    def _input_var(self, value: TemporalVar[T]):
+        self._input_var_content = value
+        # Overwrite attributes except cache size
+        cache = self._cache
+        vars(self).update(vars(self._input_var_content))
+        self._cache = cache
 
     def is_valid(self) -> bool:
         """
