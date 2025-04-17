@@ -338,14 +338,25 @@ def test_forgiving_temporal_functions():
 
 def test_loads_of_recursion():
     a = vip.loop_node()
-    b = a.delayed(1)
-
+    b = a.delayed(10)
     a.loop_into(b + 1)
 
     a.to_plot()
     b.to_plot()
 
-    vip.solve(100)
+    vip.solve(1000, plot=False, time_step=0.05)
+
+    print(a.values)
+
+def test_big_delay():
+    a = vip.loop_node()
+    b = a.delayed(100)
+    a.loop_into(b + 1)
+
+    a.to_plot()
+    b.to_plot()
+
+    vip.solve(1000, time_step=0.05)
 
     print(a.values)
 

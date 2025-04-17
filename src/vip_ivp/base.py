@@ -3,7 +3,6 @@ import functools
 import inspect
 import operator
 import time
-import traceback
 import warnings
 from collections import abc
 from copy import copy
@@ -13,7 +12,8 @@ from typing import Callable, Union, TypeVar, Generic
 
 import numpy as np
 from numpy.typing import NDArray
-from typing_extensions import deprecated, ParamSpec
+from typing_extensions import ParamSpec
+from cachebox import LRUCache
 
 from .solver_utils import *
 from .utils import add_necessary_brackets, convert_to_string, operator_call, shift_array
@@ -58,6 +58,9 @@ class Solver:
         """
         if not isinstance(input_value, TemporalVar):
             input_value = TemporalVar(self, input_value)
+        elif input_value.is_discrete:
+            raise NotImplementedError("Discrete integration is not supported yet.")
+
         integrated_structure = self._get_integrated_structure(input_value, x0, minimum, maximum)
         integrated_variable = IntegratedVar(
             self,
@@ -180,10 +183,10 @@ class Solver:
         """
         Plot the variables that have been marked for plotting.
         """
-        import matplotlib.pyplot as plt
-
         if not self.vars_to_plot:
             return
+
+        import matplotlib.pyplot as plt
         # Plot data
         plt.figure("Results for VIP")
         for variable_name, var in self.vars_to_plot.items():
@@ -378,19 +381,19 @@ class Solver:
                         self.t_current = te
                         # Get all events that happens at te and execute their action
                         triggering_events = [active_events[i] for i in range(len(active_events)) if roots[i] == te]
-                        triggered_events=[]
+                        triggered_events = []
                         for event in triggering_events:
                             event.t_events.append(te)
                             event.y_events.append(ye)
-                            event.execute_action(te, ye) # Some actions mutate ye
+                            event.execute_action(te, ye)  # Some actions mutate ye
                             triggered_events.append(event)
                         # Create a loop to check if other events has triggered
                         while True:
-                            t_latest=t_eval[np.searchsorted(t_eval, te, side="left")]
-                            g_latest=[e(t_latest, sol(t_latest)) for e in events]
-                            g_current=[e(te, ye) for e in events]
+                            t_latest = t_eval[np.searchsorted(t_eval, te, side="left")]
+                            g_latest = [e(t_latest, sol(t_latest)) for e in events]
+                            g_current = [e(te, ye) for e in events]
                             direction = np.array([e.direction for e in events])
-                            active_events_indices_cascade=find_active_events_in_step(g_latest, g_current, direction)
+                            active_events_indices_cascade = find_active_events_in_step(g_latest, g_current, direction)
                             triggering_events = [self.events[i] for i in active_events_indices_cascade if
                                                  self.events[i] not in triggered_events]
                             if triggering_events:
@@ -444,7 +447,7 @@ class Solver:
                         sol = self._sol_wrapper(solver.dense_output())
                     self.t.extend(t_eval_step)
                     if self.dim != 0:
-                        self.y.extend([sol(t_ev) for t_ev in t_eval_step])
+                        self.y.extend(sol(t_eval_step))
                     else:
                         self.y.extend([0] * len(t_eval_step))
                     t_eval_i = t_eval_i_new
@@ -523,13 +526,16 @@ class Solver:
                 )
             upper.append(maximum)
             lower.append(minimum)
-        upper = np.array(upper)
-        lower = np.array(lower)
+        upper = np.moveaxis(np.array(upper), 0, -1)
+        lower = np.moveaxis(np.array(lower), 0, -1)
         return upper, lower
 
     def _sol_wrapper(self, sol):
         def output_fun(t: Union[float, NDArray]):
-            return self._bound_sol(t, sol(t).T)
+            y = sol(t)
+            if not np.isscalar(t):
+                y = np.moveaxis(y, 0, -1)
+            return self._bound_sol(t, y)
 
         return output_fun
 
@@ -558,12 +564,14 @@ class TemporalVar(Generic[T]):
             expression: str = None,
             child_cls=None,
             operator=None,
-            call_mode: CallMode = CallMode.CALL_ARGS_FUN
+            call_mode: CallMode = CallMode.CALL_ARGS_FUN,
+            is_discrete=False
     ):
         self.solver = solver
         self._output_type = None
         self._is_source = False
         self._call_mode = call_mode
+        self.is_discrete = is_discrete
         # Recursive building
         self.operator = operator
         child_cls = child_cls or type(self)
@@ -600,9 +608,44 @@ class TemporalVar(Generic[T]):
 
         self.events: List[Event] = []
 
-        self._cache = {}
+        self._cache = LRUCache(maxsize=4)
 
         self.solver.vars.append(self)
+
+    def __call__(self, t: Union[float, NDArray], y: NDArray) -> T:
+        # Handle dict in a recursive way
+        if isinstance(self.source, dict):
+            return {key: val(t, y) for key, val in self.source.items()}
+        elif not np.isscalar(t):
+            result = np.array([self(t[i], y[i]) for i in range(len(t))])
+            # If the result is a multidimensional array, make the time dimension the last instead of the first
+            if result.ndim > 1:
+                result = np.moveaxis(result, 0, -1)
+            return result
+        else:
+            # Handle the termination leaves of the recursion
+            if t in self._cache:
+                return self._cache[t]
+            elif isinstance(self.source, np.ndarray):
+                output = np.stack(np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source))
+            elif self.operator is not None:
+                if self._call_mode == CallMode.CALL_ARGS_FUN:
+                    args = [x(t, y) if isinstance(x, TemporalVar) else x for x in self.source if
+                            not isinstance(x, dict)]
+                    kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
+                    kwargs = {k: (x(t, y) if isinstance(x, TemporalVar) else x) for k, x in kwargs.items()}
+                    output = self.operator(*args, **kwargs)
+                elif self._call_mode == CallMode.CALL_FUN_RESULT:
+                    args = [x for x in self.source if not isinstance(x, dict)]
+                    kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
+                    output = self.operator(*args, **kwargs)(t, y)
+                else:
+                    raise ValueError(f"Unknown call mode: {self._call_mode}.")
+            else:
+                output = self.source(t, y) if callable(self.source) else self.source
+            if self.solver.solved or len(self.solver.t) and t == self.solver.t[-1]:
+                self._cache[t] = output
+        return output
 
     @property
     def values(self) -> NDArray:
@@ -708,8 +751,9 @@ class TemporalVar(Generic[T]):
             def previous_value(t, y):
                 if np.isscalar(t):
                     if len(input_variable.solver.t) >= delay:
-                        index = next((i for i, ts in enumerate(input_variable.solver.t) if t <= ts),
-                                     len(input_variable.solver.t))
+                        index = np.searchsorted(input_variable.solver.t, t, "left")
+                        # index = next((i for i, ts in enumerate(input_variable.solver.t) if t <= ts),
+                        #              len(input_variable.solver.t))
                         if index - delay < 0:
                             return initial_value
                         previous_t = input_variable.solver.t[index - delay]
@@ -725,10 +769,14 @@ class TemporalVar(Generic[T]):
 
             return previous_value
 
+        if 2 * delay > self._cache.maxsize:
+            self._cache = LRUCache(maxsize=2 * delay)
+
         return TemporalVar(self.solver, (create_delay, self),
                            expression=f"#DELAY({delay}) {get_expression(self)}",
                            operator=operator_call,
-                           call_mode=CallMode.CALL_FUN_RESULT)
+                           call_mode=CallMode.CALL_FUN_RESULT,
+                           is_discrete=True)
 
     def derivative(self, initial_value=0) -> "TemporalVar[T]":
         """
@@ -846,7 +894,7 @@ class TemporalVar(Generic[T]):
 
     def clear(self):
         self._values = None
-        self._cache = {}
+        self._cache.clear()
 
     def _first_value(self):
         return self(0, self.solver.x0 if len(self.solver.x0) else 0)
@@ -858,39 +906,6 @@ class TemporalVar(Generic[T]):
         if isinstance(value, TemporalVar) and value.solver is self.solver:
             return value
         return TemporalVar(self.solver, value)
-
-    def __call__(self, t: Union[float, NDArray], y: NDArray) -> T:
-        # Handle dict in a recursive way
-        if isinstance(self.source, dict):
-            return {key: val(t, y) for key, val in self.source.items()}
-        elif not np.isscalar(t):
-            result = np.array([self(t[i], y[i]) for i in range(len(t))])
-            # If the result is a multidimensional array, make the time dimension the last instead of the first
-            if result.ndim > 1:
-                result = np.moveaxis(result, 0, -1)
-            return result
-        # Handle the termination leaves of the recursion
-        elif t in self._cache:
-            return self._cache[t]
-        elif isinstance(self.source, np.ndarray):
-            output = np.stack(np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source))
-        elif self.operator is not None:
-            if self._call_mode == CallMode.CALL_ARGS_FUN:
-                args = [x(t, y) if isinstance(x, TemporalVar) else x for x in self.source if not isinstance(x, dict)]
-                kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
-                kwargs = {k: (x(t, y) if isinstance(x, TemporalVar) else x) for k, x in kwargs.items()}
-                output = self.operator(*args, **kwargs)
-            elif self._call_mode == CallMode.CALL_FUN_RESULT:
-                args = [x for x in self.source if not isinstance(x, dict)]
-                kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
-                output = self.operator(*args, **kwargs)(t, y)
-            else:
-                raise ValueError(f"Unknown call mode: {self._call_mode}.")
-        else:
-            output = self.source(t, y) if callable(self.source) else self.source
-        if t in self.solver.t:
-            self._cache[t] = output
-        return output
 
     def __copy__(self):
         return TemporalVar(self.solver, self.source, self.expression, operator=self.operator)
@@ -1255,8 +1270,9 @@ class LoopNode(TemporalVar[T]):
             initial_value = np.zeros(shape)
         else:
             initial_value = 0
+        self._input_var_content = None
+        super().__init__(solver, 0, expression="", child_cls=TemporalVar)
         self._input_var: TemporalVar = TemporalVar(solver, initial_value)
-        super().__init__(solver, self._input_var, expression="", child_cls=TemporalVar)
         self._is_set = False
         self._is_strict = strict
 
@@ -1282,8 +1298,17 @@ class LoopNode(TemporalVar[T]):
         self.source = self._input_var.source
         self.operator = self._input_var.operator
 
-    def __call__(self, t: Union[float, NDArray], y: NDArray) -> T:
-        return self._input_var(t, y)
+    @property
+    def _input_var(self):
+        return self._input_var_content
+
+    @_input_var.setter
+    def _input_var(self, value: TemporalVar[T]):
+        self._input_var_content = value
+        # Overwrite attributes except cache size
+        cache = self._cache
+        vars(self).update(vars(self._input_var_content))
+        self._cache = cache
 
     def is_valid(self) -> bool:
         """

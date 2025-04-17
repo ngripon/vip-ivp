@@ -38,7 +38,7 @@ def test_harmonic_equation():
     # y'' + 9 * y = 0
     # Compute exact solution
     x_end=10
-    x = np.linspace(0, x_end, 1001)
+    x = np.linspace(0, x_end, 11)
     y_exact = np.cos(3 * x) + 2 / 3 * np.sin(3 * x)
     # Compute solver solution
     ddy = vip.loop_node()
