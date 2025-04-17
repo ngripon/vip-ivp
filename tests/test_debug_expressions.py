@@ -8,14 +8,14 @@ def test_source_expression():
     def fun(t):
         return t
 
-    constant = vip.create_source(5)
-    anonymous = vip.create_source(lambda t: t)
-    lambda_source = vip.create_source(lambda_fun)
-    fun_source = vip.create_source(fun)
+    constant = vip.temporal(5)
+    anonymous = vip.temporal(lambda t: t)
+    lambda_source = vip.temporal(lambda_fun)
+    fun_source = vip.temporal(fun)
 
-    dict_source = vip.create_source({"a": 5, "b": 4})
-    list_source = vip.create_source([1, 2, 3])
-    array_source = vip.create_source(np.linspace(0, 10, 11))
+    dict_source = vip.temporal({"a": 5, "b": 4})
+    list_source = vip.temporal([1, 2, 3])
+    array_source = vip.temporal(np.linspace(0, 10, 11))
 
     # Scalars
     assert constant._expression == str(5)
@@ -33,10 +33,10 @@ def test_source_expression():
 
 
 def test_operations():
-    a = vip.create_source(0)
-    b = vip.create_source(1)
-    c = vip.create_source(2)
-    d = vip.create_source(3)
+    a = vip.temporal(0)
+    b = vip.temporal(1)
+    c = vip.temporal(2)
+    d = vip.temporal(3)
 
     # Testing addition
     ab = a + b
@@ -125,7 +125,7 @@ def test_diff_equation():
 
 
 def test_transformations():
-    a = vip.create_source(5)
+    a = vip.temporal(5)
 
     da = a.derivative()
     ia = vip.integrate(a, 0)
@@ -143,7 +143,7 @@ def test_transformations():
 
 
 def test_condition():
-    a = vip.create_source(1)
+    a = vip.temporal(1)
     b = vip.integrate(5, 0)
 
     cond = a < 5
@@ -163,7 +163,7 @@ def test_condition():
 
 
 def test_actions():
-    a = vip.create_source(1)
+    a = vip.temporal(1)
     ia = vip.integrate(5, 0)
 
     vip.solve(10)
