@@ -386,5 +386,5 @@ def _check_solver_discrepancy(input_value: Union["TemporalVar", float], solver: 
 
 def _convert_to_temporal_var(value: Union[T, TemporalVar[T]]) -> TemporalVar[T]:
     if not isinstance(value, TemporalVar):
-        value = create_source(value)
+        value = temporal(value)
     return value
