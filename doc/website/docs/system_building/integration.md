@@ -11,7 +11,7 @@ To create an integrated variable, use the `vip.integrate(value, x0)` function:
 
 ```python
 # Create a sine by integrating a cosine
-cosine = vip.create_source(lambda t: np.cos(t))
+cosine = vip.temporal(lambda t: np.cos(t))
 sine = vip.integrate(cosine, 0)
 ```
 
@@ -32,8 +32,8 @@ integrated_list = vip.integrate([1, 2, 3], x0=[3, 4, 5])
 You can also integrate `TemporalVar` instances that contain collections of numeric values. As with standard collections, `x0` must match the structure of `value`.
 
 ```python
-source_dict = vip.create_source({"a": 3, "b": lambda t: -t})
-source_list = vip.create_source([1, 2, 3])
+source_dict = vip.temporal({"a": 3, "b": lambda t: -t})
+source_list = vip.temporal([1, 2, 3])
 
 integrated_dict = vip.integrate(source_dict, x0={"a": 1, "b": 3})
 integrated_list = vip.integrate(source_list, x0=[3, 4, 5])
@@ -46,7 +46,7 @@ To prevent an integrated variable from exceeding certain values — for example,
 ```python
 import numpy as np
 
-source = vip.create_source(lambda t: np.cos(t))
+source = vip.temporal(lambda t: np.cos(t))
 # Variable with output limits
 bounded_variable = vip.integrate(source, x0=0.0, maximum=0.5, minimum=-0.5)
 # Variable without output limits
@@ -73,8 +73,8 @@ The `minimum` and `maximum` arguments can also be dynamic `TemporalVar` instance
 ```python
 import numpy as np
 
-source = vip.create_source(lambda t: np.cos(t))
-upper_limit = vip.create_source(lambda t: 1 - 0.1 * t)
+source = vip.temporal(lambda t: np.cos(t))
+upper_limit = vip.temporal(lambda t: 1 - 0.1 * t)
 
 bounded_variable = vip.integrate(source, x0=0.0, maximum=upper_limit)
 unbounded_variable = vip.integrate(source, x0=0.0)

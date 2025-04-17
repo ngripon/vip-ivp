@@ -30,7 +30,7 @@ def basic_function(x: float) -> int:
     else:
         return -1
 
-input = vip.create_source(lambda t: np.cos(t))
+input = vip.temporal(lambda t: np.cos(t))
 output = vip.f(basic_function)(input)
 
 input.to_plot()
@@ -56,7 +56,7 @@ The `TemporalVar.m(method)` function, similar to `vip.f()`, makes methods of the
 Here's an example with a Temporal Variable containing a NumPy array. With `TemporalVar.m()`, you can call the `reshape()` method of the NumPy array object:
 
 ```python
-array_source = vip.create_source([lambda t: t, lambda t: 2 * t, lambda t: 3 * t, lambda t: 4 * t])
+array_source = vip.temporal([lambda t: t, lambda t: 2 * t, lambda t: 3 * t, lambda t: 4 * t])
 reshaped_array = array_source.m(np.ndarray.reshape)((2, 2))
 ```
 
@@ -64,7 +64,7 @@ reshaped_array = array_source.m(np.ndarray.reshape)((2, 2))
 Another way to get the method object is to use the `output_type` property:
 
 ```python
-array_source = vip.create_source([lambda t: t, lambda t: 2 * t, lambda t: 3 * t, lambda t: 4 * t])
+array_source = vip.temporal([lambda t: t, lambda t: 2 * t, lambda t: 3 * t, lambda t: 4 * t])
 # highlight-next-line
 reshaped_array = array_source.m(array_source.output_type.reshape)((2, 2))
 ```
@@ -95,7 +95,7 @@ import numpy as np
 # Data map
 voltage_per_soc = {0.0: 3.0, 0.2: 3.4, 0.5: 3.6, 0.8: 3.8, 1.0: 4.2}
 # Create input
-soc = vip.create_source(lambda t: np.maximum(1.0 - 0.05 * t, 0))
+soc = vip.temporal(lambda t: np.maximum(1.0 - 0.05 * t, 0))
 # Create output with np.interp
 voltage = vip.f(np.interp)(soc, list(voltage_per_soc.keys()), list(voltage_per_soc.values()))
 

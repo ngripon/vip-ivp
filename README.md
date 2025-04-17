@@ -125,7 +125,7 @@ ddy.loop_into(5 - 1 / 4 * (3 * dy + 2 * y))
 Create source signals from temporal functions or scalar values.
 
 ```python
-source = vip.create_source(lambda t: 2 * t)
+source = vip.temporal(lambda t: 2 * t)
 ```
 
 ### Solve the system of equations
@@ -152,7 +152,7 @@ The plot is automatically created when the system is solved.
 
 ```python
 def foo():
-    variable = vip.create_source(5)
+    variable = vip.temporal(5)
     variable.to_plot("Variable name")
 
 
@@ -194,7 +194,7 @@ functions.
 
 ```python
 def foo():
-    variable = vip.create_source(5)
+    variable = vip.temporal(5)
     variable.save("bar")
 
 

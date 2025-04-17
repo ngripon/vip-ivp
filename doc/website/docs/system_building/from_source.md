@@ -4,10 +4,10 @@ sidebar_position: 2
 
 # Source Variables
 
-To create Temporal Variables from standard Python values, use the `create_source()` function.
+To create Temporal Variables from standard Python values, use the `temporal()` function.
 
 ```python
-source_variable = vip.create_source(5)
+source_variable = vip.temporal(5)
 ```
 
 ## Scalar values
@@ -15,10 +15,10 @@ source_variable = vip.create_source(5)
 Temporal Variables can be created from all native Python scalar types:
 
 ```python
-int_variable = vip.create_source(1)
-float_variable = vip.create_source(3.14)
-bool_variable = vip.create_source(True)
-string_variable = vip.create_source("Hello world!")
+int_variable = vip.temporal(1)
+float_variable = vip.temporal(3.14)
+bool_variable = vip.temporal(True)
+string_variable = vip.temporal("Hello world!")
 ```
 
 :::note
@@ -27,7 +27,7 @@ While `str` is technically a sequence type in Python, it behaves like a scalar i
 
 ## Temporal functions
 
-Temporal Variables can also be created from a temporal function. Input a single argument function into `create_source()`:
+Temporal Variables can also be created from a temporal function. Input a single argument function into `temporal()`:
 
 ```python
 import numpy as np
@@ -35,8 +35,8 @@ import numpy as np
 def sinus(t):
     return np.sin(t)
 
-temporal_variable = vip.create_source(sinus)
-lambda_variable = vip.create_source(lambda t: 2 * t)
+temporal_variable = vip.temporal(sinus)
+lambda_variable = vip.temporal(lambda t: 2 * t)
 ```
 
 :::warning
@@ -61,7 +61,7 @@ def bad_function(t):
 
 ### NumPy arrays
 
-A Temporal Variable can contain a NumPy ndarray. Lists are automatically converted to NumPy arrays when passed to `create_source()`.
+A Temporal Variable can contain a NumPy ndarray. Lists are automatically converted to NumPy arrays when passed to `temporal()`.
 
 ```python
 import numpy as np
@@ -70,9 +70,9 @@ arr = np.arange(6).reshape(2, 3)
 list_input = [[0, 1, 2], [3, 4, 5]]
 list_of_mixed = [lambda t: t, "Hello", 5, True]
 
-array_variable = vip.create_source(arr)
-array_variable_too = vip.create_source(list_input) # Automatically converted to np.array
-array_mixed = vip.create_source(list_of_mixed)
+array_variable = vip.temporal(arr)
+array_variable_too = vip.temporal(list_input) # Automatically converted to np.array
+array_mixed = vip.temporal(list_of_mixed)
 ```
 
 :::warning
@@ -84,7 +84,7 @@ The following example triggers a ValueError:
 list_input = [[0, 1], [2]]
 
 # Error: The requested array has an inhomogeneous shape after 1 dimensions.
-array_variable = vip.create_source(list_input)
+array_variable = vip.temporal(list_input)
 ```
 
 :::
@@ -100,7 +100,7 @@ d = {
     "text": "Hello world!"
 }
 
-dict_variable = vip.create_source(d)
+dict_variable = vip.temporal(d)
 ```
 
 ## Scenario tables

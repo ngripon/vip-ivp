@@ -31,7 +31,7 @@ The function processes the data and returns a dictionary of TemporalVar objects.
 * **Raises:**
   **ValueError** – If the input file type is unsupported or the input type is invalid.
 
-### create_source(value)
+### temporal(value)
 
 Create a source signal from a temporal function or a scalar value.
 
