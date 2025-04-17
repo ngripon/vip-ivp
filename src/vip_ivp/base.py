@@ -10,6 +10,7 @@ from typing import overload, Literal, Iterable, Dict, Tuple, List, Any
 from pathlib import Path
 from typing import Callable, Union, TypeVar, Generic
 
+import numpy as np
 from numpy.typing import NDArray
 from typing_extensions import ParamSpec
 from cachebox import LRUCache
@@ -443,7 +444,7 @@ class Solver:
                         sol = self._sol_wrapper(solver.dense_output())
                     self.t.extend(t_eval_step)
                     if self.dim != 0:
-                        self.y.extend([sol(t_ev) for t_ev in t_eval_step])
+                        self.y.extend(sol(t_eval_step))
                     else:
                         self.y.extend([0] * len(t_eval_step))
                     t_eval_i = t_eval_i_new
@@ -522,13 +523,16 @@ class Solver:
                 )
             upper.append(maximum)
             lower.append(minimum)
-        upper = np.array(upper)
-        lower = np.array(lower)
+        upper = np.moveaxis(np.array(upper),0,-1)
+        lower = np.moveaxis(np.array(lower),0,-1)
         return upper, lower
 
     def _sol_wrapper(self, sol):
         def output_fun(t: Union[float, NDArray]):
-            return self._bound_sol(t, sol(t).T)
+            y = sol(t)
+            if not np.isscalar(t):
+                y=np.moveaxis(y,0,-1)
+            return self._bound_sol(t, y)
 
         return output_fun
 
