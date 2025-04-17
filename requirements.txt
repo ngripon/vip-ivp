@@ -9,3 +9,4 @@ pandas~=2.2
 typing-extensions~=4.0
 torch~=2.6
 pytest-benchmark~=5.1
+cachebox~=4.5

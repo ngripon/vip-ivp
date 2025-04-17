@@ -14,7 +14,7 @@ from typing import Callable, Union, TypeVar, Generic
 import numpy as np
 from numpy.typing import NDArray
 from typing_extensions import deprecated, ParamSpec
-from cachetools import LRUCache
+from cachebox import LRUCache
 
 from .solver_utils import *
 from .utils import add_necessary_brackets, convert_to_string, operator_call, shift_array
