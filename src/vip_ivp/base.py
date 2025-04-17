@@ -764,7 +764,7 @@ class TemporalVar(Generic[T]):
             return previous_value
 
         if delay > self._cache.maxsize:
-            self._cache = LRUCache(maxsize=5 * delay)
+            self._cache = LRUCache(maxsize=2 * delay)
 
         return TemporalVar(self.solver, (create_delay, self),
                            expression=f"#DELAY({delay}) {get_expression(self)}",
