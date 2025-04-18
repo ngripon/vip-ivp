@@ -88,12 +88,6 @@ Modelica defines systems using equations, which is elegant from a mathematical s
 
 In contrast, `vip-ivp` uses a causal approach where the direction and update rules for each variable are explicit. While this approach is less abstract than Modelica’s, it’s easier to follow, simpler to debug, and more reliable in practice.
 
-### SimuPy
-
-SimuPy is a Python package that enables users to build system models using interconnections of blocks, similar to Simulink. It supports symbolic modeling and numerical integration.
-
-While SimuPy offers a graph-based abstraction, it requires users to define dynamics using state-space systems, which can be less intuitive when modeling systems with internal logic or event-driven behavior. `vip-ivp`, on the other hand, is designed to feel more natural to Python users, allowing you to define states, events, and signals directly without the need to work with state-space formalisms unless desired.
-
 ## Roadmap
 
 `vip-ivp` is still in its early stages, and several major features are planned to greatly expand its capabilities:
