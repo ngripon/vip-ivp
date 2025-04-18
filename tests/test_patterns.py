@@ -24,6 +24,15 @@ def test_collections_get_methods():
     print(arr_slice[0].values)
 
 
+def test_t_eval_over_time_step():
+    t_eval = np.array([0, 2, 2.5, 7])
+    a = vip.temporal(1)
+
+    vip.solve(10, t_eval=t_eval)
+
+    assert np.array_equal(t_eval, a.t)
+
+
 def test_use_numpy_function():
     x = vip.temporal(5)
     a = vip.integrate(x, 0)
@@ -145,19 +154,19 @@ def test_multidimensional_integration_loop_node():
 
     vip.solve(10, time_step=0.001, plot=False)
 
+
 def test_multidimensional_differentiation():
-    source=[lambda t: t, lambda t: 2 * t, lambda t: 3 * t, lambda t: 4 * t]
+    source = [lambda t: t, lambda t: 2 * t, lambda t: 3 * t, lambda t: 4 * t]
     array_source = vip.temporal(source)
-    diff=array_source.derivative()
-    truth=[array_source[i].derivative() for i in range(len(source))]
+    diff = array_source.derivative()
+    truth = [array_source[i].derivative() for i in range(len(source))]
 
     array_source.to_plot()
     diff.to_plot()
 
     vip.solve(10, time_step=1, plot=False)
     for i in range(len(source)):
-        assert np.array_equal(diff[i].values,truth[i].values)
-
+        assert np.array_equal(diff[i].values, truth[i].values)
 
 
 def test_set_loop_node_multiple_times():
@@ -435,19 +444,21 @@ def test_increment_interval():
     assert count.values[8] == 4
     assert count.values[10] == 5
 
-def test_loop_with_delay():
-    start=time.time()
-    a=vip.loop_node()
-    b=a.delayed(1)
 
-    a.loop_into(b+1)
+def test_loop_with_delay():
+    start = time.time()
+    a = vip.loop_node()
+    b = a.delayed(1)
+
+    a.loop_into(b + 1)
 
     # a.to_plot()
     # b.to_plot()
 
-    vip.solve(10,time_step=1)
+    vip.solve(10, time_step=1)
     print(a.values)
-    print(time.time()-start)
+    print(time.time() - start)
+
 
 def test_state_variable():
     def relay(u, previous_state):
