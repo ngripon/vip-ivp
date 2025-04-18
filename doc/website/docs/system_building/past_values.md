@@ -3,12 +3,17 @@ sidebar_position: 7
 ---
 
 # Using Past Values
+:::info 🧪 Experimental Features
+These features are **experimental** and may change in future versions. Use with caution, as breaking changes can occur.
+:::
 
 :::warning
 Use these features with a **small time step**. The solver cannot guarantee high precision for results computed with delayed or differentiated variables.
 :::
 
 ## Delayed Variables
+
+
 
 You can create a delayed copy of a Temporal Variable using the `.delayed(n_steps)` method.
 
