@@ -25,12 +25,24 @@ def test_collections_get_methods():
 
 
 def test_t_eval_over_time_step():
-    t_eval = np.array([0, 2, 2.5, 7])
+    t_eval = [0, 2, 2.5, 7]
     a = vip.temporal(1)
 
     vip.solve(10, t_eval=t_eval)
 
     assert np.array_equal(t_eval, a.t)
+
+def test_solvers():
+    methods=['RK23','RK45','DOP853','Radau', 'BDF','LSODA']
+    for method in methods:
+        vip.new_system()
+        d_n = vip.loop_node()
+        n = vip.integrate(d_n, 1)
+        d_n.loop_into(-0.5 * n)
+
+        start=time.time()
+        vip.solve(10,method=method, time_step=0.001)
+        print(f"{method}: {time.time()-start}s")
 
 
 def test_use_numpy_function():
