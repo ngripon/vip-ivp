@@ -93,3 +93,19 @@ In contrast, `vip-ivp` uses a causal approach where the direction and update rul
 SimuPy is a Python package that enables users to build system models using interconnections of blocks, similar to Simulink. It supports symbolic modeling and numerical integration.
 
 While SimuPy offers a graph-based abstraction, it requires users to define dynamics using state-space systems, which can be less intuitive when modeling systems with internal logic or event-driven behavior. `vip-ivp`, on the other hand, is designed to feel more natural to Python users, allowing you to define states, events, and signals directly without the need to work with state-space formalisms unless desired.
+
+## Roadmap
+
+`vip-ivp` is still in its early stages, and several major features are planned to greatly expand its capabilities:
+
+- **Discrete-time variables** with user-defined sampling rates  
+  Enable hybrid modeling by mixing continuous and discrete-time variables.
+
+- **Stateful logic and state machines**  
+  Model systems with internal state and mode transitions using intuitive constructs.
+
+- **Interactive user interface** for simulation analysis  
+  Explore the behavior of your entire system through a visual interface: inspect variables, trace dependencies, and debug more easily.
+
+- **Multiphysics modeling with Bond Graphs**  
+  Introduce components grounded in the Bond Graph formalism for unified modeling of mechanical, electrical, hydraulic, and thermal systems.
