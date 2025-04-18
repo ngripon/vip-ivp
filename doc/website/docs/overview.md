@@ -42,7 +42,7 @@ The following plot opens upon solving:
 
 ## Features
 
-- **Awesome Developer Experience**: Create dynamic systems in just a few lines of code using the familiar Python syntax.
+- **Awesome Developer Experience**: Create dynamic systems of continuous variables in just a few lines of code using a Pythonic syntax.
 - **Python Integration**: Seamlessly use it with your favorite Python libraries and tools, like SciPy, PyTorch, Plotly, Streamlit and more.
 - **Hybrid Solver**: Handle both differential equations and events.
 - **Causal Approach**: Easy to understand and debug, thanks to a clear direction of data flow.
@@ -52,7 +52,7 @@ The following plot opens upon solving:
 
 ### MATLAB/Simulink
 
-Simulink is one of the most widely used tools for modeling and simulating dynamic systems in industry, research, and education. Its visual interface and integration with MATLAB make it a strong choice for many engineering workflows.
+Simulink is one of the most widely used tools for modeling and simulating dynamic systems in industry, research, and education. Its visual interface, huge number of features and integration with MATLAB make it a strong choice for many engineering workflows.
 
 However, for developers and researchers who value code clarity, open tools, and modern software practices, Simulink can introduce a few challenges:
 
@@ -67,14 +67,10 @@ However, for developers and researchers who value code clarity, open tools, and 
   - Limited support for inline documentation
   - No workflow for AI-assisted development
 
-`vip-ivp` offers a code-first alternative built for modern developers and scientists:
+`vip-ivp` is **not a full replacement for Simulink**, but it offers a powerful alternative to its **continuous-time modeling and simulation features**.  
+`vip-ivp` offers a code-first alternative built for modern developers and scientists. It brings everything people love about Python to system simulation: easy to read, test, version, and extend — and no license fees.
 
-- Fully **open-source** and built in Python
-- Seamless integration with libraries like NumPy, SciPy, and PyTorch
-- Easy to read, test, share, and version control
-- Fast to prototype, extend, and maintain
-
-If you're looking for a lightweight, developer-friendly way to simulate dynamic systems — without leaving your Python environment — `vip-ivp` might be exactly what you need.
+If you're looking for a lightweight, developer-friendly way to simulate continuous-time dynamic systems — without leaving your Python environment — `vip-ivp` might be exactly what you need.
 
 ### SciPy
 
