@@ -389,3 +389,16 @@ def test_cascading_events():
     vip.solve(20, time_step=0.001)
 
     assert count.values[-1] == 18
+
+def test_stiff_ode():
+    dy=vip.loop_node(3)
+    # Robertson problem
+    y=vip.integrate(dy,[1,0,0])
+    dy1 = -0.04 * y[0] + 1e4 * y[1] * y[2]
+    dy2 = 0.04 * y[0] - 1e4 * y[1] * y[2] - 3e7 * y[1] ** 2
+    dy3 = 3e7 * y[1] ** 2
+    dy.loop_into([dy1,dy2,dy3])
+
+    vip.solve(1e2, method="BDF")
+    print(y.values)
+
