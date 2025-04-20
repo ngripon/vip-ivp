@@ -70,6 +70,8 @@ vip.solve(10, time_step=0.01)
 ```
 ![Terminal event](./images/terminal_event.png)
 
+## Time Events
+
 ## Actions
 **An action is a function with only side-effects** that is executed at the time an event is triggered.
 
@@ -126,8 +128,32 @@ Collision at 1.4278431229270645.
 ```
 
 ### System actions
+
+System actions **modify the state of the system during the simulation**. They introduce a discontinuity in the behavior of the system. 
+
 #### Reset the value of an Integrated Variable
+
+To create an Action that change the instantaneous value of an Integrated Variable, use the `.action_reset_to(value)` method.
+
+In physical systems, this is the action you are the most likely to use.  
+For example bouncing: when the ball hits the ground, its velocity is reversed instantaneously. Because `velocity` is an Integrated Variable, an action that reverts the velocity can be written:
+
+```python
+velocity.action_reset_to(-velocity)
+```
+
 
 #### Modify the behavior of a Temporal Variable
 
-### Compose actions
+For changing the behavior of Temporal Variables that are not Integrated, nor Loop Nodes, use the `.action_set_to(new_value)` method. The Temporal Variable is set a new value when the Action is executed.
+
+For example, if you want to increment a `count` variable when an event triggers:
+
+```python
+count.action_set_to(count+1)
+```
+
+
+### Combine actions
+
+### Conditional actions
