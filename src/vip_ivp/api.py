@@ -310,7 +310,7 @@ def export_to_df(*variables: TemporalVar) -> "pd.DataFrame":
     return pd.DataFrame(variable_dict)
 
 
-def export_file(filename: str, variables: Iterable[TemporalVar] = None,
+def export_file(filename: str, variable_list: Iterable[TemporalVar] = None,
                 file_format: Literal["csv", "json"] = None) -> None:
     if file_format is None:
         file_format = Path(filename).suffix.lstrip(".")
@@ -319,7 +319,7 @@ def export_file(filename: str, variables: Iterable[TemporalVar] = None,
             f"Unsupported file format: {file_format}. "
             f"The available file formats are {', '.join(AVAILABLE_EXPORT_FILE_FORMATS)}"
         )
-    df = export_to_df(*variables)
+    df = export_to_df(*variable_list)
     if file_format == "csv":
         df.to_csv(filename, index=False)
     elif file_format == "json":
