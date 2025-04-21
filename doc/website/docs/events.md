@@ -166,7 +166,7 @@ count.action_set_to(count+1)
 
 #### Termination action
 
-
+The termination action is `vip.action_terminate`. When triggered, this action ends the simulation.
 
 #### Disable another action
 
