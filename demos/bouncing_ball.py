@@ -12,7 +12,7 @@ velocity = vip.integrate(acceleration, x0=0)
 height = vip.integrate(velocity, x0=initial_height)
 
 # Create the bouncing event
-bounce = vip.where(abs(velocity) > v_min, velocity.action_reset_to(-k * velocity), vip.terminate)
+bounce = vip.where(abs(velocity) > v_min, velocity.action_reset_to(-k * velocity), vip.action_terminate)
 height.on_crossing(0, bounce, terminal=False, direction="falling")
 
 # Add variables to plot

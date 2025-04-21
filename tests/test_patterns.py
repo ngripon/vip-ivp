@@ -376,7 +376,7 @@ def test_action_adding():
     a = vip.temporal(5)
     ia = vip.integrate(a, 0)
 
-    ia.on_crossing(10, ia.action_reset_to(0) + vip.terminate)
+    ia.on_crossing(10, ia.action_reset_to(0) + vip.action_terminate)
 
     ia.to_plot("IA")
 

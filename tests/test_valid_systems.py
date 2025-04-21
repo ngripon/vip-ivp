@@ -229,7 +229,7 @@ def test_bouncing_projectile_motion():
 
     bounce = vip.where(abs(velocity[1]) > v_min,
                        velocity[1].action_reset_to(-k * velocity[1]),
-                       vip.terminate)
+                       vip.action_terminate)
 
     position[1].on_crossing(
         0,
@@ -376,7 +376,7 @@ def test_cascading_events():
     count = vip.temporal(0)
 
     # Create the bouncing event
-    bounce = vip.where(abs(velocity) > v_min, velocity.action_reset_to(-k * velocity), vip.terminate)
+    bounce = vip.where(abs(velocity) > v_min, velocity.action_reset_to(-k * velocity), vip.action_terminate)
     height.on_crossing(0, bounce, terminal=False, direction="falling")
     velocity.on_crossing(0, count.action_set_to(count + 1), direction="rising")
 

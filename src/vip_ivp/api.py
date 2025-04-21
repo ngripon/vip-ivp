@@ -215,7 +215,7 @@ def _terminate():
     solver.status = 1
 
 
-terminate = Action(_terminate, "Terminate simulation")
+action_terminate = Action(_terminate, "Terminate simulation")
 
 
 def set_timeout(action: Union[Action, Callable], delay: float) -> Event:
