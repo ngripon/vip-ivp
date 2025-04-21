@@ -76,6 +76,14 @@ vip.solve(10, time_step=0.01)
 ![Terminal event](./images/terminal_event.png)
 
 ## Time Events
+Time Events are special crossing events applied to the simulation time.
+
+### Timeout
+To apply an action when a delay has elapsed, use `vip.set_timeout(action, delay)`.
+
+### Time Interval
+
+To apply a recurring action, use `vip.set_interval(action, delay)`. 
 
 ## Actions
 
