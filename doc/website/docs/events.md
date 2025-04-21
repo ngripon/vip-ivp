@@ -166,9 +166,14 @@ count.action_set_to(count+1)
 
 #### Termination action
 
-The termination action is `vip.action_terminate`. When triggered, this action ends the simulation.
+The termination Action is `vip.action_terminate`. When triggered, this action ends the simulation.
 
-#### Disable another action
+#### Disable an event
+
+To create an Action that disable an event, get the `.action_disable` property of the event to be disabled.
+
+Once an event is disabled, it is never triggered again, even when its condition is met.
+
 
 ### Combine actions
 
