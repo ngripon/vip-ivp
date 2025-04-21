@@ -47,9 +47,10 @@ def stiff_ode_scipy():
 
     y0 = [1, 0, 0]
     t_span = (0, 1e3)  # Long time span
+    t_eval=np.linspace(0,t_span[1],10001)
 
     # Use a stiff solver like Radau or BDF
-    sol = solve_ivp(robertson, t_span, y0, method='BDF')
+    sol = solve_ivp(robertson, t_span, y0, method='BDF', t_eval=t_eval)
     return sol.y
 
 
