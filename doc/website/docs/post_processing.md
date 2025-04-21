@@ -1,5 +1,5 @@
 ---
-sidebar_position: 7
+sidebar_position: 8
 ---
 
 # Post-Processing
@@ -44,11 +44,11 @@ Example:
 
 ```python
 # Create the system
-acceleration = vip.temporal(9.81)
+acceleration = vip.temporal(-9.81)
 velocity = vip.integrate(acceleration, x0=0)
 height = vip.integrate(velocity, x0=10)
 
-vip.solve(10)
+vip.solve(10, time_step=1)
 
 # highlight-start
 # Convert to a pandas DataFrame
@@ -59,12 +59,12 @@ print(dataframe)
 
 Console output:
 ```
-     Time (s)  velocity     height
-0         0.0     0.000   10.00000
-1         0.1     0.981   10.04905
-2         0.2     1.962   10.19620
+    Time (s)  velocity   height
+0        0.0      0.00   10.000
+1        1.0     -9.81    5.095
+2        2.0    -19.62   -9.620
 ...
-100      10.0    98.100  500.50000
+10      10.0    -98.10 -480.500
 ```
 
 ## Export to a File
@@ -82,7 +82,6 @@ vip.export_file(filename, variable_list, file_format)
 ### Export to CSV
 
 ```python
-vip.solve(10, time_step=1)
 vip.export_file("result.csv", (velocity, height), "csv")
 ```
 
@@ -91,10 +90,10 @@ vip.export_file("result.csv", (velocity, height), "csv")
 ```csv title="result.csv"
 Time (s),velocity,height
 0.0,0.0,10.0
-1.0,9.81,14.905
-2.0,19.62,29.62
+1.0,-9.81,5.09
+2.0,-19.62,-9.62
 ...
-10.0,98.1,500.5
+10.0,-98.10,-480.50
 ```
 
 ### Export to JSON
@@ -107,9 +106,27 @@ vip.export_file("result.json", (velocity, height), "json")
 
 ```json title="result.json"
 [
-  { "Time (s)": 0.0, "velocity": 0.0, "height": 10.0 },
-  { "Time (s)": 1.0, "velocity": 9.81, "height": 14.905 },
-  ...
-  { "Time (s)": 10.0, "velocity": 98.1, "height": 500.5 }
+  {
+    "Time (s)": 0.0,
+    "velocity": 0.0,
+    "height": 10.0
+  },
+  {
+    "Time (s)": 1.0,
+    "velocity": -9.81,
+    "height": 5.095
+  },
+  {
+    "Time (s)": 2.0,
+    "velocity": -19.62,
+    "height": -9.62
+  },
+...
+  {
+    "Time (s)": 10.0,
+    "velocity": -98.1,
+    "height": -480.5
+  }
 ]
+
 ```
