@@ -44,10 +44,11 @@ def temporal(value: Union[Callable[[NDArray], T], T]) -> TemporalVar[T]:
     return TemporalVar(solver, value)
 
 
-def create_scenario(scenario_table: Union["pd.DataFrame", str, dict], time_key: str, interpolation_kind="linear",
-                    sep=',') -> TemporalVar:
+def create_scenario(scenario_table: Union["pd.DataFrame", str, dict], time_key: str, interpolation_kind: str = "linear",
+                    sep: str = ',') -> TemporalVar:
     """
     Creates a scenario from a given input table, which can be in various formats such as CSV, JSON, dictionary, or DataFrame.
+
     The maps in the scenario table are interpolated over time and converted into TemporalVar objects.
     The function processes the data and returns a dictionary of TemporalVar objects.
 
@@ -56,27 +57,20 @@ def create_scenario(scenario_table: Union["pd.DataFrame", str, dict], time_key: 
         - A JSON file path (string)
         - A dictionary of data
         - A pandas DataFrame
-    :type scenario_table: Union[pd.DataFrame, str, dict]
 
     :param time_key: The key (column) to use as time for the scenario.
-    :type time_key: str
 
     :param interpolation_kind: Specifies the kind of interpolation as a string or as an integer specifying the order of
-    the spline interpolator to use. The string has to be one of ‘linear’, ‘nearest’, ‘nearest-up’, ‘zero’, ‘slinear’,
-    ‘quadratic’, ‘cubic’, ‘previous’, or ‘next’. ‘zero’, ‘slinear’, ‘quadratic’ and ‘cubic’ refer to a spline
-    interpolation of zeroth, first, second or third order; ‘previous’ and ‘next’ simply return the previous or next
-    value of the point; ‘nearest-up’ and ‘nearest’ differ when interpolating half-integers (e.g. 0.5, 1.5) in that
-    ‘nearest-up’ rounds up and ‘nearest’ rounds down. Default is ‘linear’.
-    :type interpolation_kind: str or int, optional
+        the spline interpolator to use. The string has to be one of ‘linear’, ‘nearest’, ‘nearest-up’, ‘zero’, ‘slinear’,
+        ‘quadratic’, ‘cubic’, ‘previous’, or ‘next’. ‘zero’, ‘slinear’, ‘quadratic’ and ‘cubic’ refer to a spline
+        interpolation of zeroth, first, second or third order; ‘previous’ and ‘next’ simply return the previous or next
+        value of the point; ‘nearest-up’ and ‘nearest’ differ when interpolating half-integers (e.g. 0.5, 1.5) in that
+        ‘nearest-up’ rounds up and ‘nearest’ rounds down. Default is ‘linear’.
 
     :param sep: The separator to use when reading CSV files. Default is a comma.
-    :type sep: str, optional
 
     :return: A dictionary of TemporalVar objects representing the scenario, where the keys are the variables and the
         values are the corresponding TemporalVar instances.
-    :rtype: Dict[Any, TemporalVar]
-
-    :raises ValueError: If the input file type is unsupported or the input type is invalid.
     """
     import pandas as pd
 
