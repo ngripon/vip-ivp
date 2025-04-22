@@ -55,7 +55,7 @@ This function needs the sliderplot package.
 * **Return type:**
   `None`
 
-### export_file(filename, variables=None, file_format=None)
+### export_file(filename, variable_list=None, file_format=None)
 
 * **Return type:**
   `None`
@@ -189,3 +189,175 @@ list must represent a valid rectangular matrix.
   The created TemporalVar.
 
 ### where(condition, a, b)
+
+## Classes
+
+### *class* Action(fun, expression=None)
+
+Bases: `object`
+
+#### \_\_init_\_(fun, expression=None)
+
+### *class* Event(solver, fun, action, direction='both', terminal=False)
+
+Bases: `object`
+
+#### \_\_init_\_(solver, fun, action, direction='both', terminal=False)
+
+#### *property* action_disable *: Action*
+
+Create an action that disable the event, so it will not execute its action anymore.
+:return: Action
+
+#### clear()
+
+#### evaluate(t, y)
+
+* **Return type:**
+  `None`
+
+#### execute_action(t, y)
+
+### *class* IntegratedVar(solver, fun=None, expression=None, x0=None, minimum=-inf, maximum=inf, y_idx=None)
+
+Bases: `TemporalVar`[`T`]
+
+#### \_\_init_\_(solver, fun=None, expression=None, x0=None, minimum=-inf, maximum=inf, y_idx=None)
+
+#### action_reset_to(value)
+
+Create an action that, when its event is triggered, reset the IntegratedVar output to the specified value.
+:type value: `Union`[`TemporalVar`[`TypeVar`(`T`)], `TypeVar`(`T`)]
+:param value: Value at which the integrator output is reset to
+:rtype: `Action`
+:return: Action to be put into an Event.
+
+#### action_set_to()
+
+Not implemented
+:rtype: `None`
+:return: Raise an exception
+
+#### *property* y_idx
+
+### *class* LoopNode(solver, shape=None, strict=True)
+
+Bases: `TemporalVar`[`T`]
+
+#### \_\_init_\_(solver, shape=None, strict=True)
+
+#### action_set_to()
+
+Not implemented
+:rtype: `None`
+:return: Raise an exception
+
+#### is_valid()
+
+Check if the Loop Node is ready to be solved.
+If the Loop Node uses strict mode, its value must be set.
+:rtype: `bool`
+:return: True if valid, False if incorrect
+
+#### loop_into(value, force=False)
+
+Set the input value of the loop node.
+
+* **Parameters:**
+  * **force** (`bool`) – Add the value to the loop node even if it has already been set.
+  * **value** (`Union`[`TemporalVar`[`TypeVar`(`T`)], `TypeVar`(`T`), `List`]) – The value to add, can be a TemporalVar or a number.
+
+### *class* TemporalVar(solver, source=None, expression=None, child_cls=None, operator=None, call_mode=CallMode.CALL_ARGS_FUN, is_discrete=False)
+
+Bases: `Generic`[`T`]
+
+#### \_\_init_\_(solver, source=None, expression=None, child_cls=None, operator=None, call_mode=CallMode.CALL_ARGS_FUN, is_discrete=False)
+
+#### action_set_to(new_value)
+
+Create an action that, when its event is triggered, change the TemporalVar value.
+This action works with recursive statements. For example, count.action_set_to(count+1) is valid.
+:type new_value: `Union`[`TemporalVar`[`TypeVar`(`T`)], `TypeVar`(`T`)]
+:param new_value: New value
+:rtype: `Action`
+:return: Action to be put into an Event.
+
+#### clear()
+
+#### delayed(delay, initial_value=0)
+
+Create a delayed version of the TemporalVar.
+:type delay: `int`
+:param delay: Number of solver steps by which the new TemporalVar is delayed.
+:type initial_value: `TypeVar`(`T`)
+:param initial_value: Value of the delayed variable at the beginning when there is not any value for the original value.
+:rtype: `TemporalVar`[`TypeVar`(`T`)]
+:return: Delayed version of the TemporalVar
+
+#### derivative(initial_value=0)
+
+Return the derivative of the Temporal Variable.
+
+Warning: Contrary to integration, this derivative method does not guarantee precision. Use it only as an escape
+hatch.
+:type initial_value: 
+:param initial_value: value at t=0
+:rtype: `TemporalVar`[`TypeVar`(`T`)]
+:return: TemporalVar containing the derivative.
+
+#### *property* expression
+
+#### *classmethod* from_scenario(solver, scenario_table, time_key, interpolation_kind='linear')
+
+* **Return type:**
+  `TemporalVar`
+
+#### items()
+
+#### keys()
+
+#### m(method)
+
+* **Return type:**
+  `Callable`[[`ParamSpec`(`P`)], `TemporalVar`[`TypeVar`(`T`)]]
+
+#### on_crossing(value, action=None, direction='both', terminal=False)
+
+Execute the specified action when the signal crosses the specified value in the specified direction.
+:type value: `Union`[`TemporalVar`[`TypeVar`(`T`)], `TypeVar`(`T`)]
+:param value: Value to be crossed to trigger the event action.
+:type action: `Union`[`Action`, `Callable`]
+:param action: Action that is triggered when the crossing condition is met.
+:type direction: `Literal`[`'rising'`, `'falling'`, `'both'`]
+:param direction: Direction of the crossing that will trigger the event.
+:type terminal: `Union`[`bool`, `int`]
+:param terminal: If True, the simulation will terminate when the crossing occurs. If it is an integer, it
+specifies the number of occurrences of the event after which the simulation will be terminated.
+:rtype: `Event`
+:return: Crossing event
+
+#### *property* output_type
+
+#### save(name)
+
+Save the temporal variable with a name.
+
+* **Parameters:**
+  **name** (`str`) – Key to retrieve the variable.
+* **Return type:**
+  `None`
+
+#### *property* shape
+
+#### *property* t *: ndarray[tuple[int, ...], dtype[\_ScalarType_co]]*
+
+#### to_plot(name=None)
+
+Add the variable to the plotted data on solve.
+
+* **Parameters:**
+  **name** (`str`) – Name of the variable in the legend of the plot.
+* **Return type:**
+  `None`
+
+#### *property* values *: ndarray[tuple[int, ...], dtype[\_ScalarType_co]]*
