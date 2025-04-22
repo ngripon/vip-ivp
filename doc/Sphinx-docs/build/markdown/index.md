@@ -11,4 +11,4 @@ documentation for details.
 
 # Contents:
 
-* [vip_ivp package](vip_ivp.md)
+* [API Reference](vip_ivp.md)

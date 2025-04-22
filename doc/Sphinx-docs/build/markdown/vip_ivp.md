@@ -1,4 +1,6 @@
-# vip_ivp package
+# API Reference
+
+## Functions
 
 ### clear()
 
@@ -20,9 +22,17 @@ The function processes the data and returns a dictionary of TemporalVar objects.
     - A dictionary of data
     - A pandas DataFrame
   * **time_key** (*str*) – The key (column) to use as time for the scenario.
-  * **interpolation_kind** (*str* *,* *optional*) – The kind of interpolation to use. Default is “linear”. This determines how values are
-    interpolated between time points.
-  * **sep** (*str* *,* *optional*) – The separator to use when reading CSV files. Default is a comma.
+  * **interpolation_kind** – Specifies the kind of interpolation as a string or as an integer specifying the order of
+
+the spline interpolator to use. The string has to be one of ‘linear’, ‘nearest’, ‘nearest-up’, ‘zero’, ‘slinear’,
+‘quadratic’, ‘cubic’, ‘previous’, or ‘next’. ‘zero’, ‘slinear’, ‘quadratic’ and ‘cubic’ refer to a spline
+interpolation of zeroth, first, second or third order; ‘previous’ and ‘next’ simply return the previous or next
+value of the point; ‘nearest-up’ and ‘nearest’ differ when interpolating half-integers (e.g. 0.5, 1.5) in that
+‘nearest-up’ rounds up and ‘nearest’ rounds down. Default is ‘linear’.
+:type interpolation_kind: str or int, optional
+
+* **Parameters:**
+  **sep** (*str* *,* *optional*) – The separator to use when reading CSV files. Default is a comma.
 * **Returns:**
   A dictionary of TemporalVar objects representing the scenario, where the keys are the variables and the
   values are the corresponding TemporalVar instances.
@@ -30,27 +40,6 @@ The function processes the data and returns a dictionary of TemporalVar objects.
   Dict[Any, TemporalVar]
 * **Raises:**
   **ValueError** – If the input file type is unsupported or the input type is invalid.
-
-### temporal(value)
-
-Create a source signal from a temporal function or a scalar value.
-
-* **Parameters:**
-  **value** (`Union`[`Callable`[[`Union`[`float`, `ndarray`]], `TypeVar`(`T`)], `TypeVar`(`T`)]) – A function f(t) or a scalar value.
-* **Return type:**
-  `TemporalVar`[`TypeVar`(`T`)]
-* **Returns:**
-  The created TemporalVar.
-
-### delay(input_value, n_steps, initial_value=0)
-
-* **Return type:**
-  `TemporalVar`[`TypeVar`(`T`)]
-
-### differentiate(input_value, initial_value=0)
-
-* **Return type:**
-  `TemporalVar`[`float`]
 
 ### explore(fun, t_end, bounds=(), time_step=None, title='')
 
@@ -71,10 +60,10 @@ This function needs the sliderplot package.
 * **Return type:**
   `None`
 
-### export_to_df(variables=None)
+### export_to_df(\*variables)
 
 * **Return type:**
-  `DataFrame`
+  pd.DataFrame
 
 ### f(func)
 
@@ -85,6 +74,12 @@ This function needs the sliderplot package.
 
 * **Return type:**
   `List`[`Event`]
+
+### get_time_variable()
+
+Return the time variable of the system.
+:rtype: `TemporalVar`[`float`]
+:return: Time variable that returns the time value of each simulation step.
 
 ### get_var(var_name)
 
@@ -102,19 +97,22 @@ Retrieve a saved TemporalVar by its name.
 Integrate the input value starting from the initial condition x0.
 
 * **Parameters:**
-  * **minimum** (`Union`[`TemporalVar`[`TypeVar`(`T`)], `TypeVar`(`T`)]) – Lower integration bound. Can be a TemporalVar
-  * **maximum** (`Union`[`TemporalVar`[`TypeVar`(`T`)], `TypeVar`(`T`)]) – Higher integration bound. Can be a TemporalVar
+  * **minimum** (`Union`[`TemporalVar`[`TypeVar`(`T`)], `TypeVar`(`T`), `None`]) – Lower integration bound. Can be a TemporalVar
+  * **maximum** (`Union`[`TemporalVar`[`TypeVar`(`T`)], `TypeVar`(`T`), `None`]) – Higher integration bound. Can be a TemporalVar
   * **input_value** (`Union`[`TemporalVar`[`TypeVar`(`T`)], `TypeVar`(`T`)]) – The value to be integrated, can be a TemporalVar or a number.
-  * **x0** (`TypeVar`(`T`)) – The initial condition for the integration.
+  * **x0** (`Union`[`TypeVar`(`T`), `List`]) – The initial condition for the integration.
 * **Return type:**
-  `IntegratedVar`
+  `IntegratedVar`[`TypeVar`(`T`)]
 * **Returns:**
   The integrated TemporalVar.
 
-### loop_node(shape=None)
+### loop_node(shape=None, strict=True)
 
 Create a loop node. Loop node can accept new inputs through its “loop_into()” method after being instantiated.
 
+* **Parameters:**
+  * **shape** (`Union`[`int`, `tuple`[`int`, `...`]]) – Shape of the NumPy array contained in the Loop Node. If None, the Loop Node will contain a scalar.
+  * **strict** (`bool`) – Flag that triggers an error when the Loop Node has not been set before the solving.
 * **Return type:**
   `LoopNode`
 * **Returns:**
@@ -155,18 +153,39 @@ Save the given TemporalVars with their variable names.
 * **Return type:**
   `Event`
 
-### solve(t_end, time_step=0.1, method='RK45', t_eval=None, include_events_times=True, \*\*options)
+### solve(t_end, time_step=0.1, method='RK45', t_eval=None, include_events_times=True, plot=True, rtol=0.001, atol=1e-06, max_step=inf, verbose=False)
 
-Solve the equations of the dynamical system through an integration scheme.
+Solve the equations of the dynamical system through a hybrid solver.
+
+The hybrid solver is a modified version of SciPy’s solve_ivp() function.
 
 * **Parameters:**
-  * **include_events_times** (`bool`) – If true, include time points at which events are triggered.
+  * **max_step** – Maximum allowed step size. Default is np.inf, i.e., the step size is not bounded and determined
+    solely by the solver.
+  * **plot** (`bool`) – If True, a plot will show the result of the simulation for variables that were registered to plot.
+  * **verbose** (`bool`) – If True, print solving information to the console.
+  * **include_events_times** (`bool`) – If True, include time points at which events are triggered.
   * **t_end** (`float`) – Time at which the integration stops.
-  * **method** – Integration method to use. Default is ‘RK45’.
-  * **time_step** (`Optional`[`Number`]) – Time step for the integration. If None, use points selected by the solver.
-  * **t_eval** (`Union`[`List`, `ndarray`]) – Times at which to store the computed solution. If None, use points selected by the solver.
-  * **options** – Additional options for the solver.
+  * **method** – Integration method to use. Default is ‘RK45’. For a list of available methods, see SciPy’s
+    solve_ivp() documentation.
+  * **time_step** (`Optional`[`float`]) – Time step for the integration. If None, use points selected by the solver.
+  * **t_eval** (`Union`[`List`, `ndarray`[`tuple`[`int`, `...`], `dtype`[`TypeVar`(`_ScalarType_co`, bound= `generic`, covariant=True)]]]) – Times at which to store the computed solution. If None, use points selected by the solver.
+  * **rtol** (`float`) – Relative tolerance. The solver keeps the local error estimates less than atol + rtol \* abs(y).
+  * **atol** (`float`) – Absolute tolerance. The solver keeps the local error estimates less than atol + rtol \* abs(y).
 * **Return type:**
   `None`
+
+### temporal(value)
+
+Create a Temporal Variable from a temporal function, a scalar value, a dict, a list or a NumPy array.
+If the input value is a list, the variable content will be converted to a NumPy array. As a consequence, a nested
+list must represent a valid rectangular matrix.
+
+* **Parameters:**
+  **value** (`Union`[`Callable`[[`ndarray`[`tuple`[`int`, `...`], `dtype`[`TypeVar`(`_ScalarType_co`, bound= `generic`, covariant=True)]]], `TypeVar`(`T`)], `TypeVar`(`T`)]) – A function f(t), a scalar value, a dict, a list or a NumPy array.
+* **Return type:**
+  `TemporalVar`[`TypeVar`(`T`)]
+* **Returns:**
+  The created TemporalVar.
 
 ### where(condition, a, b)

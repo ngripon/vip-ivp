@@ -1,5 +1,7 @@
-vip\_ivp package
+API Reference
 ================
+
+## Functions
 
 .. automodule:: vip_ivp.api
    :members:
