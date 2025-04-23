@@ -4,7 +4,8 @@
 
 ### clear()
 
-Clear the current solver’s stored information.
+Clear the current solver’s stored state.
+Use it to free memory before creating a new simulation.
 
 * **Return type:**
   `None`
@@ -14,10 +15,10 @@ Clear the current solver’s stored information.
 Creates a scenario from a given input table, which can be in various formats such as CSV, JSON, dictionary, or DataFrame.
 
 The maps in the scenario table are interpolated over time and converted into TemporalVar objects.
-The function processes the data and returns a dictionary of TemporalVar objects.
+The function processes the data and returns a TemporalVar containing a dictionary of TemporalVar objects.
 
 * **Parameters:**
-  * **scenario_table** (`Union`[pd.DataFrame, `str`, `dict`]) – The input data, which can be one of the following formats:
+  * **scenario_table** (`Union`[`DataFrame`, `str`, `dict`]) – The input data, which can be one of the following formats:
     - A CSV file path (string)
     - A JSON file path (string)
     - A dictionary of data
@@ -57,7 +58,7 @@ This function needs the sliderplot package.
 ### export_to_df(\*variables)
 
 * **Return type:**
-  pd.DataFrame
+  `DataFrame`
 
 ### f(func)
 
@@ -90,11 +91,13 @@ Retrieve a saved TemporalVar by its name.
 
 Integrate the input value starting from the initial condition x0.
 
+The integrated output can be bounded with the **minimum** and **maximum** arguments.
+
 * **Parameters:**
-  * **minimum** (`Union`[`TemporalVar`[`TypeVar`(`T`)], `TypeVar`(`T`), `None`]) – Lower integration bound. Can be a TemporalVar
-  * **maximum** (`Union`[`TemporalVar`[`TypeVar`(`T`)], `TypeVar`(`T`), `None`]) – Higher integration bound. Can be a TemporalVar
   * **input_value** (`Union`[`TemporalVar`[`TypeVar`(`T`)], `TypeVar`(`T`)]) – The value to be integrated, can be a TemporalVar or a number.
   * **x0** (`Union`[`TypeVar`(`T`), `List`]) – The initial condition for the integration.
+  * **minimum** (`Union`[`TemporalVar`[`TypeVar`(`T`)], `TypeVar`(`T`), `None`]) – Lower integration bound. Can be a TemporalVar
+  * **maximum** (`Union`[`TemporalVar`[`TypeVar`(`T`)], `TypeVar`(`T`), `None`]) – Higher integration bound. Can be a TemporalVar
 * **Return type:**
   `IntegratedVar`[`TypeVar`(`T`)]
 * **Returns:**
@@ -102,7 +105,7 @@ Integrate the input value starting from the initial condition x0.
 
 ### loop_node(shape=None, strict=True)
 
-Create a loop node. Loop node can accept new inputs through its “loop_into()” method after being instantiated.
+Create a Loop Node. A Loop Node can accept new inputs through its “loop_into()” method after being instantiated.
 
 * **Parameters:**
   * **shape** (`Union`[`int`, `tuple`[`int`, `...`]]) – Shape of the NumPy array contained in the Loop Node. If None, the Loop Node will contain a scalar.
@@ -172,6 +175,7 @@ The hybrid solver is a modified version of SciPy’s solve_ivp() function.
 ### temporal(value)
 
 Create a Temporal Variable from a temporal function, a scalar value, a dict, a list or a NumPy array.
+
 If the input value is a list, the variable content will be converted to a NumPy array. As a consequence, a nested
 list must represent a valid rectangular matrix.
 
@@ -183,6 +187,22 @@ list must represent a valid rectangular matrix.
   The created TemporalVar.
 
 ### where(condition, a, b)
+
+Create a conditional TemporalVar or a conditional Action.
+If condition is True at time $t$, the output value will have value **a**, else **b**.
+
+If **a** and **b** are TemporalVars or scalars, the output will be a TemporalVar.
+
+If **a** and **b** are Actions, the output will be an Action.
+
+* **Parameters:**
+  * **condition** (`Union`[`TemporalVar`[`bool`], `bool`]) – Condition to evaluate through time.
+  * **a** (`Union`[`TemporalVar`, `TypeVar`(`T`), `Action`]) – Output value or Action to execute if the condition is True at time $t$
+  * **b** (`Union`[`TemporalVar`, `TypeVar`(`T`), `Action`]) – Output value or Action to execute if the condition is False at time $t$
+* **Return type:**
+  `Union`[`TemporalVar`[`TypeVar`(`T`)], `Action`]
+* **Returns:**
+  Conditional TemporalVar or conditional Action.
 
 ## Classes
 

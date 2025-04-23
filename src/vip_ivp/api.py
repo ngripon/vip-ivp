@@ -1,8 +1,10 @@
 import json
-from typing import Dict, Union
+from typing import TYPE_CHECKING
 
 from varname import argname
-from typing_extensions import ParamSpec
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 from .base import *
 from .utils import *
@@ -34,6 +36,7 @@ def temporal(value: T) -> TemporalVar[T]: ...
 def temporal(value: Union[Callable[[NDArray], T], T]) -> TemporalVar[T]:
     """
     Create a Temporal Variable from a temporal function, a scalar value, a dict, a list or a NumPy array.
+
     If the input value is a list, the variable content will be converted to a NumPy array. As a consequence, a nested
     list must represent a valid rectangular matrix.
 
@@ -50,7 +53,7 @@ def create_scenario(scenario_table: Union["pd.DataFrame", str, dict], time_key: 
     Creates a scenario from a given input table, which can be in various formats such as CSV, JSON, dictionary, or DataFrame.
 
     The maps in the scenario table are interpolated over time and converted into TemporalVar objects.
-    The function processes the data and returns a dictionary of TemporalVar objects.
+    The function processes the data and returns a TemporalVar containing a dictionary of TemporalVar objects.
 
     :param scenario_table: The input data, which can be one of the following formats:
         - A CSV file path (string)
@@ -107,10 +110,12 @@ def integrate(input_value: Union[TemporalVar[T], T], x0: Union[T, List], minimum
     """
     Integrate the input value starting from the initial condition x0.
 
-    :param minimum: Lower integration bound. Can be a TemporalVar
-    :param maximum: Higher integration bound. Can be a TemporalVar
+    The integrated output can be bounded with the **minimum** and **maximum** arguments.
+
     :param input_value: The value to be integrated, can be a TemporalVar or a number.
     :param x0: The initial condition for the integration.
+    :param minimum: Lower integration bound. Can be a TemporalVar
+    :param maximum: Higher integration bound. Can be a TemporalVar
     :return: The integrated TemporalVar.
     """
     solver = _get_current_solver()
@@ -129,7 +134,7 @@ def loop_node(shape: Union[int, tuple[int, ...]] = None, strict: bool = True) ->
 
 def loop_node(shape: Union[int, tuple[int, ...]] = None, strict: bool = True) -> LoopNode:
     """
-    Create a loop node. Loop node can accept new inputs through its "loop_into()" method after being instantiated.
+    Create a Loop Node. A Loop Node can accept new inputs through its "loop_into()" method after being instantiated.
 
     :param shape: Shape of the NumPy array contained in the Loop Node. If None, the Loop Node will contain a scalar.
     :param strict: Flag that triggers an error when the Loop Node has not been set before the solving.
@@ -149,7 +154,21 @@ def where(condition: Union[TemporalVar[bool], bool], a: Union[TemporalVar, T], b
     T]: ...
 
 
-def where(condition, a, b):
+def where(condition: Union[TemporalVar[bool], bool], a: Union[TemporalVar, T, Action],
+          b: Union[TemporalVar, T, Action])->Union[TemporalVar[T], Action]:
+    """
+    Create a conditional TemporalVar or a conditional Action.
+    If condition is `True` at time $t$, the output value will have value **a**, else **b**.
+
+    If **a** and **b** are TemporalVars or scalars, the output will be a TemporalVar.
+
+    If **a** and **b** are Actions, the output will be an Action.
+
+    :param condition: Condition to evaluate through time.
+    :param a: Output value or Action to execute if the condition is `True` at time $t$
+    :param b: Output value or Action to execute if the condition is `False` at time $t$
+    :return: Conditional TemporalVar or conditional Action.
+    """
     solver = _get_current_solver()
     if isinstance(a, Action) or isinstance(b, Action):
         return action_where(solver, condition, a, b)
@@ -318,7 +337,8 @@ def export_file(filename: str, variable_list: Iterable[TemporalVar] = None,
 
 def clear() -> None:
     """
-    Clear the current solver's stored information.
+    Clear the current solver's stored state.
+    Use it to free memory before creating a new simulation.
     """
     solver = _get_current_solver()
     solver.clear()
