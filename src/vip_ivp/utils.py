@@ -4,7 +4,11 @@ import types
 from typing import Any, Generator
 
 import numpy as np
+from jedi.inference.gradual.typing import Callable
 
+
+def vectorize_source(fun)->Callable:
+    ...
 
 def check_if_vectorized(fun) -> (bool, bool):
     accept_arrays = True
