@@ -6,6 +6,28 @@ from typing import Any, Generator
 import numpy as np
 
 
+def check_if_vectorized(fun) -> (bool, bool):
+    accept_arrays = True
+    has_scalar_mode = True
+
+    # Test with scalar
+    scalar_output = fun(0)
+
+    # Test with array input
+    array_input = np.linspace(0, 0.001, 3)
+    try:
+        array_output = fun(array_input)
+        scalar_ndim=0 if np.isscalar(scalar_output) else np.asarray(scalar_output).ndim
+        if array_output.ndim==scalar_ndim:
+            has_scalar_mode=False
+        elif scalar_ndim!=array_output.ndim-1:
+            raise ValueError("There is something wrong in the output dimensions of the function.")
+    except ValueError:
+        accept_arrays = False
+
+    return accept_arrays, has_scalar_mode
+
+
 def shift_array(arr: np.ndarray, n: int, fill_value: float = 0):
     shifted = np.roll(arr, n, axis=-1)  # Shift the array
     if n > 0:
