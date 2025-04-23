@@ -57,20 +57,16 @@ def create_scenario(scenario_table: Union["pd.DataFrame", str, dict], time_key: 
         - A JSON file path (string)
         - A dictionary of data
         - A pandas DataFrame
-
     :param time_key: The key (column) to use as time for the scenario.
-
     :param interpolation_kind: Specifies the kind of interpolation as a string or as an integer specifying the order of
         the spline interpolator to use. The string has to be one of ‘linear’, ‘nearest’, ‘nearest-up’, ‘zero’, ‘slinear’,
         ‘quadratic’, ‘cubic’, ‘previous’, or ‘next’. ‘zero’, ‘slinear’, ‘quadratic’ and ‘cubic’ refer to a spline
         interpolation of zeroth, first, second or third order; ‘previous’ and ‘next’ simply return the previous or next
         value of the point; ‘nearest-up’ and ‘nearest’ differ when interpolating half-integers (e.g. 0.5, 1.5) in that
         ‘nearest-up’ rounds up and ‘nearest’ rounds down. Default is ‘linear’.
-
     :param sep: The separator to use when reading CSV files. Default is a comma.
+    :return: A dictionary of TemporalVar objects representing the scenario, where the keys are the variables and the values are the corresponding TemporalVar instances.
 
-    :return: A dictionary of TemporalVar objects representing the scenario, where the keys are the variables and the
-        values are the corresponding TemporalVar instances.
     """
     import pandas as pd
 

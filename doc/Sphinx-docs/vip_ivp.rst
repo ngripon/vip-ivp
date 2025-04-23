@@ -3,7 +3,7 @@ API Reference
 
 ## Functions
 
-.. automodule:: vip_ivp.api
+.. automodule:: src.vip_ivp.api
    :members:
    :show-inheritance:
    :undoc-members:
@@ -11,7 +11,7 @@ API Reference
 
 ## Classes
 
-.. automodule:: vip_ivp.base
+.. automodule:: src.vip_ivp.base
    :members: TemporalVar, LoopNode, IntegratedVar, Action, Event
    :show-inheritance:
    :undoc-members:
