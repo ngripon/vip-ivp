@@ -1,6 +1,6 @@
 @layer theme, base, components, utilities;
-@import 'tailwindcss/theme.css' layer(theme) important;
-@import 'tailwindcss/utilities.css' layer(utilities) important;
+@import 'tailwindcss/theme.css' layer(theme);
+@import 'tailwindcss/utilities.css' layer(utilities);
 
 @plugin 'tailwindcss-animate';
 
@@ -131,7 +131,7 @@
   --ifm-footer-link-color: #333;
   --ifm-code-font-size: 95%;
   --ifm-color-primary: #044cc1;
-  --ifm-h1-font-size: 2.5rem;
+  --ifm-h1-font-size: 3rem;
   --docusaurus-highlighted-code-line-bg: #0000001a;
   --ifm-global-shadow-tl: 2px 3px 5px 0 rgba(0, 0, 0, 0.2), 0 2px 4px 0 rgba(0, 0, 0, 0.1);
   --ifm-font-family-base: Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, system-ui, -apple-system,
@@ -174,7 +174,7 @@ html[data-theme='dark'] {
 }
 
 .markdown h1:first-child {
-  --ifm-h1-font-size: 2rem;
+  --ifm-h1-font-size: 3rem;
 }
 
 a {
@@ -254,7 +254,7 @@ div[class^='docItemContainer_'] article img {
 }
 
 [class^='title_'] {
-  font-size: 2.3rem !important;
+  font-size: 3rem !important;
 }
 
 #__blog-post-container img[class^='img_'] {
