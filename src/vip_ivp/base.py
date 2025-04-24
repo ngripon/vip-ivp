@@ -627,18 +627,10 @@ class TemporalVar(Generic[T]):
             elif isinstance(self.source, np.ndarray):
                 output = np.stack(np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source))
             elif self.operator is not None:
-                if self._call_mode == CallMode.CALL_ARGS_FUN:
-                    args = [x(t, y) if isinstance(x, TemporalVar) else x for x in self.source if
-                            not isinstance(x, dict)]
-                    kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
-                    kwargs = {k: (x(t, y) if isinstance(x, TemporalVar) else x) for k, x in kwargs.items()}
-                    output = self.operator(*args, **kwargs)
-                elif self._call_mode == CallMode.CALL_FUN_RESULT:
-                    args = [x for x in self.source if not isinstance(x, dict)]
-                    kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
-                    output = self.operator(*args, **kwargs)(t, y)
+                if self.operator is operator_call and not np.isscalar(t):
+                    output = np.array([self._call_operator(t[i], y[i]) for i in range(len(t))])
                 else:
-                    raise ValueError(f"Unknown call mode: {self._call_mode}.")
+                    output = self._call_operator(t, y)
             else:
                 if callable(self.source):
                     output = self.source(t, y)
@@ -649,6 +641,20 @@ class TemporalVar(Generic[T]):
             if self.solver.solved:
                 self._cache[t_cache] = output
         return output
+
+    def _call_operator(self, t, y):
+        if self._call_mode == CallMode.CALL_ARGS_FUN:
+            args = [x(t, y) if isinstance(x, TemporalVar) else x for x in self.source if
+                    not isinstance(x, dict)]
+            kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
+            kwargs = {k: (x(t, y) if isinstance(x, TemporalVar) else x) for k, x in kwargs.items()}
+            return self.operator(*args, **kwargs)
+        elif self._call_mode == CallMode.CALL_FUN_RESULT:
+            args = [x for x in self.source if not isinstance(x, dict)]
+            kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
+            return self.operator(*args, **kwargs)(t, y)
+        else:
+            raise ValueError(f"Unknown call mode: {self._call_mode}.")
 
     @property
     def values(self) -> NDArray:
