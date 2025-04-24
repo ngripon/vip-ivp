@@ -62,10 +62,10 @@ def test_use_numpy_method():
     reshaped_array = array_source.m(array_source.output_type.reshape)((2, 2))
     square_array_source = vip.temporal([[lambda t: t, lambda t: 2 * t], [lambda t: 3 * t, lambda t: 4 * t]])
     # reshaped_array.to_plot()
-    vip.solve(10, 1)
+    vip.solve(3, 1)
     print(array_source.values[0])
-    print(reshaped_array.values[0])
-    print(square_array_source.values[0])
+    print(reshaped_array.values)
+    print(square_array_source.values)
     # Bug explanation: When the TemporalVariable possess a numpy array that is computed from an operation, it does not
     # manipulate the shape to have the time dimensions the last instead of the first.
 
