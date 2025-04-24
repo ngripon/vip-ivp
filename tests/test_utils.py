@@ -19,6 +19,7 @@ def test_check_if_vectorized():
 def test_vectorization():
     scalar_input = 1
     array_input = np.linspace(0, 5, 6)
+
     # Test 0D functions
     fun_list = [scalar_only_fun, scalar_mode_fun, vectorized_function]
     for fun in fun_list:
@@ -27,6 +28,11 @@ def test_vectorization():
     # Test constant function
     assert vectorize_source(constant_fun)(scalar_input) == 1
     assert np.array_equal(vectorize_source(constant_fun)(array_input), np.ones_like(array_input))
+
+    # Test 1D functions
+    assert np.array_equal(vectorize_source(constant_arr)(scalar_input), np.ones((2,3)))
+    assert np.array_equal(vectorize_source(constant_arr)(array_input), np.ones((2,3,len(array_input))))
+
 
 
 def scalar_only_fun(t):
@@ -48,3 +54,6 @@ def vectorized_function(t):
 
 def constant_fun(t):
     return 1
+
+def constant_arr(t):
+    return np.ones((2,3))
