@@ -25,7 +25,11 @@ def vectorize_source(fun: Callable) -> Callable:
         if np.isscalar(t):
             return fun(t)
         else:
-            return np.full(len(t), fun(0))
+            value = fun(0)
+            if np.isscalar(value):
+                return np.full(len(t), value)
+            else:
+                return np.moveaxis(np.broadcast_to(value, (len(t),) + value.shape), 0, -1)
 
     if is_constant:
         return constant_wrapper
