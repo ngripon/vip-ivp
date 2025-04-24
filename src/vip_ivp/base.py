@@ -112,7 +112,7 @@ class Solver:
         # Add integration value
         integrated_variable = IntegratedVar(
             self,
-            lambda t, y, idx=self.dim: y[idx] if y.ndim==1 else y[...,idx],
+            lambda t, y, idx=self.dim: y[idx] if y.ndim == 1 else y[..., idx],
             f"#INTEGRATE {get_expression(var)}",
             x0,
             minimum,
@@ -640,7 +640,12 @@ class TemporalVar(Generic[T]):
                 else:
                     raise ValueError(f"Unknown call mode: {self._call_mode}.")
             else:
-                output = self.source(t, y) if callable(self.source) else self.source
+                if callable(self.source):
+                    output = self.source(t, y)
+                elif np.isscalar(t):
+                    output = self.source
+                else:
+                    output = np.full(len(t), self.source)
             if self.solver.solved:
                 self._cache[t_cache] = output
         return output
