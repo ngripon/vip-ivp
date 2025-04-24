@@ -1,6 +1,6 @@
 import numpy as np
 
-from src.vip_ivp.utils import check_if_vectorized, vectorize_source
+from vip_ivp.utils import check_if_vectorized, vectorize_source
 
 
 def test_check_if_vectorized():

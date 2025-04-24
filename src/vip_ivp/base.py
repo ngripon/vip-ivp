@@ -16,7 +16,7 @@ from typing_extensions import ParamSpec
 from cachebox import LRUCache
 
 from .solver_utils import *
-from .utils import add_necessary_brackets, convert_to_string, operator_call, shift_array
+from .utils import add_necessary_brackets, convert_to_string, operator_call, shift_array, vectorize_source
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -112,7 +112,7 @@ class Solver:
         # Add integration value
         integrated_variable = IntegratedVar(
             self,
-            lambda t, y, idx=self.dim: y[idx],
+            lambda t, y, idx=self.dim: y[idx] if y.ndim==1 else y[...,idx],
             f"#INTEGRATE {get_expression(var)}",
             x0,
             minimum,
@@ -582,7 +582,7 @@ class TemporalVar(Generic[T]):
             if callable(source) and not isinstance(source, child_cls):
                 n_args = len(inspect.signature(source).parameters)
                 if n_args == 1:
-                    self.source = lambda t, y: source(t)
+                    self.source = lambda t, y: vectorize_source(source)(t)
                 else:
                     self.source = lambda t, y: source(t, y)
             elif np.isscalar(source):
@@ -616,16 +616,14 @@ class TemporalVar(Generic[T]):
         # Handle dict in a recursive way
         if isinstance(self.source, dict):
             return {key: val(t, y) for key, val in self.source.items()}
-        elif not np.isscalar(t):
-            result = np.array([self(t[i], y[i]) for i in range(len(t))])
-            # If the result is a multidimensional array, make the time dimension the last instead of the first
-            if result.ndim > 1:
-                result = np.moveaxis(result, 0, -1)
-            return result
         else:
             # Handle the termination leaves of the recursion
-            if t in self._cache:
-                return self._cache[t]
+            if isinstance(t, np.ndarray):
+                t_cache = tuple(t)
+            else:
+                t_cache = t
+            if t_cache in self._cache:
+                return self._cache[t_cache]
             elif isinstance(self.source, np.ndarray):
                 output = np.stack(np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source))
             elif self.operator is not None:
@@ -643,8 +641,8 @@ class TemporalVar(Generic[T]):
                     raise ValueError(f"Unknown call mode: {self._call_mode}.")
             else:
                 output = self.source(t, y) if callable(self.source) else self.source
-            if self.solver.solved or len(self.solver.t) and t == self.solver.t[-1]:
-                self._cache[t] = output
+            if self.solver.solved:
+                self._cache[t_cache] = output
         return output
 
     @property

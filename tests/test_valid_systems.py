@@ -10,6 +10,12 @@ import pytest
 import vip_ivp as vip
 
 
+def test_plot_constant():
+    a = vip.temporal(1)
+    a.to_plot()
+    vip.solve(10)
+
+
 def test_multiple_loop_into():
     d_n1 = vip.loop_node()
     n1 = vip.integrate(d_n1, 1)
@@ -347,6 +353,7 @@ def test_loads_of_recursion():
     vip.solve(1000, plot=False, time_step=0.05)
 
     print(a.values)
+
 
 def test_big_delay():
     a = vip.loop_node()
