@@ -634,10 +634,10 @@ class TemporalVar(Generic[T]):
             elif self.operator is not None:
                 if self.operator is operator_call and not np.isscalar(t):
                     output = np.array([self._call_operator(t[i], y[i]) for i in range(len(t))])
+                    if output.ndim > 1:
+                        output = np.moveaxis(output, 0, -1)
                 else:
                     output = self._call_operator(t, y)
-                if not np.isscalar(t) and output.ndim > 1:
-                    output = np.moveaxis(output, 0, -1)
             else:
                 if callable(self.source):
                     output = self.source(t, y)

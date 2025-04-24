@@ -268,6 +268,7 @@ def test_array_comparisons_operators():
     vip.solve(10, 1)
 
     # Assertions for equality
+    equ_arr.values
     assert np.array_equal(equ_arr[0].values, equ1.values)
     assert np.array_equal(equ_arr[1].values, equ2.values)
 
