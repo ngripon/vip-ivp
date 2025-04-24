@@ -475,7 +475,7 @@ class Solver:
 
         if self.t:
             self.t = np.array(self.t)
-            self.y = np.vstack(self.y)
+            self.y = np.array(self.y)
 
         if dense_output:
             if t_eval is None:
