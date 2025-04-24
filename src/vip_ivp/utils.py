@@ -46,7 +46,11 @@ def check_if_vectorized(fun) -> (bool, bool, bool):
     # Test with scalar
     scalar_output = fun(0)
 
+    # Find a t length that does not match the len of a dimension of a scalar output
     array_len = 3
+    if not np.isscalar(scalar_output):
+        while array_len in scalar_output.shape:
+            array_len += 1
 
     # Test with array input
     array_input = np.zeros(array_len)
