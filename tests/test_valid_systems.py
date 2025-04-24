@@ -329,18 +329,27 @@ def test_forgiving_temporal_functions():
     """
     Test if the temporal function can accept functions that do not support array inputs
     """
-    # Data map
-    voltage_per_soc = {0.0: 3.0, 0.2: 3.4, 0.5: 3.6, 0.8: 3.8, 1.0: 4.2}
-    # Create input
-    soc = vip.temporal(lambda t: max(1.0 - 0.0004 * t, 0))
-    # Create output with np.interp
-    voltage = vip.f(np.interp)(soc, list(voltage_per_soc.keys()), list(voltage_per_soc.values()))
+    def non_vec_fun(t):
+        return max(1.0 - 0.005 * t, 0)
 
-    voltage.to_plot("Voltage (V)")
-    soc.to_plot("State of Charge (-)")
+    a = vip.temporal(non_vec_fun)
 
-    vip.solve(3600, time_step=0.1)
+    a.to_plot()
+    vip.solve(10)
 
+def test_forgiving_f():
+
+    def non_vec_fun(x):
+        return max(x,1)
+
+    # Test f
+    a=vip.temporal(lambda t:t)
+    b=vip.f(non_vec_fun)(a)
+
+    a.to_plot()
+    b.to_plot()
+
+    vip.solve(10)
 
 def test_loads_of_recursion():
     a = vip.loop_node()
