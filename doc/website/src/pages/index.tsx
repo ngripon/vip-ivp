@@ -51,9 +51,54 @@ export default function Home(): ReactNode {
     >
       <main className="flex flex-col bg-grid-pattern dark:bg-grid-pattern-dark">
         <HomepageHeader />
+        <ProsSection />
         <CodeExample />
       </main>
     </Layout>
+  );
+}
+
+function ProsSection(): ReactNode {
+  return (
+    <section className="py-8 bg-gray-50 dark:bg-gray-900 border-t border-b">
+      <div className="container mx-auto px-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
+            <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+              🌿 A natural language for dynamic systems
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400">
+              Model continuous-time systems in pure Python, using simple,
+              composable expressions that reflect the system's true structure.
+            </p>
+          </div>
+          <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
+            <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+            🎛 Hybrid dynamics made simple
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400">
+            Seamlessly combine differential equations with event-driven behavior, resets, and termination logic — all in code.
+            </p>
+          </div>
+          <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
+            <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+            🧠 For thinkers, builders, and researchers
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400">
+            Whether you're exploring ideas or publishing results, vip-ivp offers a lightweight, reliable foundation for simulation in Python.
+            </p>
+          </div>
+          <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
+            <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+            🛤️ Designed with extensibility in mind
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400">
+            From hybrid logic to multiphysics modeling, the roadmap includes powerful abstractions like state machines, bond graphs, and discrete-time signals.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -101,7 +146,7 @@ function CodeExample(): ReactNode {
   }, [k, vMin]);
 
   return (
-    <div className="mx-8 mb-8 p-6 rounded-lg bg-white border shadow dark:bg-gray-800 dark:border-gray-700">
+    <div className="m-8 p-6 rounded-lg bg-white border shadow dark:bg-gray-800 dark:border-gray-700">
       <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">
         Interactive Bouncing Ball Simulation
       </h2>
@@ -199,7 +244,7 @@ vip.solve(20, time_step=${dt})`}
                   },
                   ticks: {
                     callback: (value, index) =>
-                      (parseFloat(value) * dt).toFixed(2),
+                      (parseFloat(value.toString()) * dt).toFixed(2),
                   },
                 },
                 y: {
