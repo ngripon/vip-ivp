@@ -3,16 +3,20 @@ import Link from "@docusaurus/Link";
 import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
 import Layout from "@theme/Layout";
 import Heading from "@theme/Heading";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import CodeBlock from "@theme/CodeBlock";
 import { Line } from "react-chartjs-2";
 import "chart.js/auto";
-
+import { ChaoticBackground } from "../components/chaotic_background";
 
 function HomepageHeader() {
   const { siteConfig } = useDocusaurusContext();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
   return (
-    <header className="bg-gradient-to-r flex flex-col mx-auto text-center w-full py-32">
+    <header className="relative flex flex-col mx-auto text-center w-full py-32 overflow-hidden">
+      <ChaoticBackground/>
+      <div className="relative z-10">
         <Heading as="h1" className="text-5xl font-extrabold tracking-tight">
           {siteConfig.title}
         </Heading>
@@ -25,6 +29,7 @@ function HomepageHeader() {
             Get Started
           </Link>
         </div>
+      </div>
     </header>
   );
 }
@@ -44,7 +49,7 @@ export default function Home(): ReactNode {
   );
 }
 
-const dt=0.005
+const dt = 0.005;
 
 function CodeExample(): ReactNode {
   const [k, setk] = useState(0.7);
@@ -88,7 +93,7 @@ function CodeExample(): ReactNode {
   }, [k, vMin]);
 
   return (
-    <div className="m-8 p-6 bg-white rounded-lg">
+    <div className="m-8 p-6 rounded-lg">
       <h2 className="text-2xl font-bold text-gray-800 mb-4">
         Interactive Bouncing Ball Simulation
       </h2>
@@ -185,7 +190,8 @@ vip.solve(20, time_step=${dt})`}
                     text: "Time (s)",
                   },
                   ticks: {
-                    callback: (value, index) => (parseFloat(value)*dt).toFixed(2),
+                    callback: (value, index) =>
+                      (parseFloat(value) * dt).toFixed(2),
                   },
                 },
                 y: {
