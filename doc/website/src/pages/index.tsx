@@ -36,13 +36,6 @@ function HomepageHeader() {
             Get Started
             <ArrowRight />
           </Link>
-          <Link
-            className="border text-black! py-3 px-6 rounded-lg text-lg shadow-lg bg-white hover:bg-gray-50 transition-all
-            dark:bg-blue-500 dark:hover:bg-blue-700 flex items-center gap-2"
-            to="/docs/installation"
-          >
-            Installation
-          </Link>
         </div>
       </div>
     </header>
