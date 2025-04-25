@@ -23,3 +23,4 @@ tests/__pycache__/test_valid_systems.cpython-310-pytest-8.3.3.pyc
 /doc/Sphinx-docs/build/doctrees/vip_ivp.doctree
 /dist/vip_ivp-0.2.0.tar.gz
 /dist/vip_ivp-0.2.0-py3-none-any.whl
+/program.prof
