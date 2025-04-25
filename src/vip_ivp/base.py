@@ -628,16 +628,16 @@ class TemporalVar(Generic[T]):
                 if np.isscalar(t):
                     output = np.stack(np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source))
                 else:
-                    output=np.stack(
+                    output = np.stack(
                         np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source.ravel())
                     ).reshape((*self.source.shape, *np.array(t).shape))
             elif self.operator is not None:
                 if self.operator is operator_call and not np.isscalar(t):
-                    output = np.array([self._call_operator(t[i], y[i]) for i in range(len(t))])
+                    output = np.array([self._resolve_operator(t[i], y[i]) for i in range(len(t))])
                     if output.ndim > 1:
                         output = np.moveaxis(output, 0, -1)
                 else:
-                    output = self._call_operator(t, y)
+                    output = self._resolve_operator(t, y)
             else:
                 if callable(self.source):
                     output = self.source(t, y)
@@ -649,7 +649,7 @@ class TemporalVar(Generic[T]):
                 self._cache[t_cache] = output
         return output
 
-    def _call_operator(self, t, y):
+    def _resolve_operator(self, t, y):
         if self._call_mode == CallMode.CALL_ARGS_FUN:
             args = [x(t, y) if isinstance(x, TemporalVar) else x for x in self.source if
                     not isinstance(x, dict)]
