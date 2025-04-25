@@ -15,12 +15,15 @@ function HomepageHeader() {
 
   return (
     <header className="relative flex flex-col mx-auto text-center w-full py-32 overflow-hidden">
-      <ChaoticBackground/>
+      <ChaoticBackground />
       <div className="relative z-10">
-        <Heading as="h1" className="text-6xl! font-extrabold tracking-tight">
+        <Heading
+          as="h1"
+          className="text-6xl font-extrabold tracking-tight leading-tight text-gray-900"
+        >
           {siteConfig.title}
         </Heading>
-        <p className="text-xl mt-4">{siteConfig.tagline}</p>
+        <p className="text-xl mt-4 text-gray-700">{siteConfig.tagline}</p>
         <div className="mt-8">
           <Link
             className="bg-blue-600 py-3 px-6 rounded-full text-lg font-medium shadow-lg hover:bg-blue-800 transition duration-300"
@@ -39,6 +42,7 @@ export default function Home(): ReactNode {
   return (
     <Layout
       title={`${siteConfig.title}`}
+      description="Interactive bouncing ball simulation and documentation overview"
     >
       <main className="flex flex-col bg-grid-pattern">
         <HomepageHeader />
