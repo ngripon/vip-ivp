@@ -8,7 +8,7 @@ import rehypeKatex from "rehype-katex";
 
 const config: Config = {
   title: "vip-ivp",
-  tagline: "Solve dynamical systems with a few lines of code",
+  tagline: "A clean, intuitive way to model dynamical systems in Python.",
   favicon: "img/favicon.ico",
 
   // Set the production url of your site here
@@ -57,6 +57,9 @@ const config: Config = {
         },
       } satisfies Preset.Options,
     ],
+  ],
+  plugins: [
+    ['./src/plugins/tailwind-config.js', {}],
   ],
   stylesheets: [
     {

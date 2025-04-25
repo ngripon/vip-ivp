@@ -172,4 +172,4 @@ def test_actions():
     assert repr(a.action_set_to(1)) == "Action(Change a's value to 1)"
     assert repr(ia.action_reset_to(5.5) + a.action_set_to(2)) == "Action(Reset ia to 5.5 + Change a's value to 2)"
     assert repr(vip.where(ia > 5, ia.action_reset_to(0),
-                          vip.terminate)) == "Action((Reset ia to 0) if ia > 5 else (Terminate simulation))"
+                          vip.action_terminate)) == "Action((Reset ia to 0) if ia > 5 else (Terminate simulation))"

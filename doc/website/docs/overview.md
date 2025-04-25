@@ -25,7 +25,7 @@ velocity = vip.integrate(acceleration, x0=0)
 height = vip.integrate(velocity, x0=initial_height)
 
 # Define bounce action: reverse velocity if it's large enough, else stop
-bounce = vip.where(abs(velocity) > v_min, velocity.action_reset_to(-k * velocity), vip.terminate)
+bounce = vip.where(abs(velocity) > v_min, velocity.action_reset_to(-k * velocity), vip.action_terminate)
 # Define the event that triggers bounce when height crosses 0 downward (falling)
 height.on_crossing(0, bounce, terminal=False, direction="falling")
 
@@ -42,7 +42,7 @@ The following plot opens upon solving:
 
 ## Features
 
-- **Awesome Developer Experience**: Create dynamic systems in just a few lines of code using the familiar Python syntax.
+- **Awesome Developer Experience**: Create dynamic systems of continuous variables in just a few lines of code using a Pythonic syntax.
 - **Python Integration**: Seamlessly use it with your favorite Python libraries and tools, like SciPy, PyTorch, Plotly, Streamlit and more.
 - **Hybrid Solver**: Handle both differential equations and events.
 - **Causal Approach**: Easy to understand and debug, thanks to a clear direction of data flow.
@@ -52,7 +52,7 @@ The following plot opens upon solving:
 
 ### MATLAB/Simulink
 
-Simulink is one of the most widely used tools for modeling and simulating dynamic systems in industry, research, and education. Its visual interface and integration with MATLAB make it a strong choice for many engineering workflows.
+Simulink is one of the most widely used tools for modeling and simulating dynamic systems in industry, research, and education. Its visual interface, huge number of features and integration with MATLAB make it a strong choice for many engineering workflows.
 
 However, for developers and researchers who value code clarity, open tools, and modern software practices, Simulink can introduce a few challenges:
 
@@ -67,14 +67,10 @@ However, for developers and researchers who value code clarity, open tools, and 
   - Limited support for inline documentation
   - No workflow for AI-assisted development
 
-`vip-ivp` offers a code-first alternative built for modern developers and scientists:
+`vip-ivp` is **not a full replacement for Simulink**, but it offers a powerful alternative to its **continuous-time modeling and simulation features**.  
+`vip-ivp` offers a code-first alternative built for modern developers and scientists. It brings everything people love about Python to system simulation: easy to read, test, version, and extend — and no license fees.
 
-- Fully **open-source** and built in Python
-- Seamless integration with libraries like NumPy, SciPy, and PyTorch
-- Easy to read, test, share, and version control
-- Fast to prototype, extend, and maintain
-
-If you're looking for a lightweight, developer-friendly way to simulate dynamic systems — without leaving your Python environment — `vip-ivp` might be exactly what you need.
+If you're looking for a lightweight, developer-friendly way to simulate continuous-time dynamic systems — without leaving your Python environment — `vip-ivp` might be exactly what you need.
 
 ### SciPy
 
@@ -88,8 +84,18 @@ Modelica defines systems using equations, which is elegant from a mathematical s
 
 In contrast, `vip-ivp` uses a causal approach where the direction and update rules for each variable are explicit. While this approach is less abstract than Modelica’s, it’s easier to follow, simpler to debug, and more reliable in practice.
 
-### SimuPy
+## Roadmap
 
-SimuPy is a Python package that enables users to build system models using interconnections of blocks, similar to Simulink. It supports symbolic modeling and numerical integration.
+`vip-ivp` is still in its early stages, and several major features are planned to greatly expand its capabilities:
 
-While SimuPy offers a graph-based abstraction, it requires users to define dynamics using state-space systems, which can be less intuitive when modeling systems with internal logic or event-driven behavior. `vip-ivp`, on the other hand, is designed to feel more natural to Python users, allowing you to define states, events, and signals directly without the need to work with state-space formalisms unless desired.
+- **Discrete-time variables** with user-defined sampling rates  
+  Enable hybrid modeling by mixing continuous and discrete-time variables.
+
+- **Stateful logic and state machines**  
+  Model systems with internal state and mode transitions using intuitive constructs.
+
+- **Interactive user interface** for simulation analysis  
+  Explore the behavior of your entire system through a visual interface: inspect variables, trace dependencies, and debug more easily.
+
+- **Multiphysics modeling with Bond Graphs**  
+  Introduce components grounded in the Bond Graph formalism for unified modeling of mechanical, electrical, hydraulic, and thermal systems.

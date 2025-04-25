@@ -235,7 +235,7 @@ def test_bouncing_projectile_motion():
 
     bounce = vip.where(abs(velocity[1]) > v_min,
                        velocity[1].action_reset_to(-k * velocity[1]),
-                       vip.terminate)
+                       vip.action_terminate)
 
     position[1].on_crossing(
         0,
@@ -392,7 +392,7 @@ def test_cascading_events():
     count = vip.temporal(0)
 
     # Create the bouncing event
-    bounce = vip.where(abs(velocity) > v_min, velocity.action_reset_to(-k * velocity), vip.terminate)
+    bounce = vip.where(abs(velocity) > v_min, velocity.action_reset_to(-k * velocity), vip.action_terminate)
     height.on_crossing(0, bounce, terminal=False, direction="falling")
     velocity.on_crossing(0, count.action_set_to(count + 1), direction="rising")
 
@@ -405,3 +405,16 @@ def test_cascading_events():
     vip.solve(20, time_step=0.001)
 
     assert count.values[-1] == 18
+
+def test_stiff_ode():
+    dy=vip.loop_node(3)
+    # Robertson problem
+    y=vip.integrate(dy,[1,0,0])
+    dy1 = -0.04 * y[0] + 1e4 * y[1] * y[2]
+    dy2 = 0.04 * y[0] - 1e4 * y[1] * y[2] - 3e7 * y[1] ** 2
+    dy3 = 3e7 * y[1] ** 2
+    dy.loop_into([dy1,dy2,dy3])
+
+    vip.solve(1e2, method="BDF")
+    print(y.values)
+

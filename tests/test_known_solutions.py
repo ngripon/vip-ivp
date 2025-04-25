@@ -108,7 +108,7 @@ def test_bouncing_ball():
     h = vip.integrate(velocity, h)
 
     h.on_crossing(0,
-                  vip.where(abs(velocity) < v_min, vip.terminate, velocity.action_reset_to(-k * velocity)),
+                  vip.where(abs(velocity) < v_min, vip.action_terminate, velocity.action_reset_to(-k * velocity)),
                   direction="falling"
                   )
 

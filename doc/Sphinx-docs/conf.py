@@ -1,6 +1,6 @@
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../'))
+sys.path.insert(0, os.path.abspath('../../'))
 
 def skip(app, what, name, obj, would_skip, options):
     if name in ( '__init__',):
@@ -43,6 +43,7 @@ language = 'en'
 
 html_theme = 'alabaster'
 html_static_path = ['_static']
+
 
 
 todo_include_todos = True

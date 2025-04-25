@@ -756,8 +756,7 @@ class TemporalVar(Generic[T]):
         """
         Create a delayed version of the TemporalVar.
         :param delay: Number of solver steps by which the new TemporalVar is delayed.
-        :param initial_value: Value of the delayed variable at the beginning when there is not any value for the
-            original value.
+        :param initial_value: Value of the delayed variable at the beginning when there is not any value for the original value.
         :return: Delayed version of the TemporalVar
         """
         if delay < 1:
@@ -1446,8 +1445,8 @@ def get_expression(value) -> str:
 
 
 class Event:
-    DIRECTION_MAP = {"rising": 1, "falling": -1, "both": 0}
-    DIRECTION_REPR = {1: "rising", 0: "any direction", -1: "falling"}
+    _DIRECTION_MAP = {"rising": 1, "falling": -1, "both": 0}
+    _DIRECTION_REPR = {1: "rising", 0: "any direction", -1: "falling"}
 
     def __init__(self, solver: Solver, fun, action: Union["Action", Callable, None],
                  direction: Literal["rising", "falling", "both"] = "both",
@@ -1457,7 +1456,7 @@ class Event:
         self.action = convert_args_to_action([action])[0] if action is not None else None
         self.terminal = terminal
 
-        self.direction = self.DIRECTION_MAP[direction]
+        self.direction = self._DIRECTION_MAP[direction]
 
         self.count = 0
         # Compute max events
@@ -1484,7 +1483,7 @@ class Event:
 
     def __repr__(self):
 
-        return (f"Event({self.function.expression} ({self.DIRECTION_REPR[self.direction]}), "
+        return (f"Event({self.function.expression} ({self._DIRECTION_REPR[self.direction]}), "
                 f"{self.action or 'No action'}, terminal = {self.terminal})")
 
     def evaluate(self, t, y) -> None:
