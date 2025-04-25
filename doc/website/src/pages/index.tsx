@@ -5,25 +5,26 @@ import Layout from "@theme/Layout";
 import Heading from "@theme/Heading";
 import React, { useEffect, useState } from "react";
 import CodeBlock from "@theme/CodeBlock";
+import { Line } from "react-chartjs-2";
+import "chart.js/auto";
+
 
 function HomepageHeader() {
   const { siteConfig } = useDocusaurusContext();
   return (
-    <header className="hero bg-primary text-white py-8">
-      <div className="container mx-auto text-center">
-        <Heading as="h1" className="text-4xl font-bold">
+    <header className="bg-gradient-to-r flex flex-col mx-auto text-center w-full py-32">
+        <Heading as="h1" className="text-5xl font-extrabold tracking-tight">
           {siteConfig.title}
         </Heading>
-        <p className="text-lg mt-4">{siteConfig.tagline}</p>
-        <div className="mt-6">
+        <p className="text-xl mt-4">{siteConfig.tagline}</p>
+        <div className="mt-8">
           <Link
-            className="bg-secondary text-white py-2 px-4 rounded-lg text-lg"
-            to="/docs/intro"
+            className="bg-blue-600 py-3 px-6 rounded-full text-lg font-medium shadow-lg hover:bg-blue-800 transition duration-300"
+            to="/docs/overview"
           >
-            Learn
+            Get Started
           </Link>
         </div>
-      </div>
     </header>
   );
 }
@@ -35,35 +36,108 @@ export default function Home(): ReactNode {
       title={`${siteConfig.title}`}
       description="Description will go into a meta tag in <head />"
     >
-      <HomepageHeader />
-      <main>
+      <main className="flex flex-col">
+        <HomepageHeader />
         <CodeExample />
       </main>
     </Layout>
   );
 }
 
+const dt=0.005
+
 function CodeExample(): ReactNode {
   const [k, setk] = useState(0.7);
+  const [vMin, setVMin] = useState(0.01);
+  const [data, setData] = useState<{ time: number[]; height: number[] }>({
+    time: [],
+    height: [],
+  });
+
+  useEffect(() => {
+    // Simulate the bouncing ball system
+    const simulate = () => {
+      const time = [];
+      const height = [];
+      let t = 0;
+      let h = 1;
+      let v = 0;
+      const g = -9.81;
+
+      while (t <= 20) {
+        time.push(t);
+        height.push(h);
+
+        v += g * dt;
+        h += v * dt;
+
+        if (h <= 0 && Math.abs(v) > vMin) {
+          v = -k * v;
+          h = 0;
+        } else if (h <= 0) {
+          break;
+        }
+
+        t += dt;
+      }
+
+      setData({ time, height });
+    };
+
+    simulate();
+  }, [k, vMin]);
 
   return (
-    <div className="m-8">
-      <label htmlFor="k" className="block text-sm font-medium text-gray-700">
-        Bouncing coefficient
-      </label>
-      <input
-        id="k"
-        type="range"
-        min={0}
-        max={1.5}
-        step={0.01}
-        value={k}
-        onChange={(e) => setk(e.target.value)}
-        className="w-full mt-2"
-      />
-      <CodeBlock language="python" className="mt-4">
-        {`k = ${k}  # Bouncing coefficient
-v_min = 0.01  # Minimum velocity need to bounce
+    <div className="m-8 p-6 bg-white rounded-lg">
+      <h2 className="text-2xl font-bold text-gray-800 mb-4">
+        Interactive Bouncing Ball Simulation
+      </h2>
+      <p className="text-gray-600 mb-6">
+        Adjust the bouncing coefficient and minimum velocity using the sliders
+        below to see how they affect the motion of the ball. The Python code
+        and the corresponding plot are updated dynamically.
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="p-4 rounded-lg">
+          <div className="mb-2">
+            <label
+              htmlFor="k"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Bouncing Coefficient (k)
+            </label>
+            <input
+              id="k"
+              type="range"
+              min={0}
+              max={1.5}
+              step={0.01}
+              value={k}
+              onChange={(e) => setk(parseFloat(e.target.value))}
+              className="w-full mt-2"
+            />
+          </div>
+          <div className="mb-2">
+            <label
+              htmlFor="vMin"
+              className="block text-sm font-medium text-gray-700"
+            >
+              Minimum Velocity (v_min)
+            </label>
+            <input
+              id="vMin"
+              type="range"
+              min={0.01}
+              max={5}
+              step={0.01}
+              value={vMin}
+              onChange={(e) => setVMin(parseFloat(e.target.value))}
+              className="w-full mt-2"
+            />
+          </div>
+          <CodeBlock language="python" className="text-gray-800">
+            {`k = ${k}  # Bouncing coefficient
+v_min = ${vMin}  # Minimum velocity need to bounce
 
 # Create the system
 acceleration = vip.temporal(-9.81)
@@ -75,8 +149,57 @@ bounce = vip.where(abs(velocity) > v_min, velocity.action_reset_to(-k * velocity
 height.on_crossing(0, bounce, terminal=False, direction="falling")
 
 # Solve the system
-vip.solve(20, time_step=0.001)`}
-      </CodeBlock>
+vip.solve(20, time_step=${dt})`}
+          </CodeBlock>
+        </div>
+        <div>
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">
+            Simulation Results
+          </h3>
+          <Line
+            data={{
+              labels: data.time,
+              datasets: [
+                {
+                  label: "Height (m)",
+                  data: data.height,
+                  borderColor: "rgba(75, 192, 192, 1)",
+                  backgroundColor: "rgba(75, 192, 192, 0.2)",
+                  fill: true,
+                },
+              ],
+            }}
+            options={{
+              responsive: true,
+              maintainAspectRatio: false,
+              plugins: {
+                legend: {
+                  display: true,
+                  position: "top",
+                },
+              },
+              scales: {
+                x: {
+                  title: {
+                    display: true,
+                    text: "Time (s)",
+                  },
+                  ticks: {
+                    callback: (value, index) => (parseFloat(value)*dt).toFixed(2),
+                  },
+                },
+                y: {
+                  title: {
+                    display: true,
+                    text: "Height (m)",
+                  },
+                },
+              },
+            }}
+            style={{ maxHeight: "500px" }}
+          />
+        </div>
+      </div>
     </div>
   );
 }

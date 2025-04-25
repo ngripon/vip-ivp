@@ -19,4 +19,4 @@ height.on_crossing(0, bounce, terminal=False, direction="falling")
 height.to_plot("Height (m)")
 
 # Solve the system
-vip.solve(20, time_step=0.001)
+vip.solve(20, time_step=0.005)
