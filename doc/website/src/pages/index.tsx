@@ -8,6 +8,7 @@ import CodeBlock from "@theme/CodeBlock";
 import { Line } from "react-chartjs-2";
 import "chart.js/auto";
 import { ChaoticBackground } from "../components/chaotic_background";
+import { ArrowRight } from "lucide-react";
 
 function HomepageHeader() {
   const { siteConfig } = useDocusaurusContext();
@@ -26,12 +27,21 @@ function HomepageHeader() {
         <p className="text-xl mt-4 text-gray-700 dark:text-gray-400">
           {siteConfig.tagline}
         </p>
-        <div className="mt-8">
+        <div className="mt-8 flex items-center justify-center gap-8">
           <Link
-            className="bg-blue-600 py-3 px-6 rounded-full text-lg font-medium shadow-lg hover:bg-blue-800 transition duration-300 dark:bg-blue-500 dark:hover:bg-blue-700"
+            className="bg-blue-600 text-white! py-3 px-6 rounded-lg text-lg font-medium shadow-lg hover:bg-blue-800 transition-all
+            dark:bg-blue-500 dark:hover:bg-blue-700 flex items-center gap-2"
             to="/docs/overview"
           >
             Get Started
+            <ArrowRight />
+          </Link>
+          <Link
+            className="border text-black! py-3 px-6 rounded-lg text-lg shadow-lg bg-white hover:bg-gray-50 transition-all
+            dark:bg-blue-500 dark:hover:bg-blue-700 flex items-center gap-2"
+            to="/docs/installation"
+          >
+            Installation
           </Link>
         </div>
       </div>
@@ -98,14 +108,14 @@ function CodeExample(): ReactNode {
   }, [k, vMin]);
 
   return (
-    <div className="m-8 p-6 rounded-lg bg-white border shadow dark:bg-gray-800 dark:border-gray-700">
+    <div className="mx-8 mb-8 p-6 rounded-lg bg-white border shadow dark:bg-gray-800 dark:border-gray-700">
       <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">
         Interactive Bouncing Ball Simulation
       </h2>
       <p className="text-gray-600 dark:text-gray-400 mb-6">
         Adjust the bouncing coefficient and minimum velocity using the sliders
-        below to see how they affect the motion of the ball. The Python code
-        and the corresponding plot are updated dynamically.
+        below to see how they affect the motion of the ball. The Python code and
+        the corresponding plot are updated dynamically.
       </p>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="p-4 rounded-lg">
@@ -204,8 +214,7 @@ vip.solve(20, time_step=${dt})`}
                     display: true,
                     text: "Height (m)",
                   },
-                  ticks: {
-                  },
+                  ticks: {},
                 },
               },
             }}
