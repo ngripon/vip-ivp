@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import clsx from "clsx";
 import Link from "@docusaurus/Link";
 import useDocusaurusContext from "@docusaurus/useDocusaurusContext";
 import Layout from "@theme/Layout";
@@ -7,20 +6,18 @@ import Heading from "@theme/Heading";
 import React, { useEffect, useState } from "react";
 import CodeBlock from "@theme/CodeBlock";
 
-import styles from "./index.module.css";
-
 function HomepageHeader() {
   const { siteConfig } = useDocusaurusContext();
   return (
-    <header className={clsx("hero hero--primary", styles.heroBanner)}>
-      <div className="container">
-        <Heading as="h1" className="hero__title">
+    <header className="hero bg-primary text-white py-8">
+      <div className="container mx-auto text-center">
+        <Heading as="h1" className="text-4xl font-bold">
           {siteConfig.title}
         </Heading>
-        <p className="hero__subtitle">{siteConfig.tagline}</p>
-        <div className={styles.buttons}>
+        <p className="text-lg mt-4">{siteConfig.tagline}</p>
+        <div className="mt-6">
           <Link
-            className="button button--secondary button--lg"
+            className="bg-secondary text-white py-2 px-4 rounded-lg text-lg"
             to="/docs/intro"
           >
             Learn
@@ -40,20 +37,31 @@ export default function Home(): ReactNode {
     >
       <HomepageHeader />
       <main>
-        <CodeExample/>
+        <CodeExample />
       </main>
     </Layout>
   );
 }
 
 function CodeExample(): ReactNode {
-  const [k, setk]=useState(0.7)
+  const [k, setk] = useState(0.7);
 
   return (
-    <div>
-      <label htmlFor="k">Bouncing coefficient</label>
-      <input id="k" type="range" min={0} max={1.5} step={0.01} value={k} onChange={(e)=>setk(e.target.value)} />
-      <CodeBlock language="python">
+    <div className="m-8">
+      <label htmlFor="k" className="block text-sm font-medium text-gray-700">
+        Bouncing coefficient
+      </label>
+      <input
+        id="k"
+        type="range"
+        min={0}
+        max={1.5}
+        step={0.01}
+        value={k}
+        onChange={(e) => setk(e.target.value)}
+        className="w-full mt-2"
+      />
+      <CodeBlock language="python" className="mt-4">
         {`k = ${k}  # Bouncing coefficient
 v_min = 0.01  # Minimum velocity need to bounce
 
