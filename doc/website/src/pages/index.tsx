@@ -15,18 +15,20 @@ function HomepageHeader() {
 
   return (
     <header className="relative flex flex-col mx-auto text-center w-full py-32 overflow-hidden">
-      <ChaoticBackground />
+      <ChaoticBackground className="bg-transparent dark:bg-transparent" />
       <div className="relative z-10">
         <Heading
           as="h1"
-          className="text-6xl font-extrabold tracking-tight leading-tight text-gray-900"
+          className="text-6xl font-extrabold tracking-tight leading-tight text-gray-900 dark:text-white"
         >
           {siteConfig.title}
         </Heading>
-        <p className="text-xl mt-4 text-gray-700">{siteConfig.tagline}</p>
+        <p className="text-xl mt-4 text-gray-700 dark:text-gray-400">
+          {siteConfig.tagline}
+        </p>
         <div className="mt-8">
           <Link
-            className="bg-blue-600 py-3 px-6 rounded-full text-lg font-medium shadow-lg hover:bg-blue-800 transition duration-300"
+            className="bg-blue-600 py-3 px-6 rounded-full text-lg font-medium shadow-lg hover:bg-blue-800 transition duration-300 dark:bg-blue-500 dark:hover:bg-blue-700"
             to="/docs/overview"
           >
             Get Started
@@ -44,7 +46,7 @@ export default function Home(): ReactNode {
       title={`${siteConfig.title}`}
       description="Interactive bouncing ball simulation and documentation overview"
     >
-      <main className="flex flex-col bg-grid-pattern">
+      <main className="flex flex-col bg-grid-pattern dark:bg-grid-pattern-dark">
         <HomepageHeader />
         <CodeExample />
       </main>
@@ -96,11 +98,11 @@ function CodeExample(): ReactNode {
   }, [k, vMin]);
 
   return (
-    <div className="mx-8 mb-8 p-6 rounded-lg bg-white border shadow">
-      <h2 className="text-2xl font-bold text-gray-800 mb-4">
+    <div className="m-8 p-6 rounded-lg bg-white border shadow dark:bg-gray-800 dark:border-gray-700">
+      <h2 className="text-2xl font-bold text-gray-800 dark:text-white mb-4">
         Interactive Bouncing Ball Simulation
       </h2>
-      <p className="text-gray-600 mb-6">
+      <p className="text-gray-600 dark:text-gray-400 mb-6">
         Adjust the bouncing coefficient and minimum velocity using the sliders
         below to see how they affect the motion of the ball. The Python code
         and the corresponding plot are updated dynamically.
@@ -110,7 +112,7 @@ function CodeExample(): ReactNode {
           <div className="mb-2">
             <label
               htmlFor="k"
-              className="block text-sm font-medium text-gray-700"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-400"
             >
               Bouncing Coefficient (k)
             </label>
@@ -128,7 +130,7 @@ function CodeExample(): ReactNode {
           <div className="mb-2">
             <label
               htmlFor="vMin"
-              className="block text-sm font-medium text-gray-700"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-400"
             >
               Minimum Velocity (v_min)
             </label>
@@ -161,7 +163,7 @@ vip.solve(20, time_step=${dt})`}
           </CodeBlock>
         </div>
         <div>
-          <h3 className="text-lg font-semibold text-gray-800 mb-2">
+          <h3 className="text-lg font-semibold text-gray-800 dark:text-white mb-2">
             Simulation Results
           </h3>
           <Line
@@ -201,6 +203,8 @@ vip.solve(20, time_step=${dt})`}
                   title: {
                     display: true,
                     text: "Height (m)",
+                  },
+                  ticks: {
                   },
                 },
               },
