@@ -219,10 +219,9 @@ def test_plot_collections():
     a2 = vip.temporal(arr2)
 
     matplotlib.use('Agg')
-    #
-    # a.to_plot("Array")
-    # a2.to_plot("2D array")
-    # d.to_plot("Dict")
+    a.to_plot("Array")
+    a2.to_plot("2D array")
+    d.to_plot("Dict")
 
     vip.solve(10, 0.1)
     print(a2.values)
