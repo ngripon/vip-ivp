@@ -17,7 +17,7 @@ function HomepageHeader() {
     <header className="relative flex flex-col mx-auto text-center w-full py-32 overflow-hidden">
       <ChaoticBackground/>
       <div className="relative z-10">
-        <Heading as="h1" className="text-5xl font-extrabold tracking-tight">
+        <Heading as="h1" className="text-6xl! font-extrabold tracking-tight">
           {siteConfig.title}
         </Heading>
         <p className="text-xl mt-4">{siteConfig.tagline}</p>
@@ -39,9 +39,8 @@ export default function Home(): ReactNode {
   return (
     <Layout
       title={`${siteConfig.title}`}
-      description="Description will go into a meta tag in <head />"
     >
-      <main className="flex flex-col">
+      <main className="flex flex-col bg-grid-pattern">
         <HomepageHeader />
         <CodeExample />
       </main>
@@ -93,7 +92,7 @@ function CodeExample(): ReactNode {
   }, [k, vMin]);
 
   return (
-    <div className="m-8 p-6 rounded-lg">
+    <div className="mx-8 mb-8 p-6 rounded-lg bg-white border shadow">
       <h2 className="text-2xl font-bold text-gray-800 mb-4">
         Interactive Bouncing Ball Simulation
       </h2>
