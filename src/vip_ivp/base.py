@@ -16,7 +16,7 @@ from typing_extensions import ParamSpec
 from cachebox import LRUCache
 
 from .solver_utils import *
-from .utils import add_necessary_brackets, convert_to_string, operator_call, shift_array
+from .utils import add_necessary_brackets, convert_to_string, operator_call, shift_array, vectorize_source
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -112,7 +112,7 @@ class Solver:
         # Add integration value
         integrated_variable = IntegratedVar(
             self,
-            lambda t, y, idx=self.dim: y[idx],
+            lambda t, y, idx=self.dim: y[idx] if y.ndim == 1 else y[..., idx],
             f"#INTEGRATE {get_expression(var)}",
             x0,
             minimum,
@@ -475,7 +475,7 @@ class Solver:
 
         if self.t:
             self.t = np.array(self.t)
-            self.y = np.vstack(self.y)
+            self.y = np.array(self.y)
 
         if dense_output:
             if t_eval is None:
@@ -582,7 +582,7 @@ class TemporalVar(Generic[T]):
             if callable(source) and not isinstance(source, child_cls):
                 n_args = len(inspect.signature(source).parameters)
                 if n_args == 1:
-                    self.source = lambda t, y: source(t)
+                    self.source = lambda t, y: vectorize_source(source)(t)
                 else:
                     self.source = lambda t, y: source(t, y)
             elif np.isscalar(source):
@@ -616,36 +616,52 @@ class TemporalVar(Generic[T]):
         # Handle dict in a recursive way
         if isinstance(self.source, dict):
             return {key: val(t, y) for key, val in self.source.items()}
-        elif not np.isscalar(t):
-            result = np.array([self(t[i], y[i]) for i in range(len(t))])
-            # If the result is a multidimensional array, make the time dimension the last instead of the first
-            if result.ndim > 1:
-                result = np.moveaxis(result, 0, -1)
-            return result
         else:
             # Handle the termination leaves of the recursion
-            if t in self._cache:
-                return self._cache[t]
-            elif isinstance(self.source, np.ndarray):
-                output = np.stack(np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source))
-            elif self.operator is not None:
-                if self._call_mode == CallMode.CALL_ARGS_FUN:
-                    args = [x(t, y) if isinstance(x, TemporalVar) else x for x in self.source if
-                            not isinstance(x, dict)]
-                    kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
-                    kwargs = {k: (x(t, y) if isinstance(x, TemporalVar) else x) for k, x in kwargs.items()}
-                    output = self.operator(*args, **kwargs)
-                elif self._call_mode == CallMode.CALL_FUN_RESULT:
-                    args = [x for x in self.source if not isinstance(x, dict)]
-                    kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
-                    output = self.operator(*args, **kwargs)(t, y)
-                else:
-                    raise ValueError(f"Unknown call mode: {self._call_mode}.")
+            if isinstance(t, np.ndarray):
+                t_cache = tuple(t)
             else:
-                output = self.source(t, y) if callable(self.source) else self.source
-            if self.solver.solved or len(self.solver.t) and t == self.solver.t[-1]:
-                self._cache[t] = output
+                t_cache = t
+            if t_cache in self._cache:
+                return self._cache[t_cache]
+            elif isinstance(self.source, np.ndarray):
+                if np.isscalar(t):
+                    output = np.stack(np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source))
+                else:
+                    output = np.stack(
+                        np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source.ravel())
+                    ).reshape((*self.source.shape, *np.array(t).shape))
+            elif self.operator is not None:
+                if self.operator is operator_call and not np.isscalar(t):
+                    output = np.array([self._resolve_operator(t[i], y[i]) for i in range(len(t))])
+                    if output.ndim > 1:
+                        output = np.moveaxis(output, 0, -1)
+                else:
+                    output = self._resolve_operator(t, y)
+            else:
+                if callable(self.source):
+                    output = self.source(t, y)
+                elif np.isscalar(t):
+                    output = self.source
+                else:
+                    output = np.full(len(t), self.source)
+            if self.solver.solved:
+                self._cache[t_cache] = output
         return output
+
+    def _resolve_operator(self, t, y):
+        if self._call_mode == CallMode.CALL_ARGS_FUN:
+            args = [x(t, y) if isinstance(x, TemporalVar) else x for x in self.source if
+                    not isinstance(x, dict)]
+            kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
+            kwargs = {k: (x(t, y) if isinstance(x, TemporalVar) else x) for k, x in kwargs.items()}
+            return self.operator(*args, **kwargs)
+        elif self._call_mode == CallMode.CALL_FUN_RESULT:
+            args = [x for x in self.source if not isinstance(x, dict)]
+            kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
+            return self.operator(*args, **kwargs)(t, y)
+        else:
+            raise ValueError(f"Unknown call mode: {self._call_mode}.")
 
     @property
     def values(self) -> NDArray:

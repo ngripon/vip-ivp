@@ -62,10 +62,10 @@ def test_use_numpy_method():
     reshaped_array = array_source.m(array_source.output_type.reshape)((2, 2))
     square_array_source = vip.temporal([[lambda t: t, lambda t: 2 * t], [lambda t: 3 * t, lambda t: 4 * t]])
     # reshaped_array.to_plot()
-    vip.solve(10, 1)
+    vip.solve(3, 1)
     print(array_source.values[0])
-    print(reshaped_array.values[0])
-    print(square_array_source.values[0])
+    print(reshaped_array.values)
+    print(square_array_source.values)
     # Bug explanation: When the TemporalVariable possess a numpy array that is computed from an operation, it does not
     # manipulate the shape to have the time dimensions the last instead of the first.
 
@@ -224,6 +224,7 @@ def test_plot_collections():
     d.to_plot("Dict")
 
     vip.solve(10, 0.1)
+    print(a2.values)
 
 
 def test_array_comparisons_operators():
@@ -266,6 +267,7 @@ def test_array_comparisons_operators():
     vip.solve(10, 1)
 
     # Assertions for equality
+    equ_arr.values
     assert np.array_equal(equ_arr[0].values, equ1.values)
     assert np.array_equal(equ_arr[1].values, equ2.values)
 
