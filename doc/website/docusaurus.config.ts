@@ -61,6 +61,9 @@ const config: Config = {
   plugins: [
     ['./src/plugins/tailwind-config.js', {}],
   ],
+  clientModules: [
+    require.resolve('./src/inject-speed-insights'),
+  ],
   stylesheets: [
     {
       href: 'https://cdn.jsdelivr.net/npm/katex@0.13.24/dist/katex.min.css',
