@@ -53,6 +53,7 @@ export default function Home(): ReactNode {
         <HomepageHeader />
         <ProsSection />
         <CodeExample />
+        <CTASection />
       </main>
     </Layout>
   );
@@ -261,5 +262,26 @@ vip.solve(20, time_step=${dt})`}
         </div>
       </div>
     </div>
+  );
+}
+
+function CTASection(): ReactNode {
+  return (
+    <section className="py-16 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-center">
+      <div className="container mx-auto px-8">
+        <h2 className="text-3xl font-bold mb-4">
+          Ready to Get Started?
+        </h2>
+        <p className="text-lg mb-8">
+          Explore our documentation and start building with vip-ivp today.
+        </p>
+        <Link
+          to="/docs/overview"
+          className="bg-blue-600 text-white! py-3 px-6 rounded-lg text-lg font-medium shadow-lg hover:bg-blue-700 transition-all"
+        >
+          Get Started
+        </Link>
+      </div>
+    </section>
   );
 }
