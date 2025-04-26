@@ -66,35 +66,55 @@ function ProsSection(): ReactNode {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
             <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
-              🌿 A natural language for dynamic systems
+              🧩 Build complex systems, piece by piece
             </h3>
             <p className="text-gray-600 dark:text-gray-400">
-              Model continuous-time systems in pure Python, using simple,
-              composable expressions that reflect the system's true structure.
+              Model continuous-time dynamics with a modular, composable
+              approach. vip-ivp scales naturally from simple ideas to intricate
+              systems.
             </p>
           </div>
+
           <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
             <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
-            🎛 Hybrid dynamics made simple
+              ⚡ Hybrid solver, unified framework
             </h3>
             <p className="text-gray-600 dark:text-gray-400">
-            Seamlessly combine differential equations with event-driven behavior, resets, and termination logic — all in code.
+              Seamlessly combine differential equations with event-driven
+              behavior, resets, and termination logic — all handled with clarity
+              in code.
             </p>
           </div>
+
           <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
             <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
-            🧠 For thinkers, builders, and researchers
+              🔗 Native Python ecosystem integration
             </h3>
             <p className="text-gray-600 dark:text-gray-400">
-            Whether you're exploring ideas or publishing results, vip-ivp offers a lightweight, reliable foundation for simulation in Python.
+              Use any Python library you love — from Deep Learning to OpenCV.
+              vip-ivp fits effortlessly into scientific, engineering, and AI
+              workflows.
             </p>
           </div>
+
           <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
             <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
-            🛤️ Designed with extensibility in mind
+              🛡️ Open source, MIT licensed
             </h3>
             <p className="text-gray-600 dark:text-gray-400">
-            From hybrid logic to multiphysics modeling, the roadmap includes powerful abstractions like state machines, bond graphs, and discrete-time signals.
+              Free to use for commercial, academic, and educational projects.
+              vip-ivp is built to empower developers, without barriers.
+            </p>
+          </div>
+
+          <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
+            <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-4">
+              🚀 A roadmap built for expansion
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400">
+              Upcoming features include discrete-time signals, intuitive state
+              machines, and multiphysics modeling with bond graphs — expanding
+              what vip-ivp can do.
             </p>
           </div>
         </div>
@@ -269,9 +289,7 @@ function CTASection(): ReactNode {
   return (
     <section className="py-16 bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100 text-center">
       <div className="container mx-auto px-8">
-        <h2 className="text-3xl font-bold mb-4">
-          Ready to Get Started?
-        </h2>
+        <h2 className="text-3xl font-bold mb-4">Ready to Get Started?</h2>
         <p className="text-lg mb-8">
           Explore our documentation and start building with vip-ivp today.
         </p>
