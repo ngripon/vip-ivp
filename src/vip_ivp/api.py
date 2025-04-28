@@ -1,8 +1,6 @@
 import json
 from typing import TYPE_CHECKING
 
-from varname import argname
-
 if TYPE_CHECKING:
     import pandas as pd
 
@@ -343,20 +341,21 @@ def clear() -> None:
     solver = _get_current_solver()
     solver.clear()
 
-
-def save(*args: TemporalVar) -> None:
-    """
-    Save the given TemporalVars with their variable names.
-
-    :param args: TemporalVars to be saved.
-    :raises ValueError: If any of the arguments is not a TemporalVar.
-    """
-    solver = _get_current_solver()
-    if not all([isinstance(arg, TemporalVar) for arg in args]):
-        raise ValueError("Only TemporalVars can be saved.")
-    for i, variable in enumerate(args):
-        variable_name = argname(f'args[{i}]')
-        solver.saved_vars[variable_name] = variable
+### I do not like the current implementation, so I disable it for the moment.
+#
+# def save(*args: TemporalVar) -> None:
+#     """
+#     Save the given TemporalVars with their variable names.
+#
+#     :param args: TemporalVars to be saved.
+#     :raises ValueError: If any of the arguments is not a TemporalVar.
+#     """
+#     solver = _get_current_solver()
+#     if not all([isinstance(arg, TemporalVar) for arg in args]):
+#         raise ValueError("Only TemporalVars can be saved.")
+#     for i, variable in enumerate(args):
+#         variable_name = argname(f'args[{i}]')
+#         solver.saved_vars[variable_name] = variable
 
 
 def get_var(var_name: str) -> TemporalVar:
