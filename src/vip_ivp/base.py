@@ -384,14 +384,14 @@ class Solver:
                         triggered_events = []
                         for event in triggering_events:
                             event.t_events.append(te)
-                            event.y_events.append(ye)
-                            event.execute_action(te, ye)  # Some actions mutate ye
+                            # event.y_events.append(ye)
+                            # event.execute_action(te, ye)  # Some actions mutate ye
                             triggered_events.append(event)
                         # Create a loop to check if other events has triggered
                         while True:
                             t_latest = t_eval[np.searchsorted(t_eval, te, side="left")]
-                            g_latest = [e(t_latest, sol(t_latest)) for e in events]
-                            g_current = [e(te, ye) for e in events]
+                            g_latest = [e.function(t_latest, sol(t_latest)) for e in events]
+                            g_current = [e.function(te, ye) for e in events]
                             direction = np.array([e.direction for e in events])
                             active_events_indices_cascade = find_active_events_in_step(g_latest, g_current, direction)
                             triggering_events = [self.events[i] for i in active_events_indices_cascade if
@@ -399,8 +399,8 @@ class Solver:
                             if triggering_events:
                                 for event in triggering_events:
                                     event.t_events.append(te)
-                                    event.y_events.append(ye)
-                                    event.execute_action(te, ye)  # Some actions mutate ye
+                                    # event.y_events.append(ye)
+                                    # event.execute_action(te, ye)  # Some actions mutate ye
                                     triggered_events.append(event)
                             else:
                                 break
@@ -413,8 +413,8 @@ class Solver:
                             event.g = 0
                         solver = method(self._dy, t, y, tf, vectorized=vectorized, **options)
 
-                        if any(e.terminal for e in triggered_events):
-                            self.status = 1
+                        # if any(e.terminal for e in triggered_events):
+                        #     self.status = 1
                     else:
                         warnings.warn(
                             "Ignored event: The detected event computed time is the same as the previously solved "
@@ -471,7 +471,7 @@ class Solver:
         message = MESSAGES.get(self.status, message)
         if self.events:
             t_events = [np.asarray(e.t_events) for e in events]
-            y_events = [np.asarray(e.y_events) for e in events]
+            # y_events = [np.asarray(e.y_events) for e in events]
 
         if self.t:
             self.t = np.array(self.t)
@@ -540,7 +540,7 @@ class Solver:
         return output_fun
 
     def get_events(self, t):
-        event_list = [e for e in self.events if e.deletion_time is None or t < e.deletion_time]
+        event_list = [e for e in self.events]
         return event_list
 
 
@@ -598,6 +598,8 @@ class TemporalVar(Generic[T]):
             elif isinstance(source, dict):
                 self._output_type = dict
                 self.source = {key: child_cls(solver, val) for key, val in source.items()}
+            elif source is None:
+                self.source = None
             else:
                 raise ValueError(f"Unsupported type: {type(source)}.")
 
@@ -860,6 +862,21 @@ class TemporalVar(Generic[T]):
         event = Event(self.solver, crossed_variable, action, direction, terminal)
         self.events.append(event)
         return event
+
+    def cross_trigger(self, value: Union["TemporalVar[T]", T],
+                      direction: Literal["rising", "falling", "both"] = "both") -> "TriggerVar":
+        if self.output_type in (bool, np.bool, str):
+            crossed_variable = self == value
+            crossed_variable._expression = f"on {self.name} == {value.name if isinstance(value, TemporalVar) else value}"
+        elif issubclass(self.output_type, abc.Iterable):
+            raise ValueError(
+                "Can not apply crossing detection to a variable containing a collection of values because it is ambiguous."
+            )
+        else:
+            crossed_variable = self - value
+            crossed_variable._expression = f"on {self.name} crossing {value.name if isinstance(value, TemporalVar) else value}"
+        trigger_var = TriggerVar(self.solver, crossed_variable, direction)
+        return trigger_var
 
     def action_set_to(self, new_value: Union["TemporalVar[T]", T]) -> "Action":
         """
@@ -1422,11 +1439,12 @@ class IntegratedVar(TemporalVar[T]):
 class TriggerVar(TemporalVar[bool]):
     _DIRECTION_MAP = {"rising": 1, "falling": -1, "both": 0}
 
-    def __init__(self, solver: Solver, fun, direction: Literal["rising", "falling", "both"] = "both"):
+    def __init__(self, solver: Solver, fun: TemporalVar, direction: Literal["rising", "falling", "both"] = "both"):
         super().__init__(solver)
         self.direction = self._DIRECTION_MAP[direction]
         self.function = fun
 
+        self.count=0
         self.t_events = []
 
         self.g = None  # Cache for crossing evaluation
@@ -1438,6 +1456,9 @@ class TriggerVar(TemporalVar[bool]):
             return t in self.t_events
         else:
             return [self(t[i], y[i]) for i in range(len(t))]
+
+    def evaluate(self, t, y):
+        self.g = self.function(t, y)
 
 
 def get_expression(value) -> str:
