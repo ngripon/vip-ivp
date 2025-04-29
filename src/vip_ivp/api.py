@@ -143,8 +143,6 @@ def loop_node(shape: Union[int, tuple[int, ...]] = None, strict: bool = True) ->
     return LoopNode(solver, shape, strict)
 
 
-@overload
-def where(condition: Union[TemporalVar[bool], bool], a: Action, b: Action) -> Action: ...
 
 
 @overload
@@ -152,8 +150,8 @@ def where(condition: Union[TemporalVar[bool], bool], a: Union[TemporalVar, T], b
     T]: ...
 
 
-def where(condition: Union[TemporalVar[bool], bool], a: Union[TemporalVar, T, Action],
-          b: Union[TemporalVar, T, Action])->Union[TemporalVar[T], Action]:
+def where(condition: Union[TemporalVar[bool], bool], a: Union[TemporalVar, T],
+          b: Union[TemporalVar, T])->TemporalVar[T]:
     """
     Create a conditional TemporalVar or a conditional Action.
     If condition is `True` at time $t$, the output value will have value **a**, else **b**.
@@ -168,10 +166,7 @@ def where(condition: Union[TemporalVar[bool], bool], a: Union[TemporalVar, T, Ac
     :return: Conditional TemporalVar or conditional Action.
     """
     solver = _get_current_solver()
-    if isinstance(a, Action) or isinstance(b, Action):
-        return action_where(solver, condition, a, b)
-    else:
-        return temporal_var_where(solver, condition, a, b)
+    return temporal_var_where(solver, condition, a, b)
 
 
 P = ParamSpec("P")
@@ -212,40 +207,36 @@ def get_time_variable() -> TemporalVar[float]:
 
 # Events
 
-def get_events() -> List[Event]:
-    solver = _get_current_solver()
-    return solver.events
-
 
 def _terminate():
     solver = _get_current_solver()
     solver.status = 1
 
 
-action_terminate = Action(_terminate, "Terminate simulation")
+# action_terminate = Action(_terminate, "Terminate simulation")
 
 
-def set_timeout(action: Union[Action, Callable], delay: float) -> Event:
-    solver = _get_current_solver()
-    current_time = solver.t_current
-    time_variable = get_time_variable()
-    event = time_variable.on_crossing(current_time + delay, action)
-    event.action += event.action_disable
-    return event
-
-
-def set_interval(action: Union[Action, Callable], delay: float) -> Event:
-    solver = _get_current_solver()
-    current_time = solver.t_current
-    time_variable = copy(get_time_variable())
-    time_variable.name = f"Time % {delay}"
-
-    def reset_timer(t_reset, y):
-        time_variable.action_set_to(lambda t: t - t_reset)(t_reset, y)
-
-    reset_timer_action = Action(reset_timer, "RESET TIMER")
-    event = time_variable.on_crossing((current_time + delay), action + reset_timer_action)
-    return event
+# def set_timeout(action: Union[Action, Callable], delay: float) -> Event:
+#     solver = _get_current_solver()
+#     current_time = solver.t_current
+#     time_variable = get_time_variable()
+#     event = time_variable.on_crossing(current_time + delay, action)
+#     event.action += event.action_disable
+#     return event
+#
+#
+# def set_interval(action: Union[Action, Callable], delay: float) -> Event:
+#     solver = _get_current_solver()
+#     current_time = solver.t_current
+#     time_variable = copy(get_time_variable())
+#     time_variable.name = f"Time % {delay}"
+#
+#     def reset_timer(t_reset, y):
+#         time_variable.action_set_to(lambda t: t - t_reset)(t_reset, y)
+#
+#     reset_timer_action = Action(reset_timer, "RESET TIMER")
+#     event = time_variable.on_crossing((current_time + delay), action + reset_timer_action)
+#     return event
 
 
 # Solving

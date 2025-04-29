@@ -34,7 +34,7 @@ class Solver:
         # All the scalars variables that are an output of an integrate function
         self.integrated_vars: List[IntegratedVar] = []
 
-        self.events: List[Event] = []
+        self.events: List[TriggerVar] = []
         self.t_current: float = 0
         self.t = []
         self.y = None
@@ -384,8 +384,6 @@ class Solver:
                         triggered_events = []
                         for event in triggering_events:
                             event.t_events.append(te)
-                            # event.y_events.append(ye)
-                            # event.execute_action(te, ye)  # Some actions mutate ye
                             triggered_events.append(event)
                         # Create a loop to check if other events has triggered
                         while True:
@@ -399,8 +397,6 @@ class Solver:
                             if triggering_events:
                                 for event in triggering_events:
                                     event.t_events.append(te)
-                                    # event.y_events.append(ye)
-                                    # event.execute_action(te, ye)  # Some actions mutate ye
                                     triggered_events.append(event)
                             else:
                                 break
@@ -412,9 +408,6 @@ class Solver:
                         for event in triggered_events:
                             event.g = 0
                         solver = method(self._dy, t, y, tf, vectorized=vectorized, **options)
-
-                        # if any(e.terminal for e in triggered_events):
-                        #     self.status = 1
                     else:
                         warnings.warn(
                             "Ignored event: The detected event computed time is the same as the previously solved "
@@ -608,7 +601,7 @@ class TemporalVar(Generic[T]):
         self._expression = convert_to_string(source) if expression is None else expression
         self.name = None
 
-        self.events: List[Event] = []
+        # self.events: List[Event] = []
 
         self._cache = LRUCache(maxsize=4)
 
@@ -837,34 +830,15 @@ class TemporalVar(Generic[T]):
         functools.update_wrapper(wrapper, method)
         return wrapper
 
-    def on_crossing(self, value: Union["TemporalVar[T]", T], action: Union["Action", Callable] = None,
-                    direction: Literal["rising", "falling", "both"] = "both",
-                    terminal: Union[bool, int] = False) -> "Event":
-        """
-        Execute the specified action when the signal crosses the specified value in the specified direction.
-        :param value: Value to be crossed to trigger the event action.
-        :param action: Action that is triggered when the crossing condition is met.
-        :param direction: Direction of the crossing that will trigger the event.
-        :param terminal: If True, the simulation will terminate when the crossing occurs. If it is an integer, it
-        specifies the number of occurrences of the event after which the simulation will be terminated.
-        :return: Crossing event
-        """
-        if self.output_type in (bool, np.bool, str):
-            crossed_variable = self == value
-            crossed_variable._expression = f"on {self.name} == {value.name if isinstance(value, TemporalVar) else value}"
-        elif issubclass(self.output_type, abc.Iterable):
-            raise ValueError(
-                "Can not apply crossing detection to a variable containing a collection of values because it is ambiguous."
-            )
-        else:
-            crossed_variable = self - value
-            crossed_variable._expression = f"on {self.name} crossing {value.name if isinstance(value, TemporalVar) else value}"
-        event = Event(self.solver, crossed_variable, action, direction, terminal)
-        self.events.append(event)
-        return event
-
     def cross_trigger(self, value: Union["TemporalVar[T]", T],
                       direction: Literal["rising", "falling", "both"] = "both") -> "TriggerVar":
+        """
+        Create a signal that triggers when the specified crossing occurs.
+
+        :param value: Value to be crossed to cause the triggering.
+        :param direction: Direction of the crossing.
+        :return: TriggerVar
+        """
         if self.output_type in (bool, np.bool, str):
             crossed_variable = self == value
             crossed_variable._expression = f"on {self.name} == {value.name if isinstance(value, TemporalVar) else value}"
@@ -877,52 +851,6 @@ class TemporalVar(Generic[T]):
             crossed_variable._expression = f"on {self.name} crossing {value.name if isinstance(value, TemporalVar) else value}"
         trigger_var = TriggerVar(self.solver, crossed_variable, direction)
         return trigger_var
-
-    def action_set_to(self, new_value: Union["TemporalVar[T]", T]) -> "Action":
-        """
-        Create an action that, when its event is triggered, change the TemporalVar value.
-        This action works with recursive statements. For example, `count.action_set_to(count+1)` is valid.
-        :param new_value: New value
-        :return: Action to be put into an Event.
-        """
-
-        def change_value(t):
-            if isinstance(new_value, TemporalVar):
-                value = copy(new_value)
-                # Check if it references self
-                to_visit = [value]
-                inverse_refs = {}
-                while to_visit:
-                    current = to_visit.pop()
-                    for var in current.source:
-                        if isinstance(var, TemporalVar):
-                            inverse_refs[id(var)] = current
-                            if var is self:
-                                path = [var]
-                                while id(path[-1]) in inverse_refs:
-                                    path.append(inverse_refs[id(path[-1])])
-                                path.reverse()
-                                # Replace all source variables of the path in value by copies
-                                current_variable = path.pop(0)
-                                for variable in path:
-                                    idx = next(i for i, v in enumerate(current_variable.source) if v is variable)
-                                    new_source = list(current_variable.source)
-                                    new_source[idx] = copy(variable)
-                                    current_variable.source = tuple(new_source)
-                                    current_variable = current_variable.source[idx]
-                                to_visit.clear()
-                                break
-                            if not var._is_source:
-                                to_visit.append(var)
-
-            else:
-                value = TemporalVar(self.solver, new_value)
-
-            time = TemporalVar(self.solver, lambda t: t)
-            new_var = temporal_var_where(self.solver, time < t, copy(self), value)
-            vars(self).update(vars(new_var))
-
-        return Action(lambda t, y: change_value(t), f"Change {self.name}'s value to {get_expression(new_value)}")
 
     def clear(self):
         self._values = None
@@ -1397,31 +1325,31 @@ class IntegratedVar(TemporalVar[T]):
             return self._y_idx
         raise ValueError("The argument 'y_idx' should be set for IntegratedVar containing a single value.")
 
-    def action_reset_to(self, value: Union[TemporalVar[T], T]) -> "Action":
-        """
-        Create an action that, when its event is triggered, reset the IntegratedVar output to the specified value.
-        :param value: Value at which the integrator output is reset to
-        :return: Action to be put into an Event.
-        """
-        if not isinstance(value, TemporalVar):
-            value = TemporalVar(self.solver, value)
-
-        def action_fun(t, y):
-            def set_y0(idx, subvalue):
-                if isinstance(idx, np.ndarray):
-                    for arr_idx in np.ndindex(idx.shape):
-                        y_idx = idx[arr_idx]
-                        set_y0(y_idx, value[y_idx])
-                elif isinstance(idx, dict):
-                    for key, idx in idx.items():
-                        y[idx] = value[key]
-                        set_y0(idx, value[key])
-                else:
-                    y[idx] = subvalue(t, y)
-
-            set_y0(self.y_idx, value)
-
-        return Action(action_fun, f"Reset {self.name} to {value.expression}")
+    # def action_reset_to(self, value: Union[TemporalVar[T], T]) -> "Action":
+    #     """
+    #     Create an action that, when its event is triggered, reset the IntegratedVar output to the specified value.
+    #     :param value: Value at which the integrator output is reset to
+    #     :return: Action to be put into an Event.
+    #     """
+    #     if not isinstance(value, TemporalVar):
+    #         value = TemporalVar(self.solver, value)
+    #
+    #     def action_fun(t, y):
+    #         def set_y0(idx, subvalue):
+    #             if isinstance(idx, np.ndarray):
+    #                 for arr_idx in np.ndindex(idx.shape):
+    #                     y_idx = idx[arr_idx]
+    #                     set_y0(y_idx, value[y_idx])
+    #             elif isinstance(idx, dict):
+    #                 for key, idx in idx.items():
+    #                     y[idx] = value[key]
+    #                     set_y0(idx, value[key])
+    #             else:
+    #                 y[idx] = subvalue(t, y)
+    #
+    #         set_y0(self.y_idx, value)
+    #
+    #     return Action(action_fun, f"Reset {self.name} to {value.expression}")
 
     def action_set_to(self) -> None:
         """
@@ -1486,127 +1414,4 @@ def get_expression(value) -> str:
         return str(value)
 
 
-class Event:
-    _DIRECTION_MAP = {"rising": 1, "falling": -1, "both": 0}
-    _DIRECTION_REPR = {1: "rising", 0: "any direction", -1: "falling"}
 
-    def __init__(self, solver: Solver, fun, action: Union["Action", Callable, None],
-                 direction: Literal["rising", "falling", "both"] = "both",
-                 terminal: Union[bool, int] = False):
-        self.solver = solver
-        self.function: TemporalVar = convert_args_to_temporal_var(self.solver, [fun])[0]
-        self.action = convert_args_to_action([action])[0] if action is not None else None
-        self.terminal = terminal
-
-        self.direction = self._DIRECTION_MAP[direction]
-
-        self.count = 0
-        # Compute max events
-        message = ('The `terminal` attribute of each event '
-                   'must be a boolean or positive integer.')
-        if terminal is None or terminal == 0:
-            self.max_events = np.inf
-        elif int(terminal) == terminal and terminal > 0:
-            self.max_events = terminal
-        else:
-            raise ValueError(message)
-
-        self.g = None
-
-        self.t_events = []
-        self.y_events = []
-
-        self.deletion_time = None  # Time at which the event has been deleted from the simulation.
-
-        self.solver.events.append(self)
-
-    def __call__(self, t, y) -> float:
-        return self.function(t, y)
-
-    def __repr__(self):
-
-        return (f"Event({self.function.expression} ({self._DIRECTION_REPR[self.direction]}), "
-                f"{self.action or 'No action'}, terminal = {self.terminal})")
-
-    def evaluate(self, t, y) -> None:
-        self.g = self(t, y)
-
-    @property
-    def action_disable(self) -> "Action":
-        """
-        Create an action that disable the event, so it will not execute its action anymore.
-        :return: Action
-        """
-
-        def delete_event(t):
-            self.deletion_time = t
-
-        return Action(delete_event)
-
-    def execute_action(self, t, y):
-        if self.action is not None:
-            self.action(t, y)
-
-    def clear(self):
-        self.count = 0
-        self.g = None
-        self.t_events = []
-        self.y_events = []
-        self.deletion_time = None
-
-
-class Action:
-    def __init__(self, fun: Callable, expression: str = None):
-        if isinstance(fun, TemporalVar):
-            raise ValueError(
-                "An action can not be a TemporalVar, because an action is a function with side effects, "
-                "while a TemporalVar is a pure function."
-            )
-        if callable(fun):
-            n_args = len(inspect.signature(fun).parameters)
-            if n_args == 0:
-                self.function = lambda t, y: fun()
-            elif n_args == 1:
-                self.function = lambda t, y: fun(t)
-            else:
-                self.function = lambda t, y: fun(t, y)
-        self.expression = expression or convert_to_string(fun)
-
-    def __call__(self, t, y):
-        return self.function(t, y)
-
-    def __add__(self, other: Union[Callable, "Action"]) -> "Action":
-        if not isinstance(other, Action):
-            other = Action(other)
-
-        def added_fun(t, y):
-            self(t, y)
-            other(t, y)
-
-        return Action(added_fun, f"{self.expression} + {other.expression}")
-
-    def __repr__(self):
-        return f"Action({self.expression})"
-
-
-def convert_args_to_action(arg_list: Iterable) -> List[Action]:
-    def convert(arg):
-        if not isinstance(arg, Action):
-            arg = Action(arg)
-        return arg
-
-    return [convert(a) for a in arg_list]
-
-
-def action_where(solver: Solver, condition: TemporalVar[bool], a: Union[Callable, Action],
-                 b: Union[Callable, Action]) -> Action:
-    condition = convert_args_to_temporal_var(solver, [condition])[0]
-    a, b = convert_args_to_action([a, b])
-
-    def conditional_action(t, y):
-        if condition(t, y):
-            a(t, y)
-        else:
-            b(t, y)
-
-    return Action(conditional_action, f"({a.expression}) if {condition.expression} else ({b.expression})")
