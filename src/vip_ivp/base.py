@@ -1419,6 +1419,27 @@ class IntegratedVar(TemporalVar[T]):
         )
 
 
+class TriggerVar(TemporalVar[bool]):
+    _DIRECTION_MAP = {"rising": 1, "falling": -1, "both": 0}
+
+    def __init__(self, solver: Solver, fun, direction: Literal["rising", "falling", "both"] = "both"):
+        super().__init__(solver)
+        self.direction = self._DIRECTION_MAP[direction]
+        self.function = fun
+
+        self.t_events = []
+
+        self.g = None  # Cache for crossing evaluation
+
+        self.solver.events.append(self)
+
+    def __call__(self, t, y):
+        if np.isscalar(t):
+            return t in self.t_events
+        else:
+            return [self(t[i], y[i]) for i in range(len(t))]
+
+
 def get_expression(value) -> str:
     if isinstance(value, TemporalVar):
         frame = inspect.currentframe().f_back.f_back
