@@ -58,12 +58,12 @@ def solve_event_equation(event, sol, t_old, t, is_discrete: bool = False, t_eval
             t_eval_i_new = np.searchsorted(t_eval, t, side="right")
             t_eval_step = t_eval[:t_eval_i_new]
             t_eval_step = t_eval_step[t_eval_step > t_old]
-            initial_state = event.function(t_old, sol(t_old))
-            new_state = event.function(t, sol(t))
+            initial_state = event(t_old, sol(t_old))
+            new_state = event(t, sol(t))
             assert initial_state != new_state
-            return next((t for t in t_eval_step if event.function(t, sol(t)) != initial_state), t)
+            return next((t for t in t_eval_step if event(t, sol(t)) != initial_state), t)
     else:
-        return brentq(lambda t: event.function(t, sol(t)), t_old, t,
+        return brentq(lambda t: event(t, sol(t)), t_old, t,
                       xtol=4 * EPS, rtol=4 * EPS)
 
 
@@ -141,7 +141,7 @@ def find_active_events(events, sol, t_eval, t, t_old):
 
     t_list = [*t_list, t]
     for i, t_ev in enumerate(t_list):
-        g_new = [e.function(t_ev, sol(t_ev)) for e in events]
+        g_new = [e(t_ev, sol(t_ev)) for e in events]
         active_events_indices = find_active_events_in_step(g, g_new, direction, previous_triggers_mask)
         if active_events_indices.size > 0:
             t_upper = t_ev

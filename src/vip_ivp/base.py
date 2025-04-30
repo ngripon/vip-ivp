@@ -34,7 +34,7 @@ class Solver:
         # All the scalars variables that are an output of an integrate function
         self.integrated_vars: List[IntegratedVar] = []
 
-        self.events: List[TriggerVar] = []
+        self.events: List[Event] = []
         self.t_current: float = 0
         self.t = []
         self.y = None
@@ -388,8 +388,8 @@ class Solver:
                         # Create a loop to check if other events has triggered
                         while True:
                             t_latest = t_eval[np.searchsorted(t_eval, te, side="left")]
-                            g_latest = [e.function(t_latest, sol(t_latest)) for e in events]
-                            g_current = [e.function(te, ye) for e in events]
+                            g_latest = [e(t_latest, sol(t_latest)) for e in events]
+                            g_current = [e(te, ye) for e in events]
                             direction = np.array([e.direction for e in events])
                             active_events_indices_cascade = find_active_events_in_step(g_latest, g_current, direction)
                             triggering_events = [self.events[i] for i in active_events_indices_cascade if
@@ -1372,21 +1372,19 @@ class TriggerVar(TemporalVar[bool]):
         self.direction = self._DIRECTION_MAP[direction]
         self.function = fun
 
-        self.count = 0
-        self.t_events = []
+        self.event = Event(self.solver, fun, direction=direction)
 
-        self.g = None  # Cache for crossing evaluation
-
-        self.solver.events.append(self)
+        self.solver.events.append(self.event)
 
     def __call__(self, t, y):
         if np.isscalar(t):
-            return t in self.t_events
+            return t in self.event.t_events
         else:
             return [self(t[i], y[i]) for i in range(len(t))]
 
-    def evaluate(self, t, y):
-        self.g = self.function(t, y)
+    @property
+    def t_events(self):
+        return self.event.t_events
 
 
 def get_expression(value) -> str:
@@ -1418,7 +1416,7 @@ class Event:
     _DIRECTION_MAP = {"rising": 1, "falling": -1, "both": 0}
     _DIRECTION_REPR = {1: "rising", 0: "any direction", -1: "falling"}
 
-    def __init__(self, solver: Solver, fun, action: Union["Action", Callable, None],
+    def __init__(self, solver: Solver, fun, action: Union["Action", Callable, None] = None,
                  direction: Literal["rising", "falling", "both"] = "both"):
         self.solver = solver
         self.function: TemporalVar = convert_args_to_temporal_var(self.solver, [fun])[0]

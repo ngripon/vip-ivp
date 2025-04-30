@@ -208,8 +208,9 @@ def get_time_variable() -> TemporalVar[float]:
 # Events
 
 
-def _terminate():
+def terminate(call_signal:TriggerVar):
     solver = _get_current_solver()
+
     solver.status = 1
 
 
