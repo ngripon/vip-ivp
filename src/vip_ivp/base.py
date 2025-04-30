@@ -1371,10 +1371,7 @@ class TriggerVar(TemporalVar[bool]):
         super().__init__(solver)
         self.direction = self._DIRECTION_MAP[direction]
         self.function = fun
-
         self.event = Event(self.solver, fun, direction=direction)
-
-        self.solver.events.append(self.event)
 
     def __call__(self, t, y):
         if np.isscalar(t):
