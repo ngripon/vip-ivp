@@ -1372,7 +1372,7 @@ class TriggerVar(TemporalVar[bool]):
         self.direction = self._DIRECTION_MAP[direction]
         self.function = fun
 
-        self.count=0
+        self.count = 0
         self.t_events = []
 
         self.g = None  # Cache for crossing evaluation
@@ -1414,4 +1414,87 @@ def get_expression(value) -> str:
         return str(value)
 
 
+class Event:
+    _DIRECTION_MAP = {"rising": 1, "falling": -1, "both": 0}
+    _DIRECTION_REPR = {1: "rising", 0: "any direction", -1: "falling"}
 
+    def __init__(self, solver: Solver, fun, action: Union["Action", Callable, None],
+                 direction: Literal["rising", "falling", "both"] = "both"):
+        self.solver = solver
+        self.function: TemporalVar = convert_args_to_temporal_var(self.solver, [fun])[0]
+        self.action = convert_args_to_action([action])[0] if action is not None else None
+
+        self.direction = self._DIRECTION_MAP[direction]
+
+        self.count = 0
+
+        self.g = None
+
+        self.t_events = []
+
+        self.deletion_time = None  # Time at which the event has been deleted from the simulation.
+
+        self.solver.events.append(self)
+
+    def __call__(self, t, y) -> float:
+        return self.function(t, y)
+
+    def __repr__(self):
+        return (f"Event({self.function.expression} ({self._DIRECTION_REPR[self.direction]}), "
+                f"{self.action or 'No action'})")
+
+    def evaluate(self, t, y) -> None:
+        self.g = self(t, y)
+
+    def execute_action(self, t, y):
+        if self.action is not None:
+            self.action(t, y)
+
+    def clear(self):
+        self.count = 0
+        self.g = None
+        self.t_events = []
+        self.deletion_time = None
+
+
+class Action:
+    def __init__(self, fun: Callable, expression: str = None):
+        if isinstance(fun, TemporalVar):
+            raise ValueError(
+                "An action can not be a TemporalVar, because an action is a function with side effects, "
+                "while a TemporalVar is a pure function."
+            )
+        if callable(fun):
+            n_args = len(inspect.signature(fun).parameters)
+            if n_args == 0:
+                self.function = lambda t, y: fun()
+            elif n_args == 1:
+                self.function = lambda t, y: fun(t)
+            else:
+                self.function = lambda t, y: fun(t, y)
+        self.expression = expression or convert_to_string(fun)
+
+    def __call__(self, t, y):
+        return self.function(t, y)
+
+    def __add__(self, other: Union[Callable, "Action"]) -> "Action":
+        if not isinstance(other, Action):
+            other = Action(other)
+
+        def added_fun(t, y):
+            self(t, y)
+            other(t, y)
+
+        return Action(added_fun, f"{self.expression} + {other.expression}")
+
+    def __repr__(self):
+        return f"Action({self.expression})"
+
+
+def convert_args_to_action(arg_list: Iterable) -> List[Action]:
+    def convert(arg):
+        if not isinstance(arg, Action):
+            arg = Action(arg)
+        return arg
+
+    return [convert(a) for a in arg_list]
