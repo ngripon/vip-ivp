@@ -1327,31 +1327,34 @@ class IntegratedVar(TemporalVar[T]):
             return self._y_idx
         raise ValueError("The argument 'y_idx' should be set for IntegratedVar containing a single value.")
 
-    # def action_reset_to(self, value: Union[TemporalVar[T], T]) -> "Action":
-    #     """
-    #     Create an action that, when its event is triggered, reset the IntegratedVar output to the specified value.
-    #     :param value: Value at which the integrator output is reset to
-    #     :return: Action to be put into an Event.
-    #     """
-    #     if not isinstance(value, TemporalVar):
-    #         value = TemporalVar(self.solver, value)
-    #
-    #     def action_fun(t, y):
-    #         def set_y0(idx, subvalue):
-    #             if isinstance(idx, np.ndarray):
-    #                 for arr_idx in np.ndindex(idx.shape):
-    #                     y_idx = idx[arr_idx]
-    #                     set_y0(y_idx, value[y_idx])
-    #             elif isinstance(idx, dict):
-    #                 for key, idx in idx.items():
-    #                     y[idx] = value[key]
-    #                     set_y0(idx, value[key])
-    #             else:
-    #                 y[idx] = subvalue(t, y)
-    #
-    #         set_y0(self.y_idx, value)
-    #
-    #     return Action(action_fun, f"Reset {self.name} to {value.expression}")
+    def reset_on(self, trigger: "TriggerVar", new_value: Union[TemporalVar[T], T]) -> "Event":
+        """
+        Create an action that, when its event is triggered, reset the IntegratedVar output to the specified value.
+        :param trigger: Variable that triggers the reset
+        :param new_value: Value at which the integrator output is reset to
+        :return: Event.
+        """
+        if not isinstance(new_value, TemporalVar):
+            new_value = TemporalVar(self.solver, new_value)
+
+        def action_fun(t, y):
+            def set_y0(idx, subvalue):
+                if isinstance(idx, np.ndarray):
+                    for arr_idx in np.ndindex(idx.shape):
+                        y_idx = idx[arr_idx]
+                        set_y0(y_idx, new_value[y_idx])
+                elif isinstance(idx, dict):
+                    for key, idx in idx.items():
+                        y[idx] = new_value[key]
+                        set_y0(idx, new_value[key])
+                else:
+                    y[idx] = subvalue(t, y)
+
+            set_y0(self.y_idx, new_value)
+
+        event = trigger.event
+        event.action = Action(action_fun, f"Reset {self.name} to {new_value.expression}")
+        return event
 
     def action_set_to(self) -> None:
         """

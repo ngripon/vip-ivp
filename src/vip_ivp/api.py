@@ -205,8 +205,7 @@ def get_time_variable() -> TemporalVar[float]:
 
 # Events
 
-
-def terminate(call_signal: TriggerVar) -> Event:
+def terminate_on(call_signal: TriggerVar) -> Event:
     solver = _get_current_solver()
 
     def action_terminate():
@@ -215,9 +214,6 @@ def terminate(call_signal: TriggerVar) -> Event:
     event = call_signal.event
     event.action = Action(action_terminate, "Terminate simulation")
     return event
-
-
-# action_terminate = Action(_terminate, "Terminate simulation")
 
 
 # def set_timeout(action: Union[Action, Callable], delay: float) -> Event:
