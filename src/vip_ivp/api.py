@@ -143,15 +143,13 @@ def loop_node(shape: Union[int, tuple[int, ...]] = None, strict: bool = True) ->
     return LoopNode(solver, shape, strict)
 
 
-
-
 @overload
 def where(condition: Union[TemporalVar[bool], bool], a: Union[TemporalVar, T], b: Union[TemporalVar, T]) -> TemporalVar[
     T]: ...
 
 
 def where(condition: Union[TemporalVar[bool], bool], a: Union[TemporalVar, T],
-          b: Union[TemporalVar, T])->TemporalVar[T]:
+          b: Union[TemporalVar, T]) -> TemporalVar[T]:
     """
     Create a conditional TemporalVar or a conditional Action.
     If condition is `True` at time $t$, the output value will have value **a**, else **b**.
@@ -208,10 +206,15 @@ def get_time_variable() -> TemporalVar[float]:
 # Events
 
 
-def terminate(call_signal:TriggerVar):
+def terminate(call_signal: TriggerVar) -> Event:
     solver = _get_current_solver()
 
-    solver.status = 1
+    def action_terminate():
+        solver.status = 1
+
+    event = call_signal.event
+    event.action = Action(action_terminate, "Terminate simulation")
+    return event
 
 
 # action_terminate = Action(_terminate, "Terminate simulation")
@@ -332,6 +335,7 @@ def clear() -> None:
     """
     solver = _get_current_solver()
     solver.clear()
+
 
 ### I do not like the current implementation, so I disable it for the moment.
 #

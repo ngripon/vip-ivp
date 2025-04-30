@@ -384,6 +384,7 @@ class Solver:
                         triggered_events = []
                         for event in triggering_events:
                             event.t_events.append(te)
+                            event.execute_action(te, ye)
                             triggered_events.append(event)
                         # Create a loop to check if other events has triggered
                         while True:
@@ -397,6 +398,7 @@ class Solver:
                             if triggering_events:
                                 for event in triggering_events:
                                     event.t_events.append(te)
+                                    event.execute_action(te, ye)
                                     triggered_events.append(event)
                             else:
                                 break
