@@ -35,6 +35,7 @@ class Solver:
         self.integrated_vars: List[IntegratedVar] = []
 
         self.events: List[Event] = []
+        self.cross_triggers:List[CrossTriggerVar]=[]
         self.t_current: float = 0
         self.t = []
         self.y = None
@@ -833,7 +834,7 @@ class TemporalVar(Generic[T]):
         return wrapper
 
     def cross_trigger(self, value: Union["TemporalVar[T]", T],
-                      direction: Literal["rising", "falling", "both"] = "both") -> "TriggerVar":
+                      direction: Literal["rising", "falling", "both"] = "both") -> "CrossTriggerVar":
         """
         Create a signal that triggers when the specified crossing occurs.
 
@@ -851,7 +852,7 @@ class TemporalVar(Generic[T]):
         else:
             crossed_variable = self - value
             crossed_variable._expression = f"on {self.name} crossing {value.name if isinstance(value, TemporalVar) else value}"
-        trigger_var = TriggerVar(self.solver, crossed_variable, direction)
+        trigger_var = CrossTriggerVar(self.solver, crossed_variable, direction)
         return trigger_var
 
     def clear(self):
@@ -1327,7 +1328,7 @@ class IntegratedVar(TemporalVar[T]):
             return self._y_idx
         raise ValueError("The argument 'y_idx' should be set for IntegratedVar containing a single value.")
 
-    def reset_on(self, trigger: "TriggerVar", new_value: Union[TemporalVar[T], T]) -> "Event":
+    def reset_on(self, trigger: "CrossTriggerVar", new_value: Union[TemporalVar[T], T]) -> "Event":
         """
         Create an action that, when its event is triggered, reset the IntegratedVar output to the specified value.
         :param trigger: Variable that triggers the reset
@@ -1369,24 +1370,23 @@ class IntegratedVar(TemporalVar[T]):
         )
 
 
-class TriggerVar(TemporalVar[bool]):
+class CrossTriggerVar(TemporalVar[bool]):
     _DIRECTION_MAP = {"rising": 1, "falling": -1, "both": 0}
 
     def __init__(self, solver: Solver, fun: TemporalVar, direction: Literal["rising", "falling", "both"] = "both"):
         super().__init__(solver)
         self.direction = self._DIRECTION_MAP[direction]
         self.function = fun
-        self.event = Event(self.solver, fun, direction=direction)
+
+        self.t_triggers=[]
+        # Add to solver
+        self.solver.cross_triggers.append(self)
 
     def __call__(self, t, y):
         if np.isscalar(t):
-            return t in self.event.t_events
+            return t in self.t_triggers
         else:
             return [self(t[i], y[i]) for i in range(len(t))]
-
-    @property
-    def t_events(self):
-        return self.event.t_events
 
 
 def get_expression(value) -> str:
