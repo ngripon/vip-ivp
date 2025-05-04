@@ -35,7 +35,7 @@ class Solver:
         self.integrated_vars: List[IntegratedVar] = []
 
         self.events: List[Event] = []
-        self.cross_triggers:List[CrossTriggerVar]=[]
+        self.cross_triggers: List[CrossTriggerVar] = []
         self.t_current: float = 0
         self.t = []
         self.y = None
@@ -364,9 +364,25 @@ class Solver:
             else:
                 sol = None
 
-            if events:
+            if events or self.cross_triggers:
                 if sol is None:
                     sol = self._sol_wrapper(solver.dense_output())
+
+                # Create list of time sample where to check triggers and events
+                t_eval_i_new = np.searchsorted(t_eval, t, side="right")
+                t_eval_step = t_eval[:t_eval_i_new]
+                t_eval_step = t_eval_step[t_eval_step > t_old]
+                t_eval_step = [*t_eval_step, t]
+
+                for t_check in t_eval_step:
+                    # Check triggers first
+                    if self.cross_triggers:
+                        ...
+
+                    # Check events
+                    if events:
+                        ...
+                    ...
 
                 active_events_indices, te_upper, te_lower = find_active_events(events, sol, t_eval, t, t_old)
                 if active_events_indices.size > 0:
@@ -1378,7 +1394,7 @@ class CrossTriggerVar(TemporalVar[bool]):
         self.direction = self._DIRECTION_MAP[direction]
         self.function = fun
 
-        self.t_triggers=[]
+        self.t_triggers = []
         # Add to solver
         self.solver.cross_triggers.append(self)
 
