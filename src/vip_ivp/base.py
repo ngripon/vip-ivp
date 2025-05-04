@@ -339,7 +339,7 @@ class Solver:
 
         t_events = []
         y_events = []
-        [e.evaluate(t0, y0) for e in self.get_events(t0)]
+        [c.evaluate(t0, y0) for c in self.cross_triggers]
 
         interpolants = []
 
@@ -374,12 +374,43 @@ class Solver:
                 t_eval_step = t_eval_step[t_eval_step > t_old]
                 t_eval_step = [*t_eval_step, t]
 
-                for t_check in t_eval_step:
-                    # Check triggers first
-                    if self.cross_triggers:
-                        ...
+                # Prepare data for crossing detection
+                active_crossing = None
+                tc_lower = t_old
+                tc_upper = t
 
-                    # Check events
+                g = [c.previous_value for c in self.cross_triggers]
+                directions = np.array([c.direction for c in self.cross_triggers])
+                # Prevent events that triggered at the previous step to trigger again in this step, because its g_new is at 0 so
+                # an irrelevant zero-crossing is sure to occur.
+                previous_triggers_mask = np.array([not t_old in c.t_triggers for c in self.cross_triggers])
+
+                for check_idx, t_check in enumerate(t_eval_step):
+                    y_check = sol(t_check)
+                    # Detect crossing first
+                    if self.cross_triggers:
+                        g_new = [c.function(t_check, y_check) for c in self.cross_triggers]
+                        active_crossing_indices = find_active_events_in_step(g, g_new, directions,
+                                                                             previous_triggers_mask)
+                        if check_idx == 0 and len(t_eval_step) > 1:
+                            # Disable the preventing of zero-crossing from previously triggered events
+                            g = g_new
+                            t_lower = t_check
+                            previous_triggers_mask = None
+                        # If a crossing has been detected:
+                        if active_crossing_indices.size > 0:
+                            # Get the roots of each crossing
+                            tc_upper = t_check
+                            # Handle crossing by computing roots
+                            active_crossings = [self.cross_triggers[idx] for idx in active_crossing_indices]
+                            roots = [solve_event_equation(c, sol, t_old, t_check, is_discrete(c)) for c in active_crossings]
+                            roots = np.asarray(roots)
+                            # Change the current t_check with the earliest trigger.
+                            # TODO: Handle multiple triggers at the same exact time
+                            # TODO: add to t_triggers
+
+
+                    # Detect events
                     if events:
                         ...
                     ...
@@ -1395,6 +1426,8 @@ class CrossTriggerVar(TemporalVar[bool]):
         self.function = fun
 
         self.t_triggers = []
+
+        self.previous_value = None
         # Add to solver
         self.solver.cross_triggers.append(self)
 
@@ -1403,6 +1436,9 @@ class CrossTriggerVar(TemporalVar[bool]):
             return t in self.t_triggers
         else:
             return [self(t[i], y[i]) for i in range(len(t))]
+
+    def evaluate(self, t, y):
+        self.previous_value = self.function(t, y)
 
 
 def get_expression(value) -> str:
