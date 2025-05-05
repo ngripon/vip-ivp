@@ -412,7 +412,8 @@ class Solver:
                                 signal.t_triggers.append(t_trigger)
                                 signal.previous_value = 0
                             g = [c.previous_value for c in self.cross_triggers]
-                            previous_triggers_mask = np.array([not t_trigger in c.t_triggers for c in self.cross_triggers])
+                            previous_triggers_mask = np.array(
+                                [not t_trigger in c.t_triggers for c in self.cross_triggers])
                             # Replace current time with trigger time and reevaluate the current t_check in the next loop
                             if t_trigger != t_check:
                                 t_eval_step.insert(0, t_check)
@@ -1324,17 +1325,6 @@ class LoopNode(TemporalVar[T]):
         """
         return not self._is_strict or self._is_set
 
-    def action_set_to(self) -> None:
-        """
-        Not implemented
-        :return: Raise an exception
-        """
-        raise NotImplementedError(
-            "This method is forbidden for a Loop Node.\n"
-            "If you want really want to change the behavior of a Loop Node, create a new variable by doing "
-            "'new_var = 1 * loop_node'. You will be able to call `action_set_to()` on `new_var`."
-        )
-
 
 class IntegratedVar(TemporalVar[T]):
     def __init__(
@@ -1396,21 +1386,9 @@ class IntegratedVar(TemporalVar[T]):
 
             set_y0(self.y_idx, new_value)
 
-        event = trigger.event
-        event.action = Action(action_fun, f"Reset {self.name} to {new_value.expression}")
+        action = Action(action_fun, f"Reset {self.name} to {new_value.expression}")
+        event = Event(self.solver, trigger, action)
         return event
-
-    def action_set_to(self) -> None:
-        """
-        Not implemented
-        :return: Raise an exception
-        """
-        raise NotImplementedError(
-            "This method is forbidden for an integrated variable.\n"
-            "If you want to reset the integrator output, use `action_reset_to()`.\n"
-            "If you want really want to change the behavior of an integrated variable, create a new variable by doing "
-            "'new_var = 1 * integrated_variable'. You will be able to call `action_set_to()` on `new_var`."
-        )
 
 
 class CrossTriggerVar(TemporalVar[bool]):
