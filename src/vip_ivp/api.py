@@ -211,8 +211,7 @@ def terminate_on(call_signal: CrossTriggerVar) -> Event:
     def action_terminate():
         solver.status = 1
 
-    event = call_signal.event
-    event.action = Action(action_terminate, "Terminate simulation")
+    event = Event(solver, call_signal, action_terminate)
     return event
 
 
