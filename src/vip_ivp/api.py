@@ -241,7 +241,7 @@ def terminate_on(call_signal: CrossTriggerVar) -> Event:
 # Solving
 
 def solve(t_end: float, time_step: Union[float, None] = 0.1, method='RK45', t_eval: Union[List, NDArray] = None,
-          include_events_times: bool = True, plot: bool = True, rtol: float = 1e-3,
+          include_crossing_times: bool = True, plot: bool = True, rtol: float = 1e-3,
           atol: float = 1e-6, max_step=np.inf, verbose: bool = False) -> None:
     """
     Solve the equations of the dynamical system through a hybrid solver.
@@ -252,7 +252,7 @@ def solve(t_end: float, time_step: Union[float, None] = 0.1, method='RK45', t_ev
         solely by the solver.
     :param plot: If True, a plot will show the result of the simulation for variables that were registered to plot.
     :param verbose: If True, print solving information to the console.
-    :param include_events_times: If True, include time points at which events are triggered.
+    :param include_crossing_times: If True, include time points at which events are triggered.
     :param t_end: Time at which the integration stops.
     :param method: Integration method to use. Default is 'RK45'. For a list of available methods, see SciPy's
         `solve_ivp()` documentation.
@@ -262,7 +262,7 @@ def solve(t_end: float, time_step: Union[float, None] = 0.1, method='RK45', t_ev
     :param atol: Absolute tolerance. The solver keeps the local error estimates less than `atol + rtol * abs(y)`.
     """
     solver = _get_current_solver()
-    solver.solve(t_end, method, time_step, t_eval, include_events_times=include_events_times, verbose=verbose,
+    solver.solve(t_end, method, time_step, t_eval, include_crossing_times=include_crossing_times, verbose=verbose,
                  plot=plot, rtol=rtol, atol=atol, max_step=max_step)
 
 

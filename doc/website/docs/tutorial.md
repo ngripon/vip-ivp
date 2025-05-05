@@ -168,7 +168,7 @@ This is because `vip-ivp` automatically adds the **exact times at which events o
 If you prefer to keep a uniform time grid and **exclude event times**, you can pass the following option to `solve()`:
 
 ```python
-vip.solve(10, time_step=0.01, include_events_times=False)
+vip.solve(10, time_step=0.01, include_crossing_times=False)
 ```
 
 ## Complete example

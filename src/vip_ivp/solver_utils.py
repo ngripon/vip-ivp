@@ -58,7 +58,7 @@ def solve_event_equation(event, sol, t_up, t_low, is_discrete: bool = False):
                       xtol=4 * EPS, rtol=4 * EPS)
 
 
-def is_discrete(cross_trigger: CrossTriggerVar) -> bool:
+def is_discrete(cross_trigger: "CrossTriggerVar") -> bool:
     return cross_trigger.function.output_type in (str, bool, np.bool)
 
 

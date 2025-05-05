@@ -130,7 +130,7 @@ class Solver:
             method="RK45",
             time_step=None,
             t_eval=None,
-            include_events_times: bool = True,
+            include_crossing_times: bool = True,
             plot: bool = True,
             verbose: bool = False,
             **options,
@@ -163,7 +163,7 @@ class Solver:
                                time_step)  # Add half a time step to get an array that stops on t_end
 
         res = self._solve_ivp((0, t_end), self.x0, method=method, t_eval=t_eval,
-                              include_events_times=include_events_times, **options)
+                              include_crossing_times=include_crossing_times, **options)
         if not res.success:
             raise Exception(res.message)
 
@@ -289,7 +289,7 @@ class Solver:
             t_eval=None,
             dense_output=False,
             vectorized=False,
-            include_events_times=True,
+            include_crossing_times=True,
             **options,
     ):
         if method not in METHODS and not (
@@ -384,6 +384,7 @@ class Solver:
                 previous_triggers_mask = np.array([not t_old in c.t_triggers for c in self.cross_triggers])
 
                 discontinuity = False
+                t_crossings=[]
 
                 first_iteration = True
                 while len(t_eval_step):
@@ -420,6 +421,7 @@ class Solver:
                             t_check = t_trigger
                             y_check = sol(t_check)
                             tc_lower = t_trigger
+                            t_crossings.append(t_trigger)
                     first_iteration = False
 
                     # Detect events
@@ -467,6 +469,12 @@ class Solver:
                     # slicing.
                     t_eval_step = t_eval[t_eval_i_new:t_eval_i][::-1]
 
+                # Include crossing times
+                if include_crossing_times and self.cross_triggers and t_crossings:
+                    t_eval_step=list(t_eval_step)
+                    t_eval_step.extend(t_crossings)
+                    t_eval_step=np.array(sorted(t_eval_step))
+
                 if t_eval_step.size > 0:
                     if sol is None:
                         sol = self._sol_wrapper(solver.dense_output())
@@ -478,14 +486,14 @@ class Solver:
                     t_eval_i = t_eval_i_new
                 # Add time events
                 if events:
-                    if active_events_indices.size > 0:
-                        if self.t[-1] == te:
+                    if self.cross_triggers and len(t_crossings):
+                        if self.t[-1] == t_check:
                             if self.dim != 0:
-                                self.y[-1] = ye
-                        elif include_events_times:
-                            self.t.append(te)
-                            # When there is no integrated variable, self.y should be a list of zeros
-                            self.y.append(ye if len(ye) else 0.0)
+                                self.y[-1] = y_check
+                        # elif include_events_times:
+                        #     self.t.append(te)
+                        #     # When there is no integrated variable, self.y should be a list of zeros
+                        #     self.y.append(ye if len(ye) else 0.0)
 
             if t_eval is not None and dense_output:
                 ti.append(t)
