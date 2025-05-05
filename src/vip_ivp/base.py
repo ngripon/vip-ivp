@@ -411,6 +411,8 @@ class Solver:
                             for signal in triggered_signals:
                                 signal.t_triggers.append(t_trigger)
                                 signal.previous_value = 0
+                            g = [c.previous_value for c in self.cross_triggers]
+                            previous_triggers_mask = np.array([not t_trigger in c.t_triggers for c in self.cross_triggers])
                             # Replace current time with trigger time and reevaluate the current t_check in the next loop
                             if t_trigger != t_check:
                                 t_eval_step.insert(0, t_check)
@@ -418,7 +420,7 @@ class Solver:
                                 y_check = sol(t_check)
                             tc_lower = t_trigger
                             t_crossings.append(t_trigger)
-                        elif first_iteration and len(t_eval_step) > 1:
+                        elif previous_triggers_mask is not None:
                             # Disable the preventing of zero-crossing from previously triggered events
                             g = g_new
                             tc_lower = t_check

@@ -27,7 +27,7 @@ class OdeResult(OptimizeResult):
     pass
 
 
-def solve_event_equation(event, sol, t_up, t_low, is_discrete: bool = False):
+def solve_event_equation(cross_var:"CrossTriggerVar", sol, t_low, t_up, is_discrete: bool = False):
     """Solve an equation corresponding to an ODE event.
 
     The equation is ``event(t, y(t)) = 0``, here ``y(t)`` is known from an
@@ -54,7 +54,7 @@ def solve_event_equation(event, sol, t_up, t_low, is_discrete: bool = False):
     if is_discrete:
         return t_up
     else:
-        return brentq(lambda t: event(t, sol(t)), t_low, t_up,
+        return brentq(lambda t: cross_var.function(t, sol(t)), t_low, t_up,
                       xtol=4 * EPS, rtol=4 * EPS)
 
 
