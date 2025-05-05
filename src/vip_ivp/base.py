@@ -5,7 +5,7 @@ import operator
 import time
 import warnings
 from collections import abc
-from copy import copy
+from copy import copy, deepcopy
 from typing import overload, Literal, Iterable, Dict, Tuple, List, Any
 from pathlib import Path
 from typing import Callable, Union, TypeVar, Generic
@@ -375,14 +375,15 @@ class Solver:
                 t_eval_step = [*t_eval_step, t]
 
                 # Prepare data for crossing detection
-                active_crossing = None
                 tc_lower = t_old
-
                 g = [c.previous_value for c in self.cross_triggers]
                 directions = np.array([c.direction for c in self.cross_triggers])
+
                 # Prevent events that triggered at the previous step to trigger again in this step, because its g_new is at 0 so
                 # an irrelevant zero-crossing is sure to occur.
                 previous_triggers_mask = np.array([not t_old in c.t_triggers for c in self.cross_triggers])
+
+                discontinuity = False
 
                 first_iteration = True
                 while len(t_eval_step):
@@ -411,72 +412,45 @@ class Solver:
                             t_trigger = np.min(roots)
                             triggered_signals = [self.cross_triggers[i] for i, root in enumerate(roots) if
                                                  root == t_trigger]
-                            [t.t_triggers.append(t_trigger) for t in triggered_signals]
+                            for signal in triggered_signals:
+                                signal.t_triggers.append(t_trigger)
+                                signal.previous_value = 0
                             # Replace current time with trigger time and reevaluate the current t_check in the next loop
                             t_eval_step.insert(0, t_check)
                             t_check = t_trigger
+                            y_check = sol(t_check)
                             tc_lower = t_trigger
                     first_iteration = False
 
                     # Detect events
                     if events:
-                        ...
-                    ...
-
-                active_events_indices, te_upper, te_lower = find_active_events(events, sol, t_eval, t, t_old)
-                if active_events_indices.size > 0:
-                    for active_idx in active_events_indices:
-                        events[active_idx].count += 1
-                    active_events, roots = handle_events(sol, events, active_events_indices, te_lower, te_upper, t_eval)
-
-                    # Get the first event
-                    te = np.min(roots)
-                    if te != t_old or first_event:  # Prevent endless loops
-                        first_event = False  # Only enable the case where we found an event at t = 0s
-                        ye = sol(te)
-                        self.t_current = te
-                        # Get all events that happens at te and execute their action
-                        triggering_events = [active_events[i] for i in range(len(active_events)) if roots[i] == te]
+                        y_before_event = np.asarray(deepcopy(y_check))
                         triggered_events = []
-                        for event in triggering_events:
-                            event.t_events.append(te)
-                            event.execute_action(te, ye)
-                            triggered_events.append(event)
-                        # Create a loop to check if other events has triggered
-                        while True:
-                            t_latest = t_eval[np.searchsorted(t_eval, te, side="left")]
-                            g_latest = [e(t_latest, sol(t_latest)) for e in events]
-                            g_current = [e(te, ye) for e in events]
-                            direction = np.array([e.direction for e in events])
-                            active_events_indices_cascade = find_active_events_in_step(g_latest, g_current, direction)
-                            triggering_events = [self.events[i] for i in active_events_indices_cascade if
-                                                 self.events[i] not in triggered_events]
-                            if triggering_events:
-                                for event in triggering_events:
-                                    event.t_events.append(te)
-                                    event.execute_action(te, ye)
-                                    triggered_events.append(event)
-                            else:
-                                break
+                        events_to_trigger = [e for e in self.events if e(t_check, y_check)]
+                        for e in events_to_trigger:
+                            e.execute_action(t_check, y_check)  # This can modify y_check value
+                            triggered_events.append(e)
+                        # Check for discontinuous action
+                        discontinuity = not np.array_equal(y_before_event, np.asarray(y_check))
+                        if discontinuity:
+                            # Create a loop to check if other events has triggered because of modification of ye
+                            while True:
+                                events_to_trigger = [e for e in self.events if
+                                                     e not in triggered_events and e(t_check, y_check)]
+                                if events_to_trigger:
+                                    for e in events_to_trigger:
+                                        e.execute_action(t_check, y_check)  # This can modify y_check value
+                                        triggered_events.append(e)
+                                else:
+                                    break
+                            # End also crossing and event loop
+                            break
 
-                        # Reset the solver and events evaluation to begin at te for the next step
-                        t = te
-                        y = ye
-                        [e.evaluate(t, y) for e in self.get_events(t)]
-                        for event in triggered_events:
-                            event.g = 0
-                        solver = method(self._dy, t, y, tf, vectorized=vectorized, **options)
-                    else:
-                        warnings.warn(
-                            "Ignored event: The detected event computed time is the same as the previously solved "
-                            "time.\n"
-                            "A discontinuity in the variable you applied '.on_crossing()' to may cause the root "
-                            "finding algorithm to fail. Consider applying '.on_crossing' to a more continuous variable."
-                        )
-                        active_events_indices = np.array([])
-                        [e.evaluate(t, y) for e in self.get_events(t)]
-                else:
-                    [e.evaluate(t, y) for e in self.get_events(t)]
+                # Reset the solver and events evaluation to begin at te for the next step
+                if discontinuity:
+                    t = t_check
+                    y = y_check
+                    solver = method(self._dy, t, y, tf, vectorized=vectorized, **options)
             self.t_current = t
             if t_eval is None:
                 self.t.append(t)
@@ -1475,46 +1449,33 @@ def get_expression(value) -> str:
 
 
 class Event:
-    _DIRECTION_MAP = {"rising": 1, "falling": -1, "both": 0}
-    _DIRECTION_REPR = {1: "rising", 0: "any direction", -1: "falling"}
-
-    def __init__(self, solver: Solver, fun, action: Union["Action", Callable, None] = None,
-                 direction: Literal["rising", "falling", "both"] = "both"):
+    def __init__(self, solver: Solver, fun: TemporalVar[bool], action: Union["Action", Callable, None] = None):
         self.solver = solver
         self.function: TemporalVar = convert_args_to_temporal_var(self.solver, [fun])[0]
         self.action = convert_args_to_action([action])[0] if action is not None else None
 
-        self.direction = self._DIRECTION_MAP[direction]
-
-        self.count = 0
-
-        self.g = None
-
         self.t_events = []
-
-        self.deletion_time = None  # Time at which the event has been deleted from the simulation.
 
         self.solver.events.append(self)
 
-    def __call__(self, t, y) -> float:
-        return self.function(t, y)
+    def __call__(self, t, y) -> bool:
+        return bool(self.function(t, y))
 
     def __repr__(self):
-        return (f"Event({self.function.expression} ({self._DIRECTION_REPR[self.direction]}), "
+        return (f"Event({self.function.expression}, "
                 f"{self.action or 'No action'})")
-
-    def evaluate(self, t, y) -> None:
-        self.g = self(t, y)
 
     def execute_action(self, t, y):
         if self.action is not None:
             self.action(t, y)
+        self.t_events.append(t)
 
     def clear(self):
-        self.count = 0
-        self.g = None
         self.t_events = []
-        self.deletion_time = None
+
+    @property
+    def count(self):
+        return len(self.t_events)
 
 
 class Action:
