@@ -377,7 +377,6 @@ class Solver:
                 # Prepare data for crossing detection
                 active_crossing = None
                 tc_lower = t_old
-                tc_upper = t
 
                 g = [c.previous_value for c in self.cross_triggers]
                 directions = np.array([c.direction for c in self.cross_triggers])
@@ -385,17 +384,19 @@ class Solver:
                 # an irrelevant zero-crossing is sure to occur.
                 previous_triggers_mask = np.array([not t_old in c.t_triggers for c in self.cross_triggers])
 
-                for check_idx, t_check in enumerate(t_eval_step):
+                first_iteration = True
+                while len(t_eval_step):
+                    t_check = t_eval_step.pop(0)
                     y_check = sol(t_check)
                     # Detect crossing first
                     if self.cross_triggers:
                         g_new = [c.function(t_check, y_check) for c in self.cross_triggers]
                         active_crossing_indices = find_active_events_in_step(g, g_new, directions,
                                                                              previous_triggers_mask)
-                        if check_idx == 0 and len(t_eval_step) > 1:
+                        if first_iteration and len(t_eval_step) > 1:
                             # Disable the preventing of zero-crossing from previously triggered events
                             g = g_new
-                            t_lower = t_check
+                            tc_lower = t_check
                             previous_triggers_mask = None
                         # If a crossing has been detected:
                         if active_crossing_indices.size > 0:
@@ -403,12 +404,19 @@ class Solver:
                             tc_upper = t_check
                             # Handle crossing by computing roots
                             active_crossings = [self.cross_triggers[idx] for idx in active_crossing_indices]
-                            roots = [solve_event_equation(c, sol, t_old, t_check, is_discrete(c)) for c in active_crossings]
+                            roots = [solve_event_equation(c, sol, tc_lower, tc_upper, is_discrete(c)) for c in
+                                     active_crossings]
                             roots = np.asarray(roots)
                             # Change the current t_check with the earliest trigger.
-                            # TODO: Handle multiple triggers at the same exact time
-                            # TODO: add to t_triggers
-
+                            t_trigger = np.min(roots)
+                            triggered_signals = [self.cross_triggers[i] for i, root in enumerate(roots) if
+                                                 root == t_trigger]
+                            [t.t_triggers.append(t_trigger) for t in triggered_signals]
+                            # Replace current time with trigger time and reevaluate the current t_check in the next loop
+                            t_eval_step.insert(0, t_check)
+                            t_check = t_trigger
+                            tc_lower = t_trigger
+                    first_iteration = False
 
                     # Detect events
                     if events:
