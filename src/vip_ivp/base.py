@@ -344,7 +344,6 @@ class Solver:
         interpolants = []
 
         self.status = None
-        first_event = True
         while self.status is None:
             message = solver.step()
 
@@ -460,6 +459,9 @@ class Solver:
                     t = t_check
                     y = y_check
                     solver = method(self._dy, t, y, tf, vectorized=vectorized, **options)
+
+            [c.evaluate(t, y) for c in self.cross_triggers]
+
             self.t_current = t
             if t_eval is None:
                 self.t.append(t)
@@ -492,11 +494,11 @@ class Solver:
                         self.y.extend([0] * len(t_eval_step))
                     t_eval_i = t_eval_i_new
                 # Add time events
-                if events:
-                    if self.cross_triggers and len(t_crossings):
-                        if self.t[-1] == t_check:
-                            if self.dim != 0:
-                                self.y[-1] = y_check
+                # if events:
+                #     if self.cross_triggers and len(t_crossings):
+                #         if self.t[-1] == t_check:
+                #             if self.dim != 0:
+                #                 self.y[-1] = y_check
                         # elif include_events_times:
                         #     self.t.append(te)
                         #     # When there is no integrated variable, self.y should be a list of zeros
