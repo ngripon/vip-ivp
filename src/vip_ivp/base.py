@@ -385,7 +385,6 @@ class Solver:
                 discontinuity = False
                 t_crossings = []
 
-                first_iteration = True
                 while len(t_eval_step):
                     t_check = t_eval_step.pop(0)
                     y_check = sol(t_check)
@@ -405,7 +404,7 @@ class Solver:
                             roots = np.asarray(roots)
                             # Change the current t_check with the earliest trigger.
                             t_trigger = np.min(roots)
-                            triggered_signals = [self.cross_triggers[i] for i, root in enumerate(roots) if
+                            triggered_signals = [active_crossings[i] for i, root in enumerate(roots) if
                                                  root == t_trigger]
                             for signal in triggered_signals:
                                 signal.t_triggers.append(t_trigger)
