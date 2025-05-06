@@ -392,13 +392,13 @@ def test_set_timeout():
     a = vip.temporal(1)
     ia = vip.integrate(a, 0)
 
-    timeout_event = vip.set_timeout(ia.action_reset_to(0), 3)
+    timeout = vip.timeout_trigger(3)
+    ia.reset_on(timeout, 0)
 
     ia.to_plot()
+    timeout.to_plot()
 
-    vip.solve(10, time_step=1, include_events_times=False)
-
-    assert timeout_event.deletion_time == 3
+    vip.solve(10, time_step=1)
     assert ia.values[3] == 0
 
 
@@ -406,11 +406,13 @@ def test_set_interval():
     a = vip.temporal(1)
     ia = vip.integrate(a, 0)
 
-    e1 = vip.set_interval(ia.action_reset_to(0), 2)
+    interval = vip.interval_trigger(2)
+    ia.reset_on(interval,0)
 
     ia.to_plot()
+    interval.to_plot()
 
-    vip.solve(10, time_step=1, include_events_times=False)
+    vip.solve(10, time_step=1)
 
     assert np.all(ia.values[0::2] == 0)
     assert np.allclose(ia.values[1::2], np.full_like(ia.values[1::2], 1))

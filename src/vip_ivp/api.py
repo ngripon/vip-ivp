@@ -229,7 +229,7 @@ def interval_trigger(delay: float) -> CrossTriggerVar:
     current_time = solver.t_current
     time_variable = copy(get_time_variable())
     # Convert to a sine wave of period delay
-    periodic_sine = where(time_variable < current_time, 0, np.sin(2 * np.pi * (time_variable - current_time) / delay))
+    periodic_sine = where(time_variable < current_time, 0, np.sin(np.pi * (time_variable - current_time) / delay))
     trigger = periodic_sine.cross_trigger(0)
     return trigger
 

@@ -14,7 +14,6 @@ import numpy as np
 from numpy.typing import NDArray
 from typing_extensions import ParamSpec
 from cachebox import LRUCache
-from vip_ivp import TemporalVar
 
 from .solver_utils import *
 from .utils import add_necessary_brackets, convert_to_string, operator_call, shift_array, vectorize_source
