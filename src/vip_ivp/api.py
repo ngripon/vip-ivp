@@ -205,7 +205,7 @@ def get_time_variable() -> TemporalVar[float]:
 
 # Events
 
-def terminate_on(call_signal: CrossTriggerVar) -> Event:
+def terminate_on(call_signal: TriggerType) -> Event:
     solver = _get_current_solver()
 
     def action_terminate():

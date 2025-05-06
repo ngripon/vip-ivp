@@ -14,6 +14,7 @@ import numpy as np
 from numpy.typing import NDArray
 from typing_extensions import ParamSpec
 from cachebox import LRUCache
+from vip_ivp import TemporalVar
 
 from .solver_utils import *
 from .utils import add_necessary_brackets, convert_to_string, operator_call, shift_array, vectorize_source
@@ -23,6 +24,8 @@ if TYPE_CHECKING:
 
 T = TypeVar("T")
 P = ParamSpec("P")
+
+TriggerType = Union["CrossTriggerVar", "TemporalVar[bool]"]
 
 
 class Solver:
@@ -1369,7 +1372,7 @@ class IntegratedVar(TemporalVar[T]):
             return self._y_idx
         raise ValueError("The argument 'y_idx' should be set for IntegratedVar containing a single value.")
 
-    def reset_on(self, trigger: "CrossTriggerVar", new_value: Union[TemporalVar[T], T]) -> "Event":
+    def reset_on(self, trigger: TriggerType, new_value: Union[TemporalVar[T], T]) -> "Event":
         """
         Create an action that, when its event is triggered, reset the IntegratedVar output to the specified value.
         :param trigger: Variable that triggers the reset
