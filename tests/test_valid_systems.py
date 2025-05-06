@@ -278,12 +278,53 @@ def test_eval_events_at_all_time_points():
 
     velocity[1].reset_on(hit_ground,-k * velocity[1]),
 
+    vip.terminate_on(stopped)
+
+    # position.to_plot("Position")
+    stopped.to_plot("Stopping condition")
+
+    vip.solve(20, time_step=0.01)
+    # print(position.t)
+    assert np.count_nonzero(stopped.values) == 1
+
+def test_eval_events_at_all_time_points_with_trigger():
+    # Parameters
+    GRAVITY = -9.81
+    v0 = 20
+    th0 = np.radians(45)
+    mu = 0.1  # Coefficient of air drag
+
+    # Compute initial condition
+    v0 = [v0 * np.cos(th0), v0 * np.sin(th0)]
+    x0 = [0, 0]
+
+    k = 0.7  # Bouncing coefficients
+    v_min = 0.01
+
+    # Create system
+    acceleration = vip.loop_node(2)
+    velocity = vip.integrate(acceleration, v0)
+    position = vip.integrate(velocity, x0)
+    v_norm = np.sqrt(velocity[0] ** 2 + velocity[1] ** 2)
+    acceleration.loop_into([-mu * velocity[0] * v_norm,
+                            GRAVITY - mu * velocity[1] * v_norm])
+
+    stopped = abs(velocity[1]) < v_min
+
+    hit_ground=position[1].cross_trigger(
+        0,
+        direction="falling"
+    )
+
+    velocity[1].reset_on(hit_ground,-k * velocity[1]),
+
 
     stop_trigger=stopped.cross_trigger(True)
     vip.terminate_on(stop_trigger)
 
     # position.to_plot("Position")
     stopped.to_plot("Stopping condition")
+    stop_trigger.to_plot()
 
     vip.solve(20, time_step=0.01)
     # print(position.t)
