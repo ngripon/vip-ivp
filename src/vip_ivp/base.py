@@ -458,6 +458,7 @@ class Solver:
                 if discontinuity or self.status is not None:
                     t = t_check
                     y = y_check
+                if discontinuity:
                     solver = method(self._dy, t, y, tf, vectorized=vectorized, **options)
 
             [c.evaluate(t, y) for c in self.cross_triggers]
@@ -499,10 +500,10 @@ class Solver:
                 #         if self.t[-1] == t_check:
                 #             if self.dim != 0:
                 #                 self.y[-1] = y_check
-                        # elif include_events_times:
-                        #     self.t.append(te)
-                        #     # When there is no integrated variable, self.y should be a list of zeros
-                        #     self.y.append(ye if len(ye) else 0.0)
+                # elif include_events_times:
+                #     self.t.append(te)
+                #     # When there is no integrated variable, self.y should be a list of zeros
+                #     self.y.append(ye if len(ye) else 0.0)
 
             if t_eval is not None and dense_output:
                 ti.append(t)

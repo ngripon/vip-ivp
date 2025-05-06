@@ -1,6 +1,7 @@
 import numpy as np
 
 import vip_ivp as vip
+from matplotlib import pyplot as plt
 
 ABSOLUTE_TOLERANCE = 0.01
 
@@ -16,7 +17,7 @@ def test_rc_circuit():
     q0_values = np.linspace(1, 10, 5)
     r_values = np.linspace(1, 10, 5)
     c_values = np.linspace(1, 10, 5)
-    t_end=100
+    t_end = 100
 
     for q0 in q0_values:
         for R in r_values:
@@ -37,7 +38,7 @@ def test_rc_circuit():
 def test_harmonic_equation():
     # y'' + 9 * y = 0
     # Compute exact solution
-    x_end=10
+    x_end = 10
     x = np.linspace(0, x_end, 11)
     y_exact = np.cos(3 * x) + 2 / 3 * np.sin(3 * x)
     # Compute solver solution
@@ -53,7 +54,7 @@ def test_harmonic_equation():
 def test_second_order_ode():
     # y'' + 4 * y' + 4 * y = 0
     # Compute exact solution
-    x_end=100
+    x_end = 100
     x = np.linspace(0, x_end, 1001)
     y_exact = (2 * x + 1) * np.exp(-2 * x)
     # Compute solver solution
@@ -94,10 +95,10 @@ def test_bouncing_ball():
         current_sol = y(t - t0, v0, current_h)
         solution[(t0 <= t) & (t < t_g)] = current_sol[(t0 <= t) & (t < t_g)]
         v0 = dy(t_g - t0, v0)
+        print(f"{t_g=} {v0=}")
         if abs(v0) < v_min:
             solution = solution[t <= t_g]
             t = t[t <= t_g]
-            print(f"{t_g=} {v0=}")
             break
         v0 = -k * v0
         t0 = t_g
@@ -107,17 +108,18 @@ def test_bouncing_ball():
     velocity = vip.integrate(acc, 0)
     h = vip.integrate(velocity, h)
 
-    h.on_crossing(0,
-                  vip.where(abs(velocity) < v_min, vip.action_terminate, velocity.action_reset_to(-k * velocity)),
-                  direction="falling"
-                  )
+    hit_ground = h.cross_trigger(0, "falling")
+    velocity.reset_on(hit_ground, -k * velocity)
+    vip.terminate_on(hit_ground & (0 > velocity) & (velocity >= -v_min))
 
-    vip.solve(10, time_step=time_step, plot=False, include_events_times=False)
+    vip.solve(10, time_step=time_step, plot=False, include_crossing_times=False)
 
-    # plt.plot(h.t, h.values)
     # plt.plot(t, solution)
+    # plt.plot(h.t, h.values)
+    # plt.plot(velocity.t, velocity.values)
+    # plt.plot(hit_ground.t, hit_ground.values)
+    # plt.hlines([-v_min, v_min], 0, 5)
     # plt.grid()
     # plt.show()
-    print(h.events)
 
     assert np.allclose(h.values, solution)
