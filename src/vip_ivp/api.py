@@ -216,27 +216,22 @@ def terminate_on(call_signal: TriggerType) -> Event:
     return event
 
 
-# def set_timeout(action: Union[Action, Callable], delay: float) -> Event:
-#     solver = _get_current_solver()
-#     current_time = solver.t_current
-#     time_variable = get_time_variable()
-#     event = time_variable.on_crossing(current_time + delay, action)
-#     event.action += event.action_disable
-#     return event
-#
-#
-# def set_interval(action: Union[Action, Callable], delay: float) -> Event:
-#     solver = _get_current_solver()
-#     current_time = solver.t_current
-#     time_variable = copy(get_time_variable())
-#     time_variable.name = f"Time % {delay}"
-#
-#     def reset_timer(t_reset, y):
-#         time_variable.action_set_to(lambda t: t - t_reset)(t_reset, y)
-#
-#     reset_timer_action = Action(reset_timer, "RESET TIMER")
-#     event = time_variable.on_crossing((current_time + delay), action + reset_timer_action)
-#     return event
+def timeout_trigger(delay: float) -> CrossTriggerVar:
+    solver = _get_current_solver()
+    current_time = solver.t_current
+    time_variable = get_time_variable()
+    trigger = time_variable.cross_trigger(current_time + delay)
+    return trigger
+
+
+def interval_trigger(delay: float) -> CrossTriggerVar:
+    solver = _get_current_solver()
+    current_time = solver.t_current
+    time_variable = copy(get_time_variable())
+    # Convert to a sine wave of period delay
+    periodic_sine = where(time_variable < current_time, 0, np.sin(2 * np.pi * (time_variable - current_time) / delay))
+    trigger = periodic_sine.cross_trigger(0)
+    return trigger
 
 
 # Solving
