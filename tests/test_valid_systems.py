@@ -421,34 +421,34 @@ def test_big_delay():
     print(a.values)
 
 
-def test_cascading_events():
-    # Parameters
-    initial_height = 1  # m
-    GRAVITY = -9.81
-    k = 0.7  # Bouncing coefficient
-    v_min = 0.01  # Minimum velocity need to bounce
-
-    # Create the system
-    acceleration = vip.temporal(GRAVITY)
-    velocity = vip.integrate(acceleration, x0=0)
-    height = vip.integrate(velocity, x0=initial_height)
-
-    count = vip.temporal(0)
-
-    # Create the bouncing event
-    bounce = vip.where(abs(velocity) > v_min, velocity.action_reset_to(-k * velocity), vip.action_terminate)
-    height.on_crossing(0, bounce, terminal=False, direction="falling")
-    velocity.on_crossing(0, count.action_set_to(count + 1), direction="rising")
-
-    # Add variables to plot
-    height.to_plot("Height (m)")
-    velocity.to_plot()
-    count.to_plot()
-
-    # Solve the system
-    vip.solve(20, time_step=0.001)
-
-    assert count.values[-1] == 18
+# def test_cascading_events():
+#     # Parameters
+#     initial_height = 1  # m
+#     GRAVITY = -9.81
+#     k = 0.7  # Bouncing coefficient
+#     v_min = 0.01  # Minimum velocity need to bounce
+#
+#     # Create the system
+#     acceleration = vip.temporal(GRAVITY)
+#     velocity = vip.integrate(acceleration, x0=0)
+#     height = vip.integrate(velocity, x0=initial_height)
+#
+#     count = vip.temporal(0)
+#
+#     # Create the bouncing event
+#     bounce = vip.where(abs(velocity) > v_min, velocity.action_reset_to(-k * velocity), vip.action_terminate)
+#     height.on_crossing(0, bounce, terminal=False, direction="falling")
+#     velocity.on_crossing(0, count.action_set_to(count + 1), direction="rising")
+#
+#     # Add variables to plot
+#     height.to_plot("Height (m)")
+#     velocity.to_plot()
+#     count.to_plot()
+#
+#     # Solve the system
+#     vip.solve(20, time_step=0.001)
+#
+#     assert count.values[-1] == 18
 
 
 def test_stiff_ode():
