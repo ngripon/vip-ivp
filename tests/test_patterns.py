@@ -374,11 +374,13 @@ def test_variable_step_solving():
     vip.solve(10, time_step=None)
 
 
-def test_action_adding():
+def test_simultaneous_actions():
     a = vip.temporal(5)
     ia = vip.integrate(a, 0)
 
-    ia.on_crossing(10, ia.action_reset_to(0) + vip.action_terminate)
+    crossing=ia.cross_trigger(10)
+    ia.reset_on(crossing,0)
+    vip.terminate_on(crossing)
 
     ia.to_plot("IA")
 
@@ -414,49 +416,37 @@ def test_set_interval():
     assert np.all(ia.values[0::2] == 0)
     assert np.allclose(ia.values[1::2], np.full_like(ia.values[1::2], 1))
 
+# TEMPORARILY DELETED. IT WILL BECOME RELEVANT AGAIN WITH STATEFUL VARIABLES
 
-def test_create_event():
-    a = vip.temporal(1)
-    ia = vip.integrate(a, 0)
-
-    event = vip.set_timeout(lambda: vip.set_timeout(ia.action_reset_to(0), 2), 3)
-
-    ia.to_plot()
-
-    vip.solve(10, 1)
-
-    assert ia.values[5] == 0
-
-
-def test_increment_timeout():
-    count = vip.temporal(0)
-
-    vip.set_timeout(count.action_set_to(count + 1), 2)
-
-    count.to_plot()
-    vip.solve(10, time_step=1)
-
-    assert count.values[0] == 0
-    assert count.values[2] == 1
-    assert count.values[-1] == 1
-
-
-def test_increment_interval():
-    count = vip.temporal(0)
-    vip.set_interval(count.action_set_to(count + 1), 2)
-
-    count.to_plot()
-    vip.solve(10, time_step=1)
-
-    print(count.values)
-    print(count.t)
-
-    assert count.values[0] == 0
-    assert count.values[2] == 1
-    assert count.values[4] == 2
-    assert count.values[6] == 3
-    assert count.values[8] == 4
-    assert count.values[10] == 5
+# def test_increment_timeout():
+#     count = vip.temporal(0)
+#
+#     vip.set_timeout(count.action_set_to(count + 1), 2)
+#
+#     count.to_plot()
+#     vip.solve(10, time_step=1)
+#
+#     assert count.values[0] == 0
+#     assert count.values[2] == 1
+#     assert count.values[-1] == 1
+#
+#
+# def test_increment_interval():
+#     count = vip.temporal(0)
+#     vip.set_interval(count.action_set_to(count + 1), 2)
+#
+#     count.to_plot()
+#     vip.solve(10, time_step=1)
+#
+#     print(count.values)
+#     print(count.t)
+#
+#     assert count.values[0] == 0
+#     assert count.values[2] == 1
+#     assert count.values[4] == 2
+#     assert count.values[6] == 3
+#     assert count.values[8] == 4
+#     assert count.values[10] == 5
 
 
 def test_loop_with_delay():
