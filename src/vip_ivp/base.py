@@ -283,6 +283,8 @@ class Solver:
                 value.name = key
                 self.named_vars[key] = value
 
+    CROSSING_TOLERANCE = 1e-13
+
     def _solve_ivp(
             self,
             t_span,
@@ -373,7 +375,7 @@ class Solver:
                 t_eval_i_new = np.searchsorted(t_eval, t, side="right")
                 t_eval_step = t_eval[:t_eval_i_new]
                 t_eval_step = t_eval_step[t_eval_step > t_old]
-                t_eval_step = [*t_eval_step, t]
+                t_eval_step = list(np.unique([*t_eval_step, t]))
 
                 # Prepare data for crossing detection
                 tc_lower = t_old
@@ -394,15 +396,17 @@ class Solver:
                     if self.cross_triggers:
                         g_new = [c.function(t_check, y_check) for c in self.cross_triggers]
                         active_crossing_indices = find_active_events_in_step(g, g_new, directions,
-                                                                             previous_triggers_mask)
+                                                                             previous_triggers_mask,
+                                                                             self.CROSSING_TOLERANCE)
                         # If a crossing has been detected:
                         if active_crossing_indices.size > 0:
                             # Get the roots of each crossing
                             tc_upper = t_check
                             # Handle crossing by computing roots
                             active_crossings = [self.cross_triggers[idx] for idx in active_crossing_indices]
-                            roots = [solve_event_equation(c, sol, tc_lower, tc_upper, is_discrete(c)) for c in
-                                     active_crossings]
+                            roots = [solve_event_equation(
+                                c, sol, tc_lower, tc_upper, is_discrete(c),
+                                self.CROSSING_TOLERANCE) for c in active_crossings]
                             roots = np.asarray(roots)
                             # Change the current t_check with the earliest trigger.
                             t_trigger = np.min(roots)
