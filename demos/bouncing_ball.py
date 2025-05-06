@@ -12,8 +12,9 @@ velocity = vip.integrate(acceleration, x0=0)
 height = vip.integrate(velocity, x0=initial_height)
 
 # Create the bouncing event
-bounce = vip.where(abs(velocity) > v_min, velocity.action_reset_to(-k * velocity), vip.action_terminate)
-height.on_crossing(0, bounce, terminal=False, direction="falling")
+hit_ground = height.cross_trigger(0, "falling")
+velocity.reset_on(hit_ground, -0.8 * velocity)
+vip.terminate_on(hit_ground & (abs(velocity) <= v_min))
 
 # Add variables to plot
 height.to_plot("Height (m)")

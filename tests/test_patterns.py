@@ -32,17 +32,18 @@ def test_t_eval_over_time_step():
 
     assert np.array_equal(t_eval, a.t)
 
+
 def test_solvers():
-    methods=['RK23','RK45','DOP853','Radau', 'BDF','LSODA']
+    methods = ['RK23', 'RK45', 'DOP853', 'Radau', 'BDF', 'LSODA']
     for method in methods:
         vip.new_system()
         d_n = vip.loop_node()
         n = vip.integrate(d_n, 1)
         d_n.loop_into(-0.5 * n)
 
-        start=time.time()
-        vip.solve(10,method=method, time_step=0.001)
-        print(f"{method}: {time.time()-start}s")
+        start = time.time()
+        vip.solve(10, method=method, time_step=0.001)
+        print(f"{method}: {time.time() - start}s")
 
 
 def test_use_numpy_function():
@@ -349,10 +350,8 @@ def test_bounded_integration_by_variable():
 def test_delete_event():
     a = vip.temporal(lambda t: t)
 
-    event = a.on_crossing(6, terminal=True)
-    a.on_crossing(3, event.action_disable)
-
-    # a.to_plot("Hey")
+    crossing = a.cross_trigger(6)
+    vip.terminate_on(crossing & (a < 3))
 
     vip.solve(10)
     print(a.solver.events)
@@ -378,8 +377,8 @@ def test_simultaneous_actions():
     a = vip.temporal(5)
     ia = vip.integrate(a, 0)
 
-    crossing=ia.cross_trigger(10)
-    ia.reset_on(crossing,0)
+    crossing = ia.cross_trigger(10)
+    ia.reset_on(crossing, 0)
     vip.terminate_on(crossing)
 
     ia.to_plot("IA")
@@ -415,6 +414,7 @@ def test_set_interval():
 
     assert np.all(ia.values[0::2] == 0)
     assert np.allclose(ia.values[1::2], np.full_like(ia.values[1::2], 1))
+
 
 # TEMPORARILY DELETED. IT WILL BECOME RELEVANT AGAIN WITH STATEFUL VARIABLES
 
