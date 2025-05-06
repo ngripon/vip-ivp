@@ -451,11 +451,11 @@ class Solver:
                             # End also crossing and event loop
                             break
                         # Handle termination
-                        if solver.status is not None:
+                        if self.status is not None:
                             break
 
                 # Reset the solver and events evaluation to begin at te for the next step
-                if discontinuity or solver.status is not None:
+                if discontinuity or self.status is not None:
                     t = t_check
                     y = y_check
                     solver = method(self._dy, t, y, tf, vectorized=vectorized, **options)
