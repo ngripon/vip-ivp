@@ -1178,6 +1178,22 @@ class TemporalVar(Generic[T]):
             operator=operator.ge
         )
 
+    @staticmethod
+    def _logical_and(a, b):
+        result = np.logical_and(a, b)
+        if result.size == 1:
+            result = result.item()
+        return result
+
+    def __and__(self, other: Union[bool, "TemporalVar[bool]"]) -> "TemporalVar[bool]":
+        expression = f"{add_necessary_brackets(get_expression(self))} and {add_necessary_brackets(get_expression(other))}"
+        return TemporalVar(
+            self.solver,
+            (self._logical_and, self, self._from_arg(other)),
+            expression,
+            operator=operator_call
+        )
+
     def __getitem__(self, item):
         expression = f"{add_necessary_brackets(get_expression(self))}[{item}]"
         return TemporalVar(
