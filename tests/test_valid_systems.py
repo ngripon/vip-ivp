@@ -271,12 +271,12 @@ def test_eval_events_at_all_time_points():
 
     stopped = abs(velocity[1]) < v_min
 
-    hit_ground=position[1].cross_trigger(
+    hit_ground = position[1].cross_trigger(
         0,
         direction="falling"
     )
 
-    velocity[1].reset_on(hit_ground,-k * velocity[1]),
+    velocity[1].reset_on(hit_ground, -k * velocity[1]),
 
     vip.terminate_on(stopped)
 
@@ -286,6 +286,7 @@ def test_eval_events_at_all_time_points():
     vip.solve(20, time_step=0.01)
     # print(position.t)
     assert np.count_nonzero(stopped.values) == 1
+
 
 def test_eval_events_at_all_time_points_with_trigger():
     # Parameters
@@ -311,15 +312,14 @@ def test_eval_events_at_all_time_points_with_trigger():
 
     stopped = abs(velocity[1]) < v_min
 
-    hit_ground=position[1].cross_trigger(
+    hit_ground = position[1].cross_trigger(
         0,
         direction="falling"
     )
 
-    velocity[1].reset_on(hit_ground,-k * velocity[1]),
+    velocity[1].reset_on(hit_ground, -k * velocity[1]),
 
-
-    stop_trigger=stopped.cross_trigger(True)
+    stop_trigger = stopped.cross_trigger(True)
     vip.terminate_on(stop_trigger)
 
     # position.to_plot("Position")
@@ -335,14 +335,18 @@ def test_multiple_events_at_the_same_instant():
     a = vip.temporal(1)
     ia = vip.integrate(a, 0)
 
-    e1 = vip.set_interval(ia.action_reset_to(0), 2)
-    e2 = vip.set_timeout(e1.action_disable, 6)
+    inhibit = vip.integrate(0, 1)
+
+    t1 = vip.interval_trigger(2)
+    t2 = vip.timeout_trigger(6)
+    e1 = ia.reset_on(t1 & inhibit, 0)
+    e2 = inhibit.reset_on(t2, 0)
 
     ia.to_plot()
 
-    vip.solve(10, time_step=0.01, include_events_times=False)
+    vip.solve(10, time_step=0.01)
 
-    assert e1.deletion_time == 6
+    assert ia.values[-1] == 4
 
 
 def test_demos():
