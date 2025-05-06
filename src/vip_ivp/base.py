@@ -878,15 +878,14 @@ class TemporalVar(Generic[T]):
         """
         if self.output_type in (bool, np.bool, str):
             crossed_variable = self == value
-            crossed_variable._expression = f"on {self.name} == {value.name if isinstance(value, TemporalVar) else value}"
         elif issubclass(self.output_type, abc.Iterable):
             raise ValueError(
                 "Can not apply crossing detection to a variable containing a collection of values because it is ambiguous."
             )
         else:
             crossed_variable = self - value
-            crossed_variable._expression = f"on {self.name} crossing {value.name if isinstance(value, TemporalVar) else value}"
-        trigger_var = CrossTriggerVar(self.solver, crossed_variable, direction)
+        expression = f"#CROSSING_BETWEEN {self.name} AND {value.name if isinstance(value, TemporalVar) else value}"
+        trigger_var = CrossTriggerVar(self.solver, crossed_variable, direction, expression)
         return trigger_var
 
     def clear(self):
@@ -1223,7 +1222,10 @@ class TemporalVar(Generic[T]):
 
     def __repr__(self) -> str:
         if self.solver.solved:
-            return f"{self.name or self._expression} = {self._values}"
+            output = f"{self.name or self._expression}"
+            if self._values is not None:
+                output += f" = {self._values}"
+            return output
         else:
             return f"{self._expression}"
 
@@ -1400,10 +1402,12 @@ class IntegratedVar(TemporalVar[T]):
 class CrossTriggerVar(TemporalVar[bool]):
     _DIRECTION_MAP = {"rising": 1, "falling": -1, "both": 0}
 
-    def __init__(self, solver: Solver, fun: TemporalVar, direction: Literal["rising", "falling", "both"] = "both"):
+    def __init__(self, solver: Solver, fun: TemporalVar, direction: Literal["rising", "falling", "both"] = "both",
+                 expression: str = None):
         super().__init__(solver)
         self.direction = self._DIRECTION_MAP[direction]
         self.function = fun
+        self._expression = expression
 
         self.t_triggers = []
 
@@ -1460,7 +1464,7 @@ class Event:
         return bool(self.function(t, y))
 
     def __repr__(self):
-        return (f"Event({self.function.expression}, "
+        return (f"Event(On {repr(self.function)}, "
                 f"{self.action or 'No action'})")
 
     def execute_action(self, t, y):
@@ -1507,7 +1511,7 @@ class Action:
         return Action(added_fun, f"{self.expression} + {other.expression}")
 
     def __repr__(self):
-        return f"Action({self.expression})"
+        return f"{self.expression}"
 
 
 def convert_args_to_action(arg_list: Iterable) -> List[Action]:
