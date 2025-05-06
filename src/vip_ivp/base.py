@@ -494,6 +494,10 @@ class Solver:
                         self.y.extend([0] * len(t_eval_step))
                     t_eval_i = t_eval_i_new
 
+                if self.events and discontinuity:
+                    if t_eval_step[-1] == t_check:
+                        self.y[-1] = y_check
+
             if t_eval is not None and dense_output:
                 ti.append(t)
 
