@@ -176,7 +176,8 @@ def test_integrated_differentiation():
 def test_float_crossing_event():
     a = vip.temporal(lambda t: t)
 
-    a.on_crossing(5, terminal=True)
+    crossing=a.cross_trigger(5)
+    vip.terminate_on(crossing)
 
     vip.solve(10, time_step=1)
     print(a.values)

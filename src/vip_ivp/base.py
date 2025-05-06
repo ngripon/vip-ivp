@@ -481,9 +481,7 @@ class Solver:
 
                 # Include crossing times
                 if include_crossing_times and self.cross_triggers and t_crossings:
-                    t_eval_step = list(t_eval_step)
-                    t_eval_step.extend(t_crossings)
-                    t_eval_step = np.array(sorted(t_eval_step))
+                    t_eval_step = np.unique(np.concatenate((t_eval_step, t_crossings)))
 
                 if t_eval_step.size > 0:
                     if sol is None:
@@ -494,16 +492,6 @@ class Solver:
                     else:
                         self.y.extend([0] * len(t_eval_step))
                     t_eval_i = t_eval_i_new
-                # Add time events
-                # if events:
-                #     if self.cross_triggers and len(t_crossings):
-                #         if self.t[-1] == t_check:
-                #             if self.dim != 0:
-                #                 self.y[-1] = y_check
-                # elif include_events_times:
-                #     self.t.append(te)
-                #     # When there is no integrated variable, self.y should be a list of zeros
-                #     self.y.append(ye if len(ye) else 0.0)
 
             if t_eval is not None and dense_output:
                 ti.append(t)
