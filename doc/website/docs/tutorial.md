@@ -62,6 +62,10 @@ a.loop_into(-(c * v + k * x) / m) # Set acceleration value
 
 An **event** is a condition that triggers a specific **action** during the simulation. In the context of dynamical systems, the condition typically involves a variable **crossing a threshold** — for example, when a position variable crosses zero.
 
+#### 3.1. Detect a crossing
+
+#### 3.2. Create the event
+
 To define an event, use the `.on_crossing()` method. You can specify the crossing **direction** with one of:
 
 - `"rising"` – when the variable crosses upward (e.g., from negative to positive),
