@@ -234,6 +234,13 @@ def interval_trigger(delay: float) -> CrossTriggerVar:
     return trigger
 
 
+def execute_on(call_signal: TriggerType, f: Callable) -> Event:
+    solver = _get_current_solver()
+    action = Action(f, convert_to_string(f))
+    event = Event(solver, call_signal, action)
+    return event
+
+
 # Solving
 
 def solve(t_end: float, time_step: Union[float, None] = 0.1, method='RK45', t_eval: Union[List, NDArray] = None,

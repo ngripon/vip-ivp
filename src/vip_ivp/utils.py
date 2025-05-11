@@ -92,10 +92,10 @@ def convert_to_string(content):
         if "temporal(" in fun_string:
             lambda_content = fun_string.split("temporal(")[1].strip()[0:-1]
             return lambda_content
-        for word in ["set_timeout", "set_interval"]:
+        for word in ["execute_on"]:
             if word in fun_string:
                 start_index = fun_string.find(word, len(word))
-                lambda_content = ", ".join(fun_string[start_index:].split(",")[:-1])
+                lambda_content = ", ".join(fun_string[start_index:].split(",")[1:])[:-1].strip()
                 return lambda_content
         if "=" in fun_string:
             fun_string = fun_string.split("=")[1].strip()
