@@ -149,10 +149,10 @@ def test_trigger():
     cond = a < 5
     other_cond = a > 2
 
-    cross_constant = a.cross_trigger(10)
-    cross_temporalvar = a.cross_trigger(b)
-    cross_cond = cond.cross_trigger(True)
-    cross_cond_temporalvar = cond.cross_trigger(other_cond)
+    cross_constant = a.crosses(10)
+    cross_temporalvar = a.crosses(b)
+    cross_cond = cond.crosses(True)
+    cross_cond_temporalvar = cond.crosses(other_cond)
 
     assert repr(cross_constant) == "#CROSSING_BETWEEN a AND 10"
     assert repr(cross_temporalvar) == "#CROSSING_BETWEEN a AND b"
@@ -166,7 +166,7 @@ def test_events():
     a = vip.temporal(1)
     ia = vip.integrate(5, 0)
 
-    trigger = ia.cross_trigger(6)
+    trigger = ia.crosses(6)
 
     vip.solve(10)
 

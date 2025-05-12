@@ -350,7 +350,7 @@ def test_bounded_integration_by_variable():
 def test_delete_event():
     a = vip.temporal(lambda t: t)
 
-    crossing = a.cross_trigger(6)
+    crossing = a.crosses(6)
     vip.terminate_on(crossing & (a < 3))
 
     vip.solve(10)
@@ -377,7 +377,7 @@ def test_simultaneous_actions():
     a = vip.temporal(5)
     ia = vip.integrate(a, 0)
 
-    crossing = ia.cross_trigger(10)
+    crossing = ia.crosses(10)
     ia.reset_on(crossing, 0)
     vip.terminate_on(crossing)
 

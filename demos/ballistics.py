@@ -20,7 +20,7 @@ v_norm = np.sqrt(velocity[0] ** 2 + velocity[1] ** 2)
 acceleration.loop_into([-mu * velocity[0] * v_norm,
                         GRAVITY - mu * velocity[1] * v_norm])
 # Terminate on touching the ground
-hit_ground = position[1].cross_trigger(0, "falling")
+hit_ground = position[1].crosses(0, "falling")
 vip.terminate_on(hit_ground)
 
 vip.solve(10, time_step=0.01)

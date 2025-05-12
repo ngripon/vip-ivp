@@ -220,7 +220,7 @@ def timeout_trigger(delay: float) -> CrossTriggerVar:
     solver = _get_current_solver()
     current_time = solver.t_current
     time_variable = get_time_variable()
-    trigger = time_variable.cross_trigger(current_time + delay)
+    trigger = time_variable.crosses(current_time + delay)
     return trigger
 
 
@@ -230,7 +230,7 @@ def interval_trigger(delay: float) -> CrossTriggerVar:
     time_variable = copy(get_time_variable())
     # Convert to a sine wave of period delay
     periodic_sine = where(time_variable < current_time, 0, np.sin(np.pi * (time_variable - current_time) / delay))
-    trigger = periodic_sine.cross_trigger(0)
+    trigger = periodic_sine.crosses(0)
     return trigger
 
 

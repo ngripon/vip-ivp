@@ -12,7 +12,7 @@ velocity = vip.integrate(acceleration, x0=0)
 height = vip.integrate(velocity, x0=initial_height)
 
 # Create the bouncing event
-hit_ground = height.cross_trigger(0, "falling")
+hit_ground = height.crosses(0, "falling")
 velocity.reset_on(hit_ground, -0.8 * velocity)
 vip.terminate_on(hit_ground & (abs(velocity) <= v_min))
 

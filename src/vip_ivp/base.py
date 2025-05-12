@@ -877,8 +877,8 @@ class TemporalVar(Generic[T]):
         functools.update_wrapper(wrapper, method)
         return wrapper
 
-    def cross_trigger(self, value: Union["TemporalVar[T]", T],
-                      direction: Literal["rising", "falling", "both"] = "both") -> "CrossTriggerVar":
+    def crosses(self, value: Union["TemporalVar[T]", T],
+                direction: Literal["rising", "falling", "both"] = "both") -> "CrossTriggerVar":
         """
         Create a signal that triggers when the specified crossing occurs.
 

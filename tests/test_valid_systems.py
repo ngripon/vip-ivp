@@ -176,7 +176,7 @@ def test_integrated_differentiation():
 def test_float_crossing_event():
     a = vip.temporal(lambda t: t)
 
-    crossing = a.cross_trigger(5)
+    crossing = a.crosses(5)
     vip.terminate_on(crossing)
 
     vip.solve(10, time_step=1)
@@ -190,7 +190,7 @@ def test_boolean_crossing_event():
     a = vip.temporal(lambda t: t)
     cond = a >= 5
 
-    crossing = cond.cross_trigger(True)
+    crossing = cond.crosses(True)
     vip.terminate_on(crossing)
 
     vip.solve(10, time_step=1)
@@ -204,7 +204,7 @@ def test_string_crossing_event():
     a = vip.temporal(lambda t: t)
     string = vip.where(a >= 5, "Aa", "Ba")
 
-    crossing = string.cross_trigger("Aa")
+    crossing = string.crosses("Aa")
     vip.terminate_on(crossing)
 
     vip.solve(10, time_step=1)
@@ -236,7 +236,7 @@ def test_bouncing_projectile_motion():
     acceleration.loop_into([-mu * velocity[0] * v_norm,
                             GRAVITY - mu * velocity[1] * v_norm])
 
-    hit_ground = position[1].cross_trigger(0, "falling")
+    hit_ground = position[1].crosses(0, "falling")
     bounce = velocity[1].reset_on(hit_ground & (abs(velocity[1]) > v_min), -k * velocity[1])
     vip.terminate_on(hit_ground & (abs(velocity[1]) <= v_min))
 
@@ -271,7 +271,7 @@ def test_eval_events_at_all_time_points():
 
     stopped = abs(velocity[1]) < v_min
 
-    hit_ground = position[1].cross_trigger(
+    hit_ground = position[1].crosses(
         0,
         direction="falling"
     )
@@ -312,14 +312,14 @@ def test_eval_events_at_all_time_points_with_trigger():
 
     stopped = abs(velocity[1]) < v_min
 
-    hit_ground = position[1].cross_trigger(
+    hit_ground = position[1].crosses(
         0,
         direction="falling"
     )
 
     velocity[1].reset_on(hit_ground, -k * velocity[1]),
 
-    stop_trigger = stopped.cross_trigger(True)
+    stop_trigger = stopped.crosses(True)
     vip.terminate_on(stop_trigger)
 
     # position.to_plot("Position")

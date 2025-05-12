@@ -108,7 +108,7 @@ def test_bouncing_ball():
     velocity = vip.integrate(acc, 0)
     h = vip.integrate(velocity, h)
 
-    hit_ground = h.cross_trigger(0, "falling")
+    hit_ground = h.crosses(0, "falling")
     velocity.reset_on(hit_ground, -k * velocity)
     vip.terminate_on(hit_ground & (0 > velocity) & (velocity >= -v_min))
 
