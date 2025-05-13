@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-import src.vip_ivp as vip
+import vip_ivp as vip
 
 # Parameters
 ie, iv = 1, 5  # Moments of inertia
