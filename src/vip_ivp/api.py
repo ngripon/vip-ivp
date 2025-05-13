@@ -205,14 +205,14 @@ def get_time_variable() -> TemporalVar[float]:
 
 # Events
 
-def terminate_on(call_signal: TriggerType) -> Event:
+def terminate_on(trigger: TriggerType) -> Event:
     solver = _get_current_solver()
 
     def action_terminate():
         solver.status = 1
 
     action = Action(action_terminate, "Terminate simulation")
-    event = Event(solver, call_signal, action)
+    event = Event(solver, trigger, action)
     return event
 
 
@@ -234,10 +234,10 @@ def interval_trigger(delay: float) -> CrossTriggerVar:
     return trigger
 
 
-def execute_on(call_signal: TriggerType, f: Callable) -> Event:
+def execute_on(trigger: TriggerType, f: Callable) -> Event:
     solver = _get_current_solver()
     action = Action(f, convert_to_string(f))
-    event = Event(solver, call_signal, action)
+    event = Event(solver, trigger, action)
     return event
 
 
