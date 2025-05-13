@@ -61,24 +61,48 @@ Use the `direction` argument to filter triggers:
 - `"both"` _(default)_: triggered regardless of crossing direction.
 
 ### Temporal Triggers
+
 Two functions are available to create Crossing Trigger Variable from the system clock:
+
 - `timeout_trigger(delay)`: Triggers when `simulation_time==delay`.
 - `interval_trigger(delay)`: Triggers regularly at every interval of `delay`.
 
 The `delay` argument is a duration in seconds.
 
+### Conditional Triggers
+
+Use logical operators on the Temporal Variables you use as a trigger to create a conditional trigger variable:
+
+```python
+# highlight-next-line
+v_min = 0.5  # Minimum velocity for the ball to bounce when hitting the ground
+
+# Create the system
+acceleration = vip.temporal(-9.81)
+velocity = vip.integrate(acceleration, x0=0)
+height = vip.integrate(velocity, x0=2)
+
+hit_ground = height.crosses(0, "falling")
+# highlight-next-line
+trigger_stop = hit_ground & (abs(velocity) <= v_min)
+```
+
+![Conditional bounce](./images/conditional_action.png)
+
 ## Creating Events
 
 ### Terminal Events
 
-Set `terminal=True` to stop the simulation when the event triggers.
+Use `terminate_on(trigger)` to terminate the simulation when a triggers occurs:
 
 ```python
 acceleration = vip.temporal(-9.81)
 velocity = vip.integrate(acceleration, x0=0)
 height = vip.integrate(velocity, x0=10)
 
-hit_ground = height.on_crossing(0, terminal=True)
+hit_ground = height.crosses(0, "falling")
+# highlight-next-line
+vip.terminate_on(hit_ground)
 
 height.to_plot()
 vip.solve(10, time_step=0.01)
@@ -86,41 +110,32 @@ vip.solve(10, time_step=0.01)
 
 ![Terminal event](./images/terminal_event.png)
 
-## Time-Based Events
+### Reset an Integrated Variable
 
-Time-based events are crossing events applied to simulation time.
-
-### Timeout
-
-Use `vip.set_timeout(action, delay)` to apply an action after a given delay.
-
-### Interval
-
-Use `vip.set_interval(action, delay)` to repeat an action periodically.
-
-## Actions
-
-**Actions are side-effect-only functions executed when events trigger.**
-
-There are two types:
-
-1. **System actions**: modify the simulation state
-2. **Custom actions**: run arbitrary code (e.g., logging), but **must not modify the simulation**
-
-### Custom Actions
-
-Define a function with side effects:
+Use the `.reset_on(trigger, value)` of an Integrated Variable to instantly change its state:
 
 ```python
-height.on_crossing(0, action=lambda: print("Hello"))
-height.on_crossing(-1, action=lambda: print("world"))
+a = vip.temporal(-9.81)
+v = vip.integrate(a, 0)
+y = vip.integrate(v, 10)
+
+hit_ground = y.crosses(0, "falling")
+# highlight-next-line
+v.reset_on(hit_ground, -v)  # Reverse velocity
+```
+
+### Custom Events
+
+You can trigger any function with `execute_on(trigger, f)`. The function `f` must be a function with **side-effects**.
+
+```python
+vip.execute_on(hit_ground, lambda: print("Hello world"))
 ```
 
 **Output:**
 
 ```
-Hello
-world
+Hello world
 ```
 
 To access the event time, add an argument to the input function:
@@ -130,60 +145,14 @@ def log_time(t):
     print(f"Collision at {t}.")
 
 
-height.on_crossing(0, action=log_time)
+# ...
+vip.execute_on(hit_ground, log_time)
 ```
 
-### System Actions
+**Output:**
 
-System actions alter simulation variables. They can only be used with `TemporalVar` or `IntegratedVar`.
-
-#### Resetting an Integrated Variable
-
-Use `.action_reset_to(value)` to instantly change the state:
-
-```python
-velocity.action_reset_to(-velocity)  # Reverse velocity
+```
+Collision at 1.4278431229270645.
 ```
 
-#### Changing a Temporal Variable
 
-Use `.action_set_to(new_value)` for non-integrated `TemporalVar`s:
-
-```python
-count.action_set_to(count + 1)  # Increment a counter
-```
-
-#### Terminate the Simulation
-
-Use `vip.action_terminate` to stop the simulation from within an action.
-
-#### Disable Events
-
-Access `.action_disable` on an event to prevent it from triggering again.
-
-```python
-disable_action = my_event.action_disable
-```
-
-### Combining Actions
-
-Use `+` to combine multiple actions into a single one. The action on the **left** side of the operator is executed *
-*first**.
-
-```python
-action_combo = action1 + action2  # Executes action1, then action2
-```
-
-### Conditional Actions
-
-Use `vip.where(condition, action_if_true, action_if_false)`:
-
-```python
-bounce = velocity.action_reset_to(-k * velocity)
-stop = acceleration.action_set_to(0) + velocity.action_reset_to(0)
-
-conditional = vip.where(abs(velocity) > v_min, bounce, stop)
-height.on_crossing(0, conditional)
-```
-
-![Conditional bounce](./images/conditional_action.png)
