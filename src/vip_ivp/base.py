@@ -5,7 +5,7 @@ import operator
 import time
 import warnings
 from collections import abc
-from copy import copy
+from copy import copy, deepcopy
 from typing import overload, Literal, Iterable, Dict, Tuple, List, Any
 from pathlib import Path
 from typing import Callable, Union, TypeVar, Generic
@@ -24,6 +24,8 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 P = ParamSpec("P")
 
+TriggerType = Union["CrossTriggerVar", "TemporalVar[bool]"]
+
 
 class Solver:
     def __init__(self):
@@ -35,6 +37,7 @@ class Solver:
         self.integrated_vars: List[IntegratedVar] = []
 
         self.events: List[Event] = []
+        self.cross_triggers: List[CrossTriggerVar] = []
         self.t_current: float = 0
         self.t = []
         self.y = None
@@ -129,7 +132,7 @@ class Solver:
             method="RK45",
             time_step=None,
             t_eval=None,
-            include_events_times: bool = True,
+            include_crossing_times: bool = True,
             plot: bool = True,
             verbose: bool = False,
             **options,
@@ -162,7 +165,7 @@ class Solver:
                                time_step)  # Add half a time step to get an array that stops on t_end
 
         res = self._solve_ivp((0, t_end), self.x0, method=method, t_eval=t_eval,
-                              include_events_times=include_events_times, **options)
+                              include_crossing_times=include_crossing_times, **options)
         if not res.success:
             raise Exception(res.message)
 
@@ -280,6 +283,8 @@ class Solver:
                 value.name = key
                 self.named_vars[key] = value
 
+    CROSSING_TOLERANCE = 1e-13
+
     def _solve_ivp(
             self,
             t_span,
@@ -288,7 +293,7 @@ class Solver:
             t_eval=None,
             dense_output=False,
             vectorized=False,
-            include_events_times=True,
+            include_crossing_times=True,
             **options,
     ):
         if method not in METHODS and not (
@@ -338,12 +343,11 @@ class Solver:
 
         t_events = []
         y_events = []
-        [e.evaluate(t0, y0) for e in self.get_events(t0)]
+        [c.evaluate(t0, y0) for c in self.cross_triggers]
 
         interpolants = []
 
         self.status = None
-        first_event = True
         while self.status is None:
             message = solver.step()
 
@@ -363,69 +367,107 @@ class Solver:
             else:
                 sol = None
 
-            if events:
+            if events or self.cross_triggers:
                 if sol is None:
                     sol = self._sol_wrapper(solver.dense_output())
 
-                active_events_indices, te_upper, te_lower = find_active_events(events, sol, t_eval, t, t_old)
-                if active_events_indices.size > 0:
-                    for active_idx in active_events_indices:
-                        events[active_idx].count += 1
-                    active_events, roots = handle_events(sol, events, active_events_indices, te_lower, te_upper, t_eval)
+                # Create list of time sample where to check triggers and events
+                t_eval_i_new = np.searchsorted(t_eval, t, side="right")
+                t_eval_step = t_eval[:t_eval_i_new]
+                t_eval_step = t_eval_step[t_eval_step > t_old]
+                t_eval_step = list(np.unique([*t_eval_step, t]))
 
-                    # Get the first event
-                    te = np.min(roots)
-                    if te != t_old or first_event:  # Prevent endless loops
-                        first_event = False  # Only enable the case where we found an event at t = 0s
-                        ye = sol(te)
-                        self.t_current = te
-                        # Get all events that happens at te and execute their action
-                        triggering_events = [active_events[i] for i in range(len(active_events)) if roots[i] == te]
+                # Prepare data for crossing detection
+                tc_lower = t_old
+                g = [c.previous_value for c in self.cross_triggers]
+                directions = np.array([c.direction for c in self.cross_triggers])
+
+                # Prevent events that triggered at the previous step to trigger again in this step, because its g_new is at 0 so
+                # an irrelevant zero-crossing is sure to occur.
+                previous_triggers_mask = np.array([not t_old in c.t_triggers for c in self.cross_triggers])
+
+                discontinuity = False
+                t_crossings = []
+
+                while len(t_eval_step):
+                    t_check = t_eval_step.pop(0)
+                    y_check = sol(t_check)
+                    # Detect crossing first
+                    if self.cross_triggers:
+                        g_new = [c.function(t_check, y_check) for c in self.cross_triggers]
+                        active_crossing_indices = find_active_events_in_step(g, g_new, directions,
+                                                                             previous_triggers_mask,
+                                                                             self.CROSSING_TOLERANCE)
+                        # If a crossing has been detected:
+                        if active_crossing_indices.size > 0:
+                            # Get the roots of each crossing
+                            tc_upper = t_check
+                            # Handle crossing by computing roots
+                            active_crossings = [self.cross_triggers[idx] for idx in active_crossing_indices]
+                            roots = [solve_event_equation(
+                                c, sol, tc_lower, tc_upper, is_discrete(c),
+                                self.CROSSING_TOLERANCE) for c in active_crossings]
+                            roots = np.asarray(roots)
+                            # Change the current t_check with the earliest trigger.
+                            t_trigger = np.min(roots)
+                            triggered_signals = [active_crossings[i] for i, root in enumerate(roots) if
+                                                 root == t_trigger]
+                            for signal in triggered_signals:
+                                signal.t_triggers.append(t_trigger)
+                                signal.previous_value = 0
+                            g = [c.previous_value for c in self.cross_triggers]
+                            previous_triggers_mask = np.array(
+                                [not t_trigger in c.t_triggers for c in self.cross_triggers])
+                            # Replace current time with trigger time and reevaluate the current t_check in the next loop
+                            if t_trigger != t_check:
+                                t_eval_step.insert(0, t_check)
+                                t_check = t_trigger
+                                y_check = sol(t_check)
+                            tc_lower = t_trigger
+                            t_crossings.append(t_trigger)
+                        elif previous_triggers_mask is not None:
+                            # Disable the preventing of zero-crossing from previously triggered events
+                            g = g_new
+                            tc_lower = t_check
+                            previous_triggers_mask = None
+                    first_iteration = False
+
+                    # Detect events
+                    if events:
+                        y_before_event = np.asarray(deepcopy(y_check))
                         triggered_events = []
-                        for event in triggering_events:
-                            event.t_events.append(te)
-                            event.y_events.append(ye)
-                            event.execute_action(te, ye)  # Some actions mutate ye
-                            triggered_events.append(event)
-                        # Create a loop to check if other events has triggered
-                        while True:
-                            t_latest = t_eval[np.searchsorted(t_eval, te, side="left")]
-                            g_latest = [e(t_latest, sol(t_latest)) for e in events]
-                            g_current = [e(te, ye) for e in events]
-                            direction = np.array([e.direction for e in events])
-                            active_events_indices_cascade = find_active_events_in_step(g_latest, g_current, direction)
-                            triggering_events = [self.events[i] for i in active_events_indices_cascade if
-                                                 self.events[i] not in triggered_events]
-                            if triggering_events:
-                                for event in triggering_events:
-                                    event.t_events.append(te)
-                                    event.y_events.append(ye)
-                                    event.execute_action(te, ye)  # Some actions mutate ye
-                                    triggered_events.append(event)
-                            else:
-                                break
+                        events_to_trigger = [e for e in self.events if e(t_check, y_check)]
+                        for e in events_to_trigger:
+                            e.execute_action(t_check, y_check)  # This can modify y_check value
+                            triggered_events.append(e)
+                        # Check for discontinuous action
+                        discontinuity = not np.array_equal(y_before_event, np.asarray(y_check))
+                        if discontinuity:
+                            # Create a loop to check if other events has triggered because of modification of ye
+                            while True:
+                                events_to_trigger = [e for e in self.events if
+                                                     e not in triggered_events and e(t_check, y_check)]
+                                if events_to_trigger:
+                                    for e in events_to_trigger:
+                                        e.execute_action(t_check, y_check)  # This can modify y_check value
+                                        triggered_events.append(e)
+                                else:
+                                    break
+                            # End also crossing and event loop
+                            break
+                        # Handle termination
+                        if self.status is not None:
+                            break
 
-                        # Reset the solver and events evaluation to begin at te for the next step
-                        t = te
-                        y = ye
-                        [e.evaluate(t, y) for e in self.get_events(t)]
-                        for event in triggered_events:
-                            event.g = 0
-                        solver = method(self._dy, t, y, tf, vectorized=vectorized, **options)
+                # Reset the solver and events evaluation to begin at te for the next step
+                if discontinuity or self.status is not None:
+                    t = t_check
+                    y = y_check
+                if discontinuity:
+                    solver = method(self._dy, t, y, tf, vectorized=vectorized, **options)
 
-                        if any(e.terminal for e in triggered_events):
-                            self.status = 1
-                    else:
-                        warnings.warn(
-                            "Ignored event: The detected event computed time is the same as the previously solved "
-                            "time.\n"
-                            "A discontinuity in the variable you applied '.on_crossing()' to may cause the root "
-                            "finding algorithm to fail. Consider applying '.on_crossing' to a more continuous variable."
-                        )
-                        active_events_indices = np.array([])
-                        [e.evaluate(t, y) for e in self.get_events(t)]
-                else:
-                    [e.evaluate(t, y) for e in self.get_events(t)]
+            [c.evaluate(t, y) for c in self.cross_triggers]
+
             self.t_current = t
             if t_eval is None:
                 self.t.append(t)
@@ -442,6 +484,10 @@ class Solver:
                     # slicing.
                     t_eval_step = t_eval[t_eval_i_new:t_eval_i][::-1]
 
+                # Include crossing times
+                if include_crossing_times and self.cross_triggers and t_crossings:
+                    t_eval_step = np.unique(np.concatenate((t_eval_step, t_crossings)))
+
                 if t_eval_step.size > 0:
                     if sol is None:
                         sol = self._sol_wrapper(solver.dense_output())
@@ -451,16 +497,10 @@ class Solver:
                     else:
                         self.y.extend([0] * len(t_eval_step))
                     t_eval_i = t_eval_i_new
-                # Add time events
-                if events:
-                    if active_events_indices.size > 0:
-                        if self.t[-1] == te:
-                            if self.dim != 0:
-                                self.y[-1] = ye
-                        elif include_events_times:
-                            self.t.append(te)
-                            # When there is no integrated variable, self.y should be a list of zeros
-                            self.y.append(ye if len(ye) else 0.0)
+
+                if self.events and discontinuity:
+                    if t_eval_step[-1] == t_check:
+                        self.y[-1] = y_check
 
             if t_eval is not None and dense_output:
                 ti.append(t)
@@ -471,7 +511,7 @@ class Solver:
         message = MESSAGES.get(self.status, message)
         if self.events:
             t_events = [np.asarray(e.t_events) for e in events]
-            y_events = [np.asarray(e.y_events) for e in events]
+            # y_events = [np.asarray(e.y_events) for e in events]
 
         if self.t:
             self.t = np.array(self.t)
@@ -540,7 +580,7 @@ class Solver:
         return output_fun
 
     def get_events(self, t):
-        event_list = [e for e in self.events if e.deletion_time is None or t < e.deletion_time]
+        event_list = [e for e in self.events]
         return event_list
 
 
@@ -598,6 +638,8 @@ class TemporalVar(Generic[T]):
             elif isinstance(source, dict):
                 self._output_type = dict
                 self.source = {key: child_cls(solver, val) for key, val in source.items()}
+            elif source is None:
+                self.source = None
             else:
                 raise ValueError(f"Unsupported type: {type(source)}.")
 
@@ -606,7 +648,7 @@ class TemporalVar(Generic[T]):
         self._expression = convert_to_string(source) if expression is None else expression
         self.name = None
 
-        self.events: List[Event] = []
+        # self.events: List[Event] = []
 
         self._cache = LRUCache(maxsize=4)
 
@@ -835,77 +877,26 @@ class TemporalVar(Generic[T]):
         functools.update_wrapper(wrapper, method)
         return wrapper
 
-    def on_crossing(self, value: Union["TemporalVar[T]", T], action: Union["Action", Callable] = None,
-                    direction: Literal["rising", "falling", "both"] = "both",
-                    terminal: Union[bool, int] = False) -> "Event":
+    def crosses(self, value: Union["TemporalVar[T]", T],
+                direction: Literal["rising", "falling", "both"] = "both") -> "CrossTriggerVar":
         """
-        Execute the specified action when the signal crosses the specified value in the specified direction.
-        :param value: Value to be crossed to trigger the event action.
-        :param action: Action that is triggered when the crossing condition is met.
-        :param direction: Direction of the crossing that will trigger the event.
-        :param terminal: If True, the simulation will terminate when the crossing occurs. If it is an integer, it
-        specifies the number of occurrences of the event after which the simulation will be terminated.
-        :return: Crossing event
+        Create a signal that triggers when the specified crossing occurs.
+
+        :param value: Value to be crossed to cause the triggering.
+        :param direction: Direction of the crossing.
+        :return: TriggerVar
         """
         if self.output_type in (bool, np.bool, str):
             crossed_variable = self == value
-            crossed_variable._expression = f"on {self.name} == {value.name if isinstance(value, TemporalVar) else value}"
         elif issubclass(self.output_type, abc.Iterable):
             raise ValueError(
                 "Can not apply crossing detection to a variable containing a collection of values because it is ambiguous."
             )
         else:
             crossed_variable = self - value
-            crossed_variable._expression = f"on {self.name} crossing {value.name if isinstance(value, TemporalVar) else value}"
-        event = Event(self.solver, crossed_variable, action, direction, terminal)
-        self.events.append(event)
-        return event
-
-    def action_set_to(self, new_value: Union["TemporalVar[T]", T]) -> "Action":
-        """
-        Create an action that, when its event is triggered, change the TemporalVar value.
-        This action works with recursive statements. For example, `count.action_set_to(count+1)` is valid.
-        :param new_value: New value
-        :return: Action to be put into an Event.
-        """
-
-        def change_value(t):
-            if isinstance(new_value, TemporalVar):
-                value = copy(new_value)
-                # Check if it references self
-                to_visit = [value]
-                inverse_refs = {}
-                while to_visit:
-                    current = to_visit.pop()
-                    for var in current.source:
-                        if isinstance(var, TemporalVar):
-                            inverse_refs[id(var)] = current
-                            if var is self:
-                                path = [var]
-                                while id(path[-1]) in inverse_refs:
-                                    path.append(inverse_refs[id(path[-1])])
-                                path.reverse()
-                                # Replace all source variables of the path in value by copies
-                                current_variable = path.pop(0)
-                                for variable in path:
-                                    idx = next(i for i, v in enumerate(current_variable.source) if v is variable)
-                                    new_source = list(current_variable.source)
-                                    new_source[idx] = copy(variable)
-                                    current_variable.source = tuple(new_source)
-                                    current_variable = current_variable.source[idx]
-                                to_visit.clear()
-                                break
-                            if not var._is_source:
-                                to_visit.append(var)
-
-            else:
-                value = TemporalVar(self.solver, new_value)
-
-            time = TemporalVar(self.solver, lambda t: t)
-            new_var = temporal_var_where(self.solver, time < t, copy(self), value)
-            vars(self).update(vars(new_var))
-
-        return Action(lambda t, y: change_value(t), f"Change {self.name}'s value to {get_expression(new_value)}")
+        expression = f"#CROSSING_BETWEEN {self.name} AND {value.name if isinstance(value, TemporalVar) else value}"
+        trigger_var = CrossTriggerVar(self.solver, crossed_variable, direction, expression)
+        return trigger_var
 
     def clear(self):
         self._values = None
@@ -1184,6 +1175,22 @@ class TemporalVar(Generic[T]):
             operator=operator.ge
         )
 
+    @staticmethod
+    def _logical_and(a, b):
+        result = np.logical_and(a, b)
+        if result.size == 1:
+            result = result.item()
+        return result
+
+    def __and__(self, other: Union[bool, "TemporalVar[bool]"]) -> "TemporalVar[bool]":
+        expression = f"{add_necessary_brackets(get_expression(self))} and {add_necessary_brackets(get_expression(other))}"
+        return TemporalVar(
+            self.solver,
+            (self._logical_and, self, self._from_arg(other)),
+            expression,
+            operator=operator_call
+        )
+
     def __getitem__(self, item):
         expression = f"{add_necessary_brackets(get_expression(self))}[{item}]"
         return TemporalVar(
@@ -1225,7 +1232,10 @@ class TemporalVar(Generic[T]):
 
     def __repr__(self) -> str:
         if self.solver.solved:
-            return f"{self.name or self._expression} = {self._values}"
+            output = f"{self.name or self._expression}"
+            if self._values is not None:
+                output += f" = {self._values}"
+            return output
         else:
             return f"{self._expression}"
 
@@ -1333,17 +1343,6 @@ class LoopNode(TemporalVar[T]):
         """
         return not self._is_strict or self._is_set
 
-    def action_set_to(self) -> None:
-        """
-        Not implemented
-        :return: Raise an exception
-        """
-        raise NotImplementedError(
-            "This method is forbidden for a Loop Node.\n"
-            "If you want really want to change the behavior of a Loop Node, create a new variable by doing "
-            "'new_var = 1 * loop_node'. You will be able to call `action_set_to()` on `new_var`."
-        )
-
 
 class IntegratedVar(TemporalVar[T]):
     def __init__(
@@ -1380,43 +1379,60 @@ class IntegratedVar(TemporalVar[T]):
             return self._y_idx
         raise ValueError("The argument 'y_idx' should be set for IntegratedVar containing a single value.")
 
-    def action_reset_to(self, value: Union[TemporalVar[T], T]) -> "Action":
+    def reset_on(self, trigger: TriggerType, new_value: Union[TemporalVar[T], T]) -> "Event":
         """
         Create an action that, when its event is triggered, reset the IntegratedVar output to the specified value.
-        :param value: Value at which the integrator output is reset to
-        :return: Action to be put into an Event.
+        :param trigger: Variable that triggers the reset
+        :param new_value: Value at which the integrator output is reset to
+        :return: Event.
         """
-        if not isinstance(value, TemporalVar):
-            value = TemporalVar(self.solver, value)
+        if not isinstance(new_value, TemporalVar):
+            new_value = TemporalVar(self.solver, new_value)
 
         def action_fun(t, y):
             def set_y0(idx, subvalue):
                 if isinstance(idx, np.ndarray):
                     for arr_idx in np.ndindex(idx.shape):
                         y_idx = idx[arr_idx]
-                        set_y0(y_idx, value[y_idx])
+                        set_y0(y_idx, new_value[y_idx])
                 elif isinstance(idx, dict):
                     for key, idx in idx.items():
-                        y[idx] = value[key]
-                        set_y0(idx, value[key])
+                        y[idx] = new_value[key]
+                        set_y0(idx, new_value[key])
                 else:
                     y[idx] = subvalue(t, y)
 
-            set_y0(self.y_idx, value)
+            set_y0(self.y_idx, new_value)
 
-        return Action(action_fun, f"Reset {self.name} to {value.expression}")
+        action = Action(action_fun, f"Reset {self.name} to {new_value.expression}")
+        event = Event(self.solver, trigger, action)
+        return event
 
-    def action_set_to(self) -> None:
-        """
-        Not implemented
-        :return: Raise an exception
-        """
-        raise NotImplementedError(
-            "This method is forbidden for an integrated variable.\n"
-            "If you want to reset the integrator output, use `action_reset_to()`.\n"
-            "If you want really want to change the behavior of an integrated variable, create a new variable by doing "
-            "'new_var = 1 * integrated_variable'. You will be able to call `action_set_to()` on `new_var`."
-        )
+
+class CrossTriggerVar(TemporalVar[bool]):
+    _DIRECTION_MAP = {"rising": 1, "falling": -1, "both": 0}
+
+    def __init__(self, solver: Solver, fun: TemporalVar, direction: Literal["rising", "falling", "both"] = "both",
+                 expression: str = None):
+        super().__init__(solver)
+        self.direction = self._DIRECTION_MAP[direction]
+        self.function = fun
+        self._expression = expression
+
+        self.t_triggers = []
+
+        self.previous_value = None
+        # Add to solver
+        self.solver.cross_triggers.append(self)
+
+    def __call__(self, t, y):
+        if np.isscalar(t):
+            return t in self.t_triggers
+        else:
+            return [self(t[i], y[i]) for i in range(len(t))]
+
+    def evaluate(self, t, y):
+        self.previous_value = self.function(t, y)
 
 
 def get_expression(value) -> str:
@@ -1445,72 +1461,33 @@ def get_expression(value) -> str:
 
 
 class Event:
-    _DIRECTION_MAP = {"rising": 1, "falling": -1, "both": 0}
-    _DIRECTION_REPR = {1: "rising", 0: "any direction", -1: "falling"}
-
-    def __init__(self, solver: Solver, fun, action: Union["Action", Callable, None],
-                 direction: Literal["rising", "falling", "both"] = "both",
-                 terminal: Union[bool, int] = False):
+    def __init__(self, solver: Solver, fun: TemporalVar[bool], action: Union["Action", Callable, None] = None):
         self.solver = solver
         self.function: TemporalVar = convert_args_to_temporal_var(self.solver, [fun])[0]
         self.action = convert_args_to_action([action])[0] if action is not None else None
-        self.terminal = terminal
-
-        self.direction = self._DIRECTION_MAP[direction]
-
-        self.count = 0
-        # Compute max events
-        message = ('The `terminal` attribute of each event '
-                   'must be a boolean or positive integer.')
-        if terminal is None or terminal == 0:
-            self.max_events = np.inf
-        elif int(terminal) == terminal and terminal > 0:
-            self.max_events = terminal
-        else:
-            raise ValueError(message)
-
-        self.g = None
 
         self.t_events = []
-        self.y_events = []
-
-        self.deletion_time = None  # Time at which the event has been deleted from the simulation.
 
         self.solver.events.append(self)
 
-    def __call__(self, t, y) -> float:
-        return self.function(t, y)
+    def __call__(self, t, y) -> bool:
+        return bool(self.function(t, y))
 
     def __repr__(self):
-
-        return (f"Event({self.function.expression} ({self._DIRECTION_REPR[self.direction]}), "
-                f"{self.action or 'No action'}, terminal = {self.terminal})")
-
-    def evaluate(self, t, y) -> None:
-        self.g = self(t, y)
-
-    @property
-    def action_disable(self) -> "Action":
-        """
-        Create an action that disable the event, so it will not execute its action anymore.
-        :return: Action
-        """
-
-        def delete_event(t):
-            self.deletion_time = t
-
-        return Action(delete_event)
+        return (f"Event(On {repr(self.function)}, "
+                f"{self.action or 'No action'})")
 
     def execute_action(self, t, y):
         if self.action is not None:
             self.action(t, y)
+        self.t_events.append(t)
 
     def clear(self):
-        self.count = 0
-        self.g = None
         self.t_events = []
-        self.y_events = []
-        self.deletion_time = None
+
+    @property
+    def count(self):
+        return len(self.t_events)
 
 
 class Action:
@@ -1544,7 +1521,7 @@ class Action:
         return Action(added_fun, f"{self.expression} + {other.expression}")
 
     def __repr__(self):
-        return f"Action({self.expression})"
+        return f"{self.expression}"
 
 
 def convert_args_to_action(arg_list: Iterable) -> List[Action]:
@@ -1554,17 +1531,3 @@ def convert_args_to_action(arg_list: Iterable) -> List[Action]:
         return arg
 
     return [convert(a) for a in arg_list]
-
-
-def action_where(solver: Solver, condition: TemporalVar[bool], a: Union[Callable, Action],
-                 b: Union[Callable, Action]) -> Action:
-    condition = convert_args_to_temporal_var(solver, [condition])[0]
-    a, b = convert_args_to_action([a, b])
-
-    def conditional_action(t, y):
-        if condition(t, y):
-            a(t, y)
-        else:
-            b(t, y)
-
-    return Action(conditional_action, f"({a.expression}) if {condition.expression} else ({b.expression})")

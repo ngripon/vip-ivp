@@ -32,17 +32,18 @@ def test_t_eval_over_time_step():
 
     assert np.array_equal(t_eval, a.t)
 
+
 def test_solvers():
-    methods=['RK23','RK45','DOP853','Radau', 'BDF','LSODA']
+    methods = ['RK23', 'RK45', 'DOP853', 'Radau', 'BDF', 'LSODA']
     for method in methods:
         vip.new_system()
         d_n = vip.loop_node()
         n = vip.integrate(d_n, 1)
         d_n.loop_into(-0.5 * n)
 
-        start=time.time()
-        vip.solve(10,method=method, time_step=0.001)
-        print(f"{method}: {time.time()-start}s")
+        start = time.time()
+        vip.solve(10, method=method, time_step=0.001)
+        print(f"{method}: {time.time() - start}s")
 
 
 def test_use_numpy_function():
@@ -349,10 +350,8 @@ def test_bounded_integration_by_variable():
 def test_delete_event():
     a = vip.temporal(lambda t: t)
 
-    event = a.on_crossing(6, terminal=True)
-    a.on_crossing(3, event.action_disable)
-
-    # a.to_plot("Hey")
+    crossing = a.crosses(6)
+    vip.terminate_on(crossing & (a < 3))
 
     vip.solve(10)
     print(a.solver.events)
@@ -374,11 +373,13 @@ def test_variable_step_solving():
     vip.solve(10, time_step=None)
 
 
-def test_action_adding():
+def test_simultaneous_actions():
     a = vip.temporal(5)
     ia = vip.integrate(a, 0)
 
-    ia.on_crossing(10, ia.action_reset_to(0) + vip.action_terminate)
+    crossing = ia.crosses(10)
+    ia.reset_on(crossing, 0)
+    vip.terminate_on(crossing)
 
     ia.to_plot("IA")
 
@@ -391,13 +392,13 @@ def test_set_timeout():
     a = vip.temporal(1)
     ia = vip.integrate(a, 0)
 
-    timeout_event = vip.set_timeout(ia.action_reset_to(0), 3)
+    timeout = vip.timeout_trigger(3)
+    ia.reset_on(timeout, 0)
 
     ia.to_plot()
+    timeout.to_plot()
 
-    vip.solve(10, time_step=1, include_events_times=False)
-
-    assert timeout_event.deletion_time == 3
+    vip.solve(10, time_step=1)
     assert ia.values[3] == 0
 
 
@@ -405,58 +406,49 @@ def test_set_interval():
     a = vip.temporal(1)
     ia = vip.integrate(a, 0)
 
-    e1 = vip.set_interval(ia.action_reset_to(0), 2)
+    interval = vip.interval_trigger(2)
+    ia.reset_on(interval,0)
 
     ia.to_plot()
+    interval.to_plot()
 
-    vip.solve(10, time_step=1, include_events_times=False)
+    vip.solve(10, time_step=1)
 
     assert np.all(ia.values[0::2] == 0)
     assert np.allclose(ia.values[1::2], np.full_like(ia.values[1::2], 1))
 
 
-def test_create_event():
-    a = vip.temporal(1)
-    ia = vip.integrate(a, 0)
+# TEMPORARILY DELETED. IT WILL BECOME RELEVANT AGAIN WITH STATEFUL VARIABLES
 
-    event = vip.set_timeout(lambda: vip.set_timeout(ia.action_reset_to(0), 2), 3)
-
-    ia.to_plot()
-
-    vip.solve(10, 1)
-
-    assert ia.values[5] == 0
-
-
-def test_increment_timeout():
-    count = vip.temporal(0)
-
-    vip.set_timeout(count.action_set_to(count + 1), 2)
-
-    count.to_plot()
-    vip.solve(10, time_step=1)
-
-    assert count.values[0] == 0
-    assert count.values[2] == 1
-    assert count.values[-1] == 1
-
-
-def test_increment_interval():
-    count = vip.temporal(0)
-    vip.set_interval(count.action_set_to(count + 1), 2)
-
-    count.to_plot()
-    vip.solve(10, time_step=1)
-
-    print(count.values)
-    print(count.t)
-
-    assert count.values[0] == 0
-    assert count.values[2] == 1
-    assert count.values[4] == 2
-    assert count.values[6] == 3
-    assert count.values[8] == 4
-    assert count.values[10] == 5
+# def test_increment_timeout():
+#     count = vip.temporal(0)
+#
+#     vip.set_timeout(count.action_set_to(count + 1), 2)
+#
+#     count.to_plot()
+#     vip.solve(10, time_step=1)
+#
+#     assert count.values[0] == 0
+#     assert count.values[2] == 1
+#     assert count.values[-1] == 1
+#
+#
+# def test_increment_interval():
+#     count = vip.temporal(0)
+#     vip.set_interval(count.action_set_to(count + 1), 2)
+#
+#     count.to_plot()
+#     vip.solve(10, time_step=1)
+#
+#     print(count.values)
+#     print(count.t)
+#
+#     assert count.values[0] == 0
+#     assert count.values[2] == 1
+#     assert count.values[4] == 2
+#     assert count.values[6] == 3
+#     assert count.values[8] == 4
+#     assert count.values[10] == 5
 
 
 def test_loop_with_delay():
