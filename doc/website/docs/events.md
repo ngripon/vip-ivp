@@ -6,60 +6,103 @@ sidebar_position: 6
 
 ## What is an Event?
 
-**An event is a condition that triggers an action.**  
-Consider a bouncing ball: the action is the bounce (reversing the ball's velocity), and the condition is that the ball hits the ground.
+**An event is a condition that triggers an action.**
 
-Suppose the ground is at $h = 0$. Here is how the event solver works:
+**Conditions** are boolean Temporal Variables.
 
-1. The ball's vertical position $y_{ball}$ starts above the ground.
-2. At each time step, the solver checks whether $y_{ball} \leq 0$.
-3. When this occurs, the solver rolls back in time to locate the exact event time $t_e$ when $y_{ball} = 0$.
-4. The action is applied at $t_e$. In this case: $\dot{y}(t_e) \leftarrow -k \cdot \dot{y}(t_e)$.
-5. If the event is not terminal, the solver continues integrating from $t_e$.
+**Actions** are triggered at time points when the condition is `True`. They are defined through event creation
+functions.
 
-## Creating Events
+**Events** are created through the following functions and methods. The `trigger` argument is for the condition:
 
-### Crossing Events
+- `terminate_on(trigger)`: Terminate the simulation when triggered.
+- `IntegratedVar.reset_on(trigger, new_value)`: Set the Integrated Variable value to `new_value` when triggered.
+- `execute_on(trigger, f)`: Execute the function `f` when triggered.
 
-Currently, `vip-ivp` supports **crossing detection** as the only event type (only continuous variables can trigger events).
+### Example: Bouncing Ball
 
-To define a crossing event, use `.on_crossing(value, action=None, direction="both", terminal=False)` on a `TemporalVar`.
+Consider a bouncing ball:
 
-Example: detect when a falling object hits the ground.
+- **Condition**: The ball hits the ground. We use the `.crossed()` method to create a Temporal Variable that returns
+  True when the contact with the ground occurs.
+- **Action**: The bounce, which is the reversing of the ball's velocity. We use the `.reset_on(trigger, new_value)`
+  method on the velocity to change the value of the velocity when it hits the ground.
+
+## Crossing Trigger Variables
+
+In physical systems, where variables are continuous, you should use **Crossing Trigger Variables for your event
+conditions**.
+
+**Crossing Trigger Variables** detects the **exact time** at which a crossing between a Temporal Variable and a value
+occurs.
+
+To create a Crossing Trigger Variable, use the `.crosses(value, direction)` method:
 
 ```python
+# Create the system
 acceleration = vip.temporal(-9.81)
 velocity = vip.integrate(acceleration, x0=0)
-height = vip.integrate(velocity, x0=10)
+height = vip.integrate(velocity, x0=2)
 
-# Create a crossing event
-hit_ground = height.on_crossing(0)
-
-vip.solve(10, time_step=0.01)
-
-print(hit_ground.t_events)  # Time(s) when event occurred
+# highlight-next-line
+hit_ground = height.crosses(0, "falling")
 ```
 
-Even if the event has no action, `hit_ground.t_events` records the trigger times.
+:::tip
+The `value` argument can be a Temporal Variable.
+:::
 
 ### Crossing Direction
 
-Use the `direction` argument to filter event triggers:
+Use the `direction` argument to filter triggers:
 
-- `"rising"`: triggered when the value crosses the threshold from below
-- `"falling"`: triggered when crossing from above
-- `"both"` _(default)_: triggered regardless of crossing direction
+- `"rising"`: triggered when the value crosses the threshold from below.
+- `"falling"`: triggered when crossing from above.
+- `"both"` _(default)_: triggered regardless of crossing direction.
+
+### Temporal Triggers
+
+Two functions are available to create Crossing Trigger Variable from the system clock:
+
+- `timeout_trigger(delay)`: Triggers when `simulation_time==delay`.
+- `interval_trigger(delay)`: Triggers regularly at every interval of `delay`.
+
+The `delay` argument is a duration in seconds.
+
+### Conditional Triggers
+
+Use logical operators on the Temporal Variables you use as a trigger to create a conditional trigger variable:
+
+```python
+# highlight-next-line
+v_min = 0.5  # Minimum velocity for the ball to bounce when hitting the ground
+
+# Create the system
+acceleration = vip.temporal(-9.81)
+velocity = vip.integrate(acceleration, x0=0)
+height = vip.integrate(velocity, x0=2)
+
+hit_ground = height.crosses(0, "falling")
+# highlight-next-line
+trigger_stop = hit_ground & (abs(velocity) <= v_min)
+```
+
+![Conditional bounce](./images/conditional_action.png)
+
+## Creating Events
 
 ### Terminal Events
 
-Set `terminal=True` to stop the simulation when the event triggers.
+Use `terminate_on(trigger)` to terminate the simulation when a triggers occurs:
 
 ```python
 acceleration = vip.temporal(-9.81)
 velocity = vip.integrate(acceleration, x0=0)
 height = vip.integrate(velocity, x0=10)
 
-hit_ground = height.on_crossing(0, terminal=True)
+hit_ground = height.crosses(0, "falling")
+# highlight-next-line
+vip.terminate_on(hit_ground)
 
 height.to_plot()
 vip.solve(10, time_step=0.01)
@@ -67,41 +110,32 @@ vip.solve(10, time_step=0.01)
 
 ![Terminal event](./images/terminal_event.png)
 
-## Time-Based Events
+### Reset an Integrated Variable
 
-Time-based events are crossing events applied to simulation time.
-
-### Timeout
-
-Use `vip.set_timeout(action, delay)` to apply an action after a given delay.
-
-### Interval
-
-Use `vip.set_interval(action, delay)` to repeat an action periodically.
-
-## Actions
-
-**Actions are side-effect-only functions executed when events trigger.**
-
-There are two types:
-
-1. **System actions**: modify the simulation state
-2. **Custom actions**: run arbitrary code (e.g., logging), but **must not modify the simulation**
-
-### Custom Actions
-
-Define a function with side effects:
+Use the `.reset_on(trigger, value)` of an Integrated Variable to instantly change its state:
 
 ```python
-height.on_crossing(0, action=lambda: print("Hello"))
-height.on_crossing(-1, action=lambda: print("world"))
+a = vip.temporal(-9.81)
+v = vip.integrate(a, 0)
+y = vip.integrate(v, 10)
+
+hit_ground = y.crosses(0, "falling")
+# highlight-next-line
+v.reset_on(hit_ground, -v)  # Reverse velocity
+```
+
+### Custom Events
+
+You can trigger any function with `execute_on(trigger, f)`. The function `f` must be a function with **side-effects**.
+
+```python
+vip.execute_on(hit_ground, lambda: print("Hello world"))
 ```
 
 **Output:**
 
 ```
-Hello
-world
+Hello world
 ```
 
 To access the event time, add an argument to the input function:
@@ -110,59 +144,15 @@ To access the event time, add an argument to the input function:
 def log_time(t):
     print(f"Collision at {t}.")
 
-height.on_crossing(0, action=log_time)
+
+# ...
+vip.execute_on(hit_ground, log_time)
 ```
 
-### System Actions
+**Output:**
 
-System actions alter simulation variables. They can only be used with `TemporalVar` or `IntegratedVar`.
-
-#### Resetting an Integrated Variable
-
-Use `.action_reset_to(value)` to instantly change the state:
-
-```python
-velocity.action_reset_to(-velocity)  # Reverse velocity
+```
+Collision at 1.4278431229270645.
 ```
 
-#### Changing a Temporal Variable
 
-Use `.action_set_to(new_value)` for non-integrated `TemporalVar`s:
-
-```python
-count.action_set_to(count + 1)  # Increment a counter
-```
-
-#### Terminate the Simulation
-
-Use `vip.action_terminate` to stop the simulation from within an action.
-
-#### Disable Events
-
-Access `.action_disable` on an event to prevent it from triggering again.
-
-```python
-disable_action = my_event.action_disable
-```
-
-### Combining Actions
-
-Use `+` to combine multiple actions into a single one. The action on the **left** side of the operator is executed **first**.
-
-```python
-action_combo = action1 + action2  # Executes action1, then action2
-```
-
-### Conditional Actions
-
-Use `vip.where(condition, action_if_true, action_if_false)`:
-
-```python
-bounce = velocity.action_reset_to(-k * velocity)
-stop = acceleration.action_set_to(0) + velocity.action_reset_to(0)
-
-conditional = vip.where(abs(velocity) > v_min, bounce, stop)
-height.on_crossing(0, conditional)
-```
-
-![Conditional bounce](./images/conditional_action.png)

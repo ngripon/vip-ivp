@@ -10,7 +10,7 @@ from scipy.integrate._ivp.common import EPS, OdeSolution
 from scipy.integrate._ivp.base import OdeSolver
 
 if TYPE_CHECKING:
-    from src.vip_ivp.base import Event
+    from src.vip_ivp.base import Event, CrossTriggerVar
 
 METHODS = {'RK23': RK23,
            'RK45': RK45,
@@ -27,7 +27,8 @@ class OdeResult(OptimizeResult):
     pass
 
 
-def solve_event_equation(event, sol, t_old, t, is_discrete: bool = False, t_eval: float = None):
+def solve_event_equation(cross_var: "CrossTriggerVar", sol, t_low, t_up, is_discrete: bool = False,
+                         crossing_tolerance=1e-12):
     """Solve an equation corresponding to an ODE event.
 
     The equation is ``event(t, y(t)) = 0``, here ``y(t)`` is known from an
@@ -52,23 +53,19 @@ def solve_event_equation(event, sol, t_old, t, is_discrete: bool = False, t_eval
     """
     from scipy.optimize import brentq
     if is_discrete:
-        if t_eval is None:
-            return t
-        else:
-            t_eval_i_new = np.searchsorted(t_eval, t, side="right")
-            t_eval_step = t_eval[:t_eval_i_new]
-            t_eval_step = t_eval_step[t_eval_step > t_old]
-            initial_state = event(t_old, sol(t_old))
-            new_state = event(t, sol(t))
-            assert initial_state != new_state
-            return next((t for t in t_eval_step if event(t, sol(t)) != initial_state), t)
+        return t_up
     else:
-        return brentq(lambda t: event(t, sol(t)), t_old, t,
-                      xtol=4 * EPS, rtol=4 * EPS)
+        if abs(cross_var.function(t_low, sol(t_low))) <= crossing_tolerance:
+            return t_low
+        elif abs(cross_var.function(t_up, sol(t_up))) <= crossing_tolerance:
+            return t_up
+        else:
+            return brentq(lambda t: cross_var.function(t, sol(t)), t_low, t_up,
+                          xtol=4 * EPS, rtol=4 * EPS)
 
 
-def is_discrete(event: "Event") -> bool:
-    return event.function.output_type in (str, bool, np.bool)
+def is_discrete(cross_trigger: "CrossTriggerVar") -> bool:
+    return cross_trigger.function.output_type in (str, bool, np.bool)
 
 
 def handle_events(sol, events, active_events_indices, t_old, t, t_eval):
@@ -154,7 +151,7 @@ def find_active_events(events, sol, t_eval, t, t_old):
     return np.array([]), t_upper, t_lower
 
 
-def find_active_events_in_step(g, g_new, direction, previous_triggers_mask=None):
+def find_active_events_in_step(g, g_new, direction, previous_triggers_mask=None, crossing_tolerance=1e-12):
     """Find which event occurred during an integration step.
 
     Parameters
@@ -175,8 +172,8 @@ def find_active_events_in_step(g, g_new, direction, previous_triggers_mask=None)
     g_new = [x if not isinstance(x, (bool, np.bool)) or x == True else -1 for x in g_new]
 
     g, g_new, direction = np.asarray(g), np.asarray(g_new), np.asarray(direction)
-    up = (g <= 0) & (g_new >= 0)
-    down = (g >= 0) & (g_new <= 0)
+    up = (g <= crossing_tolerance) & (g_new >= -crossing_tolerance)
+    down = (g >= -crossing_tolerance) & (g_new <= crossing_tolerance)
     either = up | down
     mask = (up & (direction > 0) |
             down & (direction < 0) |

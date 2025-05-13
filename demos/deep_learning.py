@@ -76,7 +76,7 @@ drag = drag_tensor.m(drag_tensor.output_type.item)()
 acc.loop_into(g + drag / mass)
 
 # Terminate the simulation on hitting the ground
-y.on_crossing(0, direction="falling", terminal=True)
+vip.terminate_on(y.crosses(0, direction="falling"))
 
 # Plotting
 y.to_plot("Height (m)")
@@ -106,7 +106,7 @@ drag = vip.f(adapt_model)(v, model)
 acc.loop_into(g + drag / mass)
 
 # Terminate the simulation on hitting the ground
-y.on_crossing(0, direction="falling", terminal=True)
+vip.terminate_on(y.crosses(0, direction="falling"))
 
 # Plotting
 y.to_plot("Height (m)")

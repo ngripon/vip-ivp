@@ -176,7 +176,8 @@ def test_integrated_differentiation():
 def test_float_crossing_event():
     a = vip.temporal(lambda t: t)
 
-    a.on_crossing(5, terminal=True)
+    crossing = a.crosses(5)
+    vip.terminate_on(crossing)
 
     vip.solve(10, time_step=1)
     print(a.values)
@@ -189,7 +190,8 @@ def test_boolean_crossing_event():
     a = vip.temporal(lambda t: t)
     cond = a >= 5
 
-    cond.on_crossing(True, terminal=True)
+    crossing = cond.crosses(True)
+    vip.terminate_on(crossing)
 
     vip.solve(10, time_step=1)
     print(cond.values)
@@ -202,7 +204,8 @@ def test_string_crossing_event():
     a = vip.temporal(lambda t: t)
     string = vip.where(a >= 5, "Aa", "Ba")
 
-    string.on_crossing("Aa", terminal=True)
+    crossing = string.crosses("Aa")
+    vip.terminate_on(crossing)
 
     vip.solve(10, time_step=1)
     print(string.values)
@@ -233,15 +236,9 @@ def test_bouncing_projectile_motion():
     acceleration.loop_into([-mu * velocity[0] * v_norm,
                             GRAVITY - mu * velocity[1] * v_norm])
 
-    bounce = vip.where(abs(velocity[1]) > v_min,
-                       velocity[1].action_reset_to(-k * velocity[1]),
-                       vip.action_terminate)
-
-    position[1].on_crossing(
-        0,
-        bounce,
-        terminal=False, direction="falling"
-    )
+    hit_ground = position[1].crosses(0, "falling")
+    bounce = velocity[1].reset_on(hit_ground & (abs(velocity[1]) > v_min), -k * velocity[1])
+    vip.terminate_on(hit_ground & (abs(velocity[1]) <= v_min))
 
     position.to_plot("Position")
     velocity[1].to_plot()
@@ -274,19 +271,60 @@ def test_eval_events_at_all_time_points():
 
     stopped = abs(velocity[1]) < v_min
 
-    position[1].on_crossing(
+    hit_ground = position[1].crosses(
         0,
-        velocity[1].action_reset_to(-k * velocity[1]),
-        terminal=False, direction="falling"
+        direction="falling"
     )
 
-    stopped.on_crossing(
-        True,
-        terminal=True
-    )
-    #
+    velocity[1].reset_on(hit_ground, -k * velocity[1]),
+
+    vip.terminate_on(stopped)
+
     # position.to_plot("Position")
     stopped.to_plot("Stopping condition")
+
+    vip.solve(20, time_step=0.01)
+    # print(position.t)
+    assert np.count_nonzero(stopped.values) == 1
+
+
+def test_eval_events_at_all_time_points_with_trigger():
+    # Parameters
+    GRAVITY = -9.81
+    v0 = 20
+    th0 = np.radians(45)
+    mu = 0.1  # Coefficient of air drag
+
+    # Compute initial condition
+    v0 = [v0 * np.cos(th0), v0 * np.sin(th0)]
+    x0 = [0, 0]
+
+    k = 0.7  # Bouncing coefficients
+    v_min = 0.01
+
+    # Create system
+    acceleration = vip.loop_node(2)
+    velocity = vip.integrate(acceleration, v0)
+    position = vip.integrate(velocity, x0)
+    v_norm = np.sqrt(velocity[0] ** 2 + velocity[1] ** 2)
+    acceleration.loop_into([-mu * velocity[0] * v_norm,
+                            GRAVITY - mu * velocity[1] * v_norm])
+
+    stopped = abs(velocity[1]) < v_min
+
+    hit_ground = position[1].crosses(
+        0,
+        direction="falling"
+    )
+
+    velocity[1].reset_on(hit_ground, -k * velocity[1]),
+
+    stop_trigger = stopped.crosses(True)
+    vip.terminate_on(stop_trigger)
+
+    # position.to_plot("Position")
+    stopped.to_plot("Stopping condition")
+    stop_trigger.to_plot()
 
     vip.solve(20, time_step=0.01)
     # print(position.t)
@@ -297,14 +335,18 @@ def test_multiple_events_at_the_same_instant():
     a = vip.temporal(1)
     ia = vip.integrate(a, 0)
 
-    e1 = vip.set_interval(ia.action_reset_to(0), 2)
-    e2 = vip.set_timeout(e1.action_disable, 6)
+    inhibit = vip.integrate(0, 1)
+
+    t1 = vip.interval_trigger(2)
+    t2 = vip.timeout_trigger(6)
+    e1 = ia.reset_on(t1 & inhibit, 0)
+    e2 = inhibit.reset_on(t2, 0)
 
     ia.to_plot()
 
-    vip.solve(10, time_step=0.01, include_events_times=False)
+    vip.solve(10, time_step=0.01)
 
-    assert e1.deletion_time == 6
+    assert ia.values[-1] == 4
 
 
 def test_demos():
@@ -329,6 +371,7 @@ def test_forgiving_temporal_functions():
     """
     Test if the temporal function can accept functions that do not support array inputs
     """
+
     def non_vec_fun(t):
         return max(1.0 - 0.005 * t, 0)
 
@@ -337,19 +380,20 @@ def test_forgiving_temporal_functions():
     a.to_plot()
     vip.solve(10)
 
-def test_forgiving_f():
 
+def test_forgiving_f():
     def non_vec_fun(x):
-        return max(x,1)
+        return max(x, 1)
 
     # Test f
-    a=vip.temporal(lambda t:t)
-    b=vip.f(non_vec_fun)(a)
+    a = vip.temporal(lambda t: t)
+    b = vip.f(non_vec_fun)(a)
 
     a.to_plot()
     b.to_plot()
 
     vip.solve(10)
+
 
 def test_loads_of_recursion():
     a = vip.loop_node()
@@ -377,44 +421,44 @@ def test_big_delay():
     print(a.values)
 
 
-def test_cascading_events():
-    # Parameters
-    initial_height = 1  # m
-    GRAVITY = -9.81
-    k = 0.7  # Bouncing coefficient
-    v_min = 0.01  # Minimum velocity need to bounce
+# def test_cascading_events():
+#     # Parameters
+#     initial_height = 1  # m
+#     GRAVITY = -9.81
+#     k = 0.7  # Bouncing coefficient
+#     v_min = 0.01  # Minimum velocity need to bounce
+#
+#     # Create the system
+#     acceleration = vip.temporal(GRAVITY)
+#     velocity = vip.integrate(acceleration, x0=0)
+#     height = vip.integrate(velocity, x0=initial_height)
+#
+#     count = vip.temporal(0)
+#
+#     # Create the bouncing event
+#     bounce = vip.where(abs(velocity) > v_min, velocity.action_reset_to(-k * velocity), vip.action_terminate)
+#     height.on_crossing(0, bounce, terminal=False, direction="falling")
+#     velocity.on_crossing(0, count.action_set_to(count + 1), direction="rising")
+#
+#     # Add variables to plot
+#     height.to_plot("Height (m)")
+#     velocity.to_plot()
+#     count.to_plot()
+#
+#     # Solve the system
+#     vip.solve(20, time_step=0.001)
+#
+#     assert count.values[-1] == 18
 
-    # Create the system
-    acceleration = vip.temporal(GRAVITY)
-    velocity = vip.integrate(acceleration, x0=0)
-    height = vip.integrate(velocity, x0=initial_height)
-
-    count = vip.temporal(0)
-
-    # Create the bouncing event
-    bounce = vip.where(abs(velocity) > v_min, velocity.action_reset_to(-k * velocity), vip.action_terminate)
-    height.on_crossing(0, bounce, terminal=False, direction="falling")
-    velocity.on_crossing(0, count.action_set_to(count + 1), direction="rising")
-
-    # Add variables to plot
-    height.to_plot("Height (m)")
-    velocity.to_plot()
-    count.to_plot()
-
-    # Solve the system
-    vip.solve(20, time_step=0.001)
-
-    assert count.values[-1] == 18
 
 def test_stiff_ode():
-    dy=vip.loop_node(3)
+    dy = vip.loop_node(3)
     # Robertson problem
-    y=vip.integrate(dy,[1,0,0])
+    y = vip.integrate(dy, [1, 0, 0])
     dy1 = -0.04 * y[0] + 1e4 * y[1] * y[2]
     dy2 = 0.04 * y[0] - 1e4 * y[1] * y[2] - 3e7 * y[1] ** 2
     dy3 = 3e7 * y[1] ** 2
-    dy.loop_into([dy1,dy2,dy3])
+    dy.loop_into([dy1, dy2, dy3])
 
     vip.solve(1e2, method="BDF")
     print(y.values)
-

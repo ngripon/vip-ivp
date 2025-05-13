@@ -142,34 +142,33 @@ def test_transformations():
     assert foo_a.expression == "foo(a)"
 
 
-def test_condition():
+def test_trigger():
     a = vip.temporal(1)
     b = vip.integrate(5, 0)
 
     cond = a < 5
     other_cond = a > 2
 
-    event_constant = a.on_crossing(10)
-    event_temporalvar = a.on_crossing(b)
-    event_cond = cond.on_crossing(True)
-    event_cond_temporalvar = cond.on_crossing(other_cond)
+    cross_constant = a.crosses(10)
+    cross_temporalvar = a.crosses(b)
+    cross_cond = cond.crosses(True)
+    cross_cond_temporalvar = cond.crosses(other_cond)
+
+    assert repr(cross_constant) == "#CROSSING_BETWEEN a AND 10"
+    assert repr(cross_temporalvar) == "#CROSSING_BETWEEN a AND b"
+    assert repr(cross_cond) == "#CROSSING_BETWEEN cond AND True"
+    assert repr(cross_cond_temporalvar) == "#CROSSING_BETWEEN cond AND other_cond"
 
     vip.solve(10)
 
-    assert repr(event_constant) == "Event(on a crossing 10 (any direction), No action, terminal = False)"
-    assert repr(event_temporalvar) == "Event(on a crossing b (any direction), No action, terminal = False)"
-    assert repr(event_cond) == "Event(on cond == True (any direction), No action, terminal = False)"
-    assert repr(event_cond_temporalvar) == "Event(on cond == other_cond (any direction), No action, terminal = False)"
 
-
-def test_actions():
+def test_events():
     a = vip.temporal(1)
     ia = vip.integrate(5, 0)
 
+    trigger = ia.crosses(6)
+
     vip.solve(10)
 
-    assert repr(ia.action_reset_to(0)) == "Action(Reset ia to 0)"
-    assert repr(a.action_set_to(1)) == "Action(Change a's value to 1)"
-    assert repr(ia.action_reset_to(5.5) + a.action_set_to(2)) == "Action(Reset ia to 5.5 + Change a's value to 2)"
-    assert repr(vip.where(ia > 5, ia.action_reset_to(0),
-                          vip.action_terminate)) == "Action((Reset ia to 0) if ia > 5 else (Terminate simulation))"
+    assert repr(ia.reset_on(trigger, 0)) == "Event(On trigger, Reset ia to 0)"
+    assert repr(vip.terminate_on(trigger)) == "Event(On trigger, Terminate simulation)"
