@@ -1191,6 +1191,15 @@ class TemporalVar(Generic[T]):
             operator=operator_call
         )
 
+    def __rand__(self, other: Union[bool, "TemporalVar[bool]"]) -> "TemporalVar[bool]":
+        expression = f"{add_necessary_brackets(get_expression(other))} and {add_necessary_brackets(get_expression(self))}"
+        return TemporalVar(
+            self.solver,
+            (self._apply_logical, np.logical_and, self._from_arg(other), self),
+            expression,
+            operator=operator_call
+        )
+
     @staticmethod
     def _logical_not(a):
         result = np.logical_not(a)

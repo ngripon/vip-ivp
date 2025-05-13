@@ -110,7 +110,7 @@ def convert_to_string(content):
 
 
 def add_necessary_brackets(expression: str) -> str:
-    operators = ["+", "-", "=", "<", ">"]
+    operators = ["+", "-", "=", "<", ">", "and", "or", "not"]
     begin = expression.split("(")[0]
     end = expression.split(")")[-1]
     if any(op in begin for op in operators) or any(op in end for op in operators):
