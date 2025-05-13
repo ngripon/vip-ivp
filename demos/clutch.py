@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-import vip_ivp as vip
+import src.vip_ivp as vip
 
 # Parameters
 ie, iv = 1, 5  # Moments of inertia
@@ -12,28 +12,39 @@ r1, r2 = 1, 1  # radii of plate friction surfaces
 # Computed quantities
 r = 1
 
-locked_w = 1
-unlocked_we = vip.temporal(1)
-unlocked_wv = vip.temporal(1)
+locked_w = vip.loop_node()
+unlocked_we = vip.loop_node()
+unlocked_wv = vip.loop_node()
 
 
-def unlocked_system(t_in, tf_max_k):
+def unlocked_system(t_in, tf_max_k, is_locked):
     # Create differential variables
     d_we = vip.loop_node()
-    we = vip.integrate(d_we, locked_w)
+    we = vip.integrate(d_we, 0)
+    unlocked_we.loop_into(we)
     d_wv = vip.loop_node()
-    wv = vip.integrate(d_wv, locked_w)
+    wv = vip.integrate(d_wv, 0)
+    unlocked_wv.loop_into(wv)
     # Set values
     t_cl = np.sign(we - wv) * tf_max_k
     d_we.loop_into((t_in - be * we - t_cl) / ie)
     d_wv.loop_into((t_cl - wv * bv) / iv)
+
+    # Events
+    is_slipping = (~is_locked)
+    # we.reset_on(is_slipping, locked_w)
+    wv.reset_on(is_slipping, locked_w)
+
     return we, wv
 
 
-def locked_system(t_in):
+def locked_system(t_in, is_locked):
     dw = vip.loop_node()
-    w = vip.integrate(dw, unlocked_we)
+    w = vip.integrate(dw, 0)
     dw.loop_into((t_in - (be + bv) * w) / (ie + iv))
+    locked_w.loop_into(w)
+    # # Event
+    # w.reset_on(is_locked, unlocked_we)
     return w
 
 
@@ -82,12 +93,21 @@ tn_map = np.array([
     [10, 0]
 ])
 
+fn = vip.create_scenario(pd.DataFrame(fn_map), 0)[1]
+t_in = vip.create_scenario(pd.DataFrame(tn_map), 0)[1]
 
-fn=vip.create_scenario(pd.DataFrame(fn_map),0)[1]
-tn=vip.create_scenario(pd.DataFrame(tn_map),0)[1]
+tf_max_k, tf_max_s = friction_model(fn)
+locked = friction_mode_logic(t_in, tf_max_s)
+w = locked_system(t_in, locked)
+we, wv = unlocked_system(t_in, tf_max_k, locked)
 
-
-fn.to_plot()
-tn.to_plot()
+# fn.to_plot()
+# t_in.to_plot()
+locked.to_plot()
+wv.to_plot()
+we.to_plot()
+w.to_plot()
+# tf_max_s.to_plot()
+# tf_max_k.to_plot()
 
 vip.solve(10)

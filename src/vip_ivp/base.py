@@ -498,9 +498,9 @@ class Solver:
                         self.y.extend([0] * len(t_eval_step))
                     t_eval_i = t_eval_i_new
 
-                if self.events and discontinuity:
-                    if t_eval_step[-1] == t_check:
-                        self.y[-1] = y_check
+                    if self.events and discontinuity:
+                        if t_eval_step[-1] == t_check:
+                            self.y[-1] = y_check
 
             if t_eval is not None and dense_output:
                 ti.append(t)
@@ -1176,8 +1176,8 @@ class TemporalVar(Generic[T]):
         )
 
     @staticmethod
-    def _logical_and(a, b):
-        result = np.logical_and(a, b)
+    def _apply_logical(logical_fun: Callable, a, b):
+        result = logical_fun(a, b)
         if result.size == 1:
             result = result.item()
         return result
@@ -1186,7 +1186,23 @@ class TemporalVar(Generic[T]):
         expression = f"{add_necessary_brackets(get_expression(self))} and {add_necessary_brackets(get_expression(other))}"
         return TemporalVar(
             self.solver,
-            (self._logical_and, self, self._from_arg(other)),
+            (self._apply_logical, np.logical_and, self, self._from_arg(other)),
+            expression,
+            operator=operator_call
+        )
+
+    @staticmethod
+    def _logical_not(a):
+        result = np.logical_not(a)
+        if result.size == 1:
+            result = result.item()
+        return result
+
+    def __invert__(self) -> "TemporalVar[bool]":
+        expression = f"not {add_necessary_brackets(get_expression(self))}"
+        return TemporalVar(
+            self.solver,
+            (self._logical_not, self),
             expression,
             operator=operator_call
         )
