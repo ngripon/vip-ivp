@@ -24,6 +24,39 @@ def test_collections_get_methods():
     print(arr_slice[0].values)
 
 
+def test_logical_operators():
+    x_a = vip.temporal(lambda t: np.sin(t))
+    x_b = vip.temporal(lambda t: np.sin(t + np.pi / 2))
+    a = x_a >= 0
+    b = x_b >= 0
+
+    # and
+    a_and_b = a & b
+    b_and_a = b & a
+    # or
+    a_or_b = a | b
+    b_or_a = b | a
+    # xor
+    a_xor_b = a ^ b
+    b_xor_a = b ^ a
+    # not
+    not_a = ~a
+
+    vip.solve(20)
+    # Assertions
+    # and
+    assert np.array_equal(a_and_b.values, np.logical_and(a.values, b.values))
+    assert np.array_equal(b_and_a.values, np.logical_and(a.values, b.values))
+    # or
+    assert np.array_equal(a_or_b.values, np.logical_or(a.values, b.values))
+    assert np.array_equal(b_or_a.values, np.logical_or(a.values, b.values))
+    # xor
+    assert np.array_equal(a_xor_b.values, np.logical_xor(a.values, b.values))
+    assert np.array_equal(b_xor_a.values, np.logical_xor(a.values, b.values))
+    # not
+    assert np.array_equal(not_a.values, np.logical_not(a.values))
+
+
 def test_t_eval_over_time_step():
     t_eval = [0, 2, 2.5, 7]
     a = vip.temporal(1)
@@ -407,7 +440,7 @@ def test_set_interval():
     ia = vip.integrate(a, 0)
 
     interval = vip.interval_trigger(2)
-    ia.reset_on(interval,0)
+    ia.reset_on(interval, 0)
 
     ia.to_plot()
     interval.to_plot()
