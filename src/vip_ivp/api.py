@@ -1,8 +1,6 @@
 import json
 from typing import TYPE_CHECKING
 
-from varname import argname
-
 if TYPE_CHECKING:
     import pandas as pd
 
@@ -146,16 +144,12 @@ def loop_node(shape: Union[int, tuple[int, ...]] = None, strict: bool = True) ->
 
 
 @overload
-def where(condition: Union[TemporalVar[bool], bool], a: Action, b: Action) -> Action: ...
-
-
-@overload
 def where(condition: Union[TemporalVar[bool], bool], a: Union[TemporalVar, T], b: Union[TemporalVar, T]) -> TemporalVar[
     T]: ...
 
 
-def where(condition: Union[TemporalVar[bool], bool], a: Union[TemporalVar, T, Action],
-          b: Union[TemporalVar, T, Action])->Union[TemporalVar[T], Action]:
+def where(condition: Union[TemporalVar[bool], bool], a: Union[TemporalVar, T],
+          b: Union[TemporalVar, T]) -> TemporalVar[T]:
     """
     Create a conditional TemporalVar or a conditional Action.
     If condition is `True` at time $t$, the output value will have value **a**, else **b**.
@@ -170,10 +164,7 @@ def where(condition: Union[TemporalVar[bool], bool], a: Union[TemporalVar, T, Ac
     :return: Conditional TemporalVar or conditional Action.
     """
     solver = _get_current_solver()
-    if isinstance(a, Action) or isinstance(b, Action):
-        return action_where(solver, condition, a, b)
-    else:
-        return temporal_var_where(solver, condition, a, b)
+    return temporal_var_where(solver, condition, a, b)
 
 
 P = ParamSpec("P")
@@ -214,46 +205,46 @@ def get_time_variable() -> TemporalVar[float]:
 
 # Events
 
-def get_events() -> List[Event]:
+def terminate_on(trigger: TriggerType) -> Event:
     solver = _get_current_solver()
-    return solver.events
 
+    def action_terminate():
+        solver.status = 1
 
-def _terminate():
-    solver = _get_current_solver()
-    solver.status = 1
-
-
-action_terminate = Action(_terminate, "Terminate simulation")
-
-
-def set_timeout(action: Union[Action, Callable], delay: float) -> Event:
-    solver = _get_current_solver()
-    current_time = solver.t_current
-    time_variable = get_time_variable()
-    event = time_variable.on_crossing(current_time + delay, action)
-    event.action += event.action_disable
+    action = Action(action_terminate, "Terminate simulation")
+    event = Event(solver, trigger, action)
     return event
 
 
-def set_interval(action: Union[Action, Callable], delay: float) -> Event:
+def timeout_trigger(delay: float) -> CrossTriggerVar:
+    solver = _get_current_solver()
+    current_time = solver.t_current
+    time_variable = get_time_variable()
+    trigger = time_variable.crosses(current_time + delay)
+    return trigger
+
+
+def interval_trigger(delay: float) -> CrossTriggerVar:
     solver = _get_current_solver()
     current_time = solver.t_current
     time_variable = copy(get_time_variable())
-    time_variable.name = f"Time % {delay}"
+    # Convert to a sine wave of period delay
+    periodic_sine = where(time_variable < current_time, 0, np.sin(np.pi * (time_variable - current_time) / delay))
+    trigger = periodic_sine.crosses(0)
+    return trigger
 
-    def reset_timer(t_reset, y):
-        time_variable.action_set_to(lambda t: t - t_reset)(t_reset, y)
 
-    reset_timer_action = Action(reset_timer, "RESET TIMER")
-    event = time_variable.on_crossing((current_time + delay), action + reset_timer_action)
+def execute_on(trigger: TriggerType, f: Callable) -> Event:
+    solver = _get_current_solver()
+    action = Action(f, convert_to_string(f))
+    event = Event(solver, trigger, action)
     return event
 
 
 # Solving
 
 def solve(t_end: float, time_step: Union[float, None] = 0.1, method='RK45', t_eval: Union[List, NDArray] = None,
-          include_events_times: bool = True, plot: bool = True, rtol: float = 1e-3,
+          include_crossing_times: bool = True, plot: bool = True, rtol: float = 1e-3,
           atol: float = 1e-6, max_step=np.inf, verbose: bool = False) -> None:
     """
     Solve the equations of the dynamical system through a hybrid solver.
@@ -264,7 +255,7 @@ def solve(t_end: float, time_step: Union[float, None] = 0.1, method='RK45', t_ev
         solely by the solver.
     :param plot: If True, a plot will show the result of the simulation for variables that were registered to plot.
     :param verbose: If True, print solving information to the console.
-    :param include_events_times: If True, include time points at which events are triggered.
+    :param include_crossing_times: If True, include time points at which events are triggered.
     :param t_end: Time at which the integration stops.
     :param method: Integration method to use. Default is 'RK45'. For a list of available methods, see SciPy's
         `solve_ivp()` documentation.
@@ -274,7 +265,7 @@ def solve(t_end: float, time_step: Union[float, None] = 0.1, method='RK45', t_ev
     :param atol: Absolute tolerance. The solver keeps the local error estimates less than `atol + rtol * abs(y)`.
     """
     solver = _get_current_solver()
-    solver.solve(t_end, method, time_step, t_eval, include_events_times=include_events_times, verbose=verbose,
+    solver.solve(t_end, method, time_step, t_eval, include_crossing_times=include_crossing_times, verbose=verbose,
                  plot=plot, rtol=rtol, atol=atol, max_step=max_step)
 
 
@@ -344,19 +335,21 @@ def clear() -> None:
     solver.clear()
 
 
-def save(*args: TemporalVar) -> None:
-    """
-    Save the given TemporalVars with their variable names.
-
-    :param args: TemporalVars to be saved.
-    :raises ValueError: If any of the arguments is not a TemporalVar.
-    """
-    solver = _get_current_solver()
-    if not all([isinstance(arg, TemporalVar) for arg in args]):
-        raise ValueError("Only TemporalVars can be saved.")
-    for i, variable in enumerate(args):
-        variable_name = argname(f'args[{i}]')
-        solver.saved_vars[variable_name] = variable
+### I do not like the current implementation, so I disable it for the moment.
+#
+# def save(*args: TemporalVar) -> None:
+#     """
+#     Save the given TemporalVars with their variable names.
+#
+#     :param args: TemporalVars to be saved.
+#     :raises ValueError: If any of the arguments is not a TemporalVar.
+#     """
+#     solver = _get_current_solver()
+#     if not all([isinstance(arg, TemporalVar) for arg in args]):
+#         raise ValueError("Only TemporalVars can be saved.")
+#     for i, variable in enumerate(args):
+#         variable_name = argname(f'args[{i}]')
+#         solver.saved_vars[variable_name] = variable
 
 
 def get_var(var_name: str) -> TemporalVar:

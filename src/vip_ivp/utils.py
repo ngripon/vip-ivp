@@ -1,6 +1,7 @@
 import inspect
 import operator
 import types
+import warnings
 from typing import Any, Generator, Callable
 
 import numpy as np
@@ -84,29 +85,32 @@ def shift_array(arr: np.ndarray, n: int, fill_value: float = 0):
 
 
 def convert_to_string(content):
-    if inspect.isfunction(content):
-        name = getattr(content, "__name__")
-        if name != "<lambda>":
-            return name + str(inspect.signature(content))
-        fun_string = inspect.getsourcelines(content)[0][0].strip()
-        if "temporal(" in fun_string:
-            lambda_content = fun_string.split("temporal(")[1].strip()[0:-1]
-            return lambda_content
-        for word in ["set_timeout", "set_interval"]:
-            if word in fun_string:
-                start_index = fun_string.find(word, len(word))
-                lambda_content = ", ".join(fun_string[start_index:].split(",")[:-1])
+    try:
+        if inspect.isfunction(content):
+            name = getattr(content, "__name__")
+            if name != "<lambda>":
+                return name + str(inspect.signature(content))
+            fun_string = inspect.getsourcelines(content)[0][0].strip()
+            if "temporal(" in fun_string:
+                lambda_content = fun_string.split("temporal(")[1].strip()[0:-1]
                 return lambda_content
-        if "=" in fun_string:
-            fun_string = fun_string.split("=")[1].strip()
-        return fun_string
-    elif inspect.isclass(content):
-        return content.__repr__()
+            for word in ["execute_on"]:
+                if word in fun_string:
+                    start_index = fun_string.find(word, len(word))
+                    lambda_content = ", ".join(fun_string[start_index:].split(",")[1:])[:-1].strip()
+                    return lambda_content
+            if "=" in fun_string:
+                fun_string = fun_string.split("=")[1].strip()
+            return fun_string
+        elif inspect.isclass(content):
+            return content.__repr__()
+    except Exception as e:
+        warnings.warn(f"Developer error: Failed to create a string representation from {content} because of error {e}.")
     return str(content)
 
 
 def add_necessary_brackets(expression: str) -> str:
-    operators = ["+", "-", "=", "<", ">"]
+    operators = ["+", "-", "=", "<", ">", "and", "or", "not", "xor"]
     begin = expression.split("(")[0]
     end = expression.split(")")[-1]
     if any(op in begin for op in operators) or any(op in end for op in operators):

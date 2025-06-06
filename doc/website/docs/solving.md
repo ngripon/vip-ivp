@@ -23,10 +23,10 @@ The `vip.solve()` function supports different ways to define the time points of 
 - **Custom time points**:  
   Provide a list of time values using the `t_eval` argument.
 
-If your system includes events, you can disable automatic insertion of event time points by setting:
+If your system includes crossing detections, you can disable automatic insertion of crossing time points by setting:
 
 ```python
-include_events_times=False
+include_crossing_times=False
 ```
 
 ## Choosing a Solving Method
