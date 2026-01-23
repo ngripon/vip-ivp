@@ -33,6 +33,7 @@ def test_output_dimension_with_scalar_time(test_input, expected, timestamp=0, y=
 
     assert_equality(output, expected)
 
+
 @pytest.mark.parametrize(
     "test_input,expected",
     [
@@ -59,6 +60,41 @@ def test_output_dimension_with_vector_time(
     output = sut(time_vector, y)
 
     assert_equality(output, expected)
+
+
+def test_arithmetic_operation():
+    a = TemporalVar(1)
+    sut1 = a + 2
+    sut2 = a + TemporalVar(2)
+
+    output1 = sut1(0, [])
+    output2 = sut2(0, [])
+
+    assert output1 == 3
+    assert output2 == 3
+
+
+def test_logical_operation():
+    a = TemporalVar(1)
+    sut1 = a > 2
+    sut2 = a < TemporalVar(2)
+
+    output1 = sut1(0, [])
+    output2 = sut2(0, [])
+
+    assert output1 == False
+    assert output2 == True
+
+
+def test_getitem():
+    sut = TemporalVar({"a": 1, "b": lambda t: 1 + 2 * t})
+
+    output = sut(1, [])
+
+    assert output["a"] == 1
+    assert output["b"] == 3
+    assert sut["a"](1, []) == 1
+    assert sut["b"](1, []) == 3
 
 
 def assert_equality(a, b):
