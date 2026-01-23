@@ -128,7 +128,8 @@ class TemporalVar(Generic[T]):
                 raise ValueError(f"Unsupported type: {type(self._source)}.")
 
         # Get output type by calling the func
-        sample = self.func(0, 0)
+        # TODO: This logic is bad because func may reference y[i], which will cause an out of range error
+        sample = self.func(0, [0])
         self._output_type = type(sample)
         if isinstance(sample, dict):
             self._keys = list(sample.keys())
