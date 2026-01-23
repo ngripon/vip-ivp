@@ -2,16 +2,15 @@ import enum
 import functools
 import inspect
 import operator
-from collections import abc
 
-from pathlib import Path
-from typing import Callable, TypeVar, Generic, Literal
+from typing import Callable, TypeVar, Generic
 
+import pandas as pd
 from numpy.typing import NDArray
 from typing_extensions import ParamSpec
 
 from ..solver_utils import *
-from ..utils import add_necessary_brackets, convert_to_string, operator_call, shift_array, vectorize_source
+from ..utils import operator_call, shift_array, vectorize_source
 
 T = TypeVar("T")
 P = ParamSpec("P")
@@ -25,15 +24,12 @@ class CallMode(enum.Enum):
 class TemporalVar(Generic[T]):
     def __init__(
             self,
-            source:
-            Callable[[float | NDArray, NDArray], T] |
-            Callable[[float | NDArray], T] |
-            NDArray |
-            dict |
-            float |
-            tuple
-            = None,
-            expression: str = None,
+            source: Callable[[float | NDArray, NDArray], T] |
+                    Callable[[float | NDArray], T] |
+                    NDArray |
+                    dict |
+                    float |
+                    tuple = None,
             child_cls=None,
             operator=None,
             call_mode: CallMode = CallMode.CALL_ARGS_FUN,
@@ -73,11 +69,6 @@ class TemporalVar(Generic[T]):
                 self.source = None
             else:
                 raise ValueError(f"Unsupported type: {type(source)}.")
-
-        self._values = None
-        # Variable definition
-        self._expression = convert_to_string(source) if expression is None else expression
-        self.name = None
 
     def __call__(self, t: float | NDArray, y: NDArray) -> T:
         # Handle dict in a recursive way
@@ -183,48 +174,36 @@ class TemporalVar(Generic[T]):
             return previous_value
 
         return TemporalVar((create_delay, self),
-                           expression=f"#DELAY({delay}) {get_expression(self)}",
                            operator=operator_call,
                            call_mode=CallMode.CALL_FUN_RESULT,
                            is_discrete=True)
 
     def m(self, method: Callable[P, T]) -> Callable[P, "TemporalVar[T]"]:
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> TemporalVar:
-            inputs_expr = [get_expression(inp) if isinstance(inp, TemporalVar) else str(inp) for inp in args]
-            kwargs_expr = [
-                f"{key}={get_expression(value) if isinstance(value, TemporalVar) else str(value)}"
-                for key, value in kwargs.items()
-            ]
-            expression = f"{method.__name__}({', '.join(inputs_expr)}"
-            if kwargs_expr:
-                expression += ", ".join(kwargs_expr)
-            expression += ")"
-            return TemporalVar((method, self, *args, kwargs),
-                               expression=expression, operator=operator_call)
+            return TemporalVar((method, self, *args, kwargs), operator=operator_call)
 
         functools.update_wrapper(wrapper, method)
         return wrapper
 
-    def crosses(self, value: "TemporalVar[T]|T",
-                direction: Literal["rising", "falling", "both"] = "both") -> "CrossTriggerVar":
-        """
-        Create a signal that triggers when the specified crossing occurs.
-
-        :param value: Value to be crossed to cause the triggering.
-        :param direction: Direction of the crossing.
-        :return: TriggerVar
-        """
-        if self.output_type in (bool, np.bool, str):
-            crossed_variable = self == value
-        elif issubclass(self.output_type, abc.Iterable):
-            raise ValueError(
-                "Can not apply crossing detection to a variable containing a collection of values because it is ambiguous."
-            )
-        else:
-            crossed_variable = self - value
-        expression = f"#CROSSING_BETWEEN {self.name} AND {value.name if isinstance(value, TemporalVar) else value}"
-        trigger_var = CrossTriggerVar(crossed_variable, direction, expression)
-        return trigger_var
+    # def crosses(self, value: "TemporalVar[T]|T",
+    #             direction: Literal["rising", "falling", "both"] = "both") -> "CrossTriggerVar":
+    #     """
+    #     Create a signal that triggers when the specified crossing occurs.
+    #
+    #     :param value: Value to be crossed to cause the triggering.
+    #     :param direction: Direction of the crossing.
+    #     :return: TriggerVar
+    #     """
+    #     if self.output_type in (bool, np.bool, str):
+    #         crossed_variable = self == value
+    #     elif issubclass(self.output_type, abc.Iterable):
+    #         raise ValueError(
+    #             "Can not apply crossing detection to a variable containing a collection of values because it is ambiguous."
+    #         )
+    #     else:
+    #         crossed_variable = self - value
+    #     trigger_var = CrossTriggerVar(crossed_variable, direction)
+    #     return trigger_var
 
     @staticmethod
     def _from_arg(value: "TemporalVar[T]|T") -> "TemporalVar[T]":
@@ -250,38 +229,21 @@ class TemporalVar(Generic[T]):
         return result
 
     def __invert__(self) -> "TemporalVar[bool]":
-        expression = f"not {add_necessary_brackets(get_expression(self))}"
         return TemporalVar(
             (self._logical_not, self),
-            expression,
             operator=operator_call
         )
 
     def __getitem__(self, item):
-        expression = f"{add_necessary_brackets(get_expression(self))}[{item}]"
         return TemporalVar(
             (self, item),
-            expression=expression,
             operator=operator.getitem
         )
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs) -> "TemporalVar":
-        inputs_expr = [
-            get_expression(inp) if isinstance(inp, TemporalVar) else str(inp)
-            for inp in inputs
-        ]
-        kwargs_expr = [
-            f"{key}={get_expression(value) if isinstance(value, TemporalVar) else str(value)}"
-            for key, value in kwargs.items()
-        ]
-        expression = f"{ufunc.__name__}({', '.join(inputs_expr)}"
-        if kwargs:
-            expression += f", {', '.join(kwargs_expr)}"
-        expression += ")"
         if method == "__call__":
             return TemporalVar(
                 (ufunc, *inputs, kwargs),
-                expression=expression,
                 operator=operator_call
             )
 
@@ -289,13 +251,6 @@ class TemporalVar(Generic[T]):
 
     def __bool__(self):
         raise ValueError("The truth value of a Temporal Variable is ambiguous. Use vip.where() instead.")
-
-    @property
-    def expression(self):
-        return self._expression
-
-    def __repr__(self) -> str:
-        return f"{self._expression}"
 
     # NumPy arrays utility methods
     # @property
@@ -319,23 +274,3 @@ class TemporalVar(Generic[T]):
     #         value_list = [self[key] for key in key_list]
     #         return zip(key_list, value_list)
     #     raise AttributeError("items() method does not exist because this variable does not contain a dict.")
-
-
-def get_expression(value) -> str:
-    if isinstance(value, TemporalVar):
-        frame = inspect.currentframe().f_back.f_back
-        while (
-                "self" in frame.f_locals
-                and (
-                        isinstance(frame.f_locals["self"], TemporalVar)
-                )
-                or Path(frame.f_code.co_filename).as_posix().endswith("vip_ivp/api.py")
-        ):
-            frame = frame.f_back
-        found_key = next(
-            (key for key, dict_value in frame.f_locals.items() if dict_value is value),
-            None,
-        )
-        return value.expression
-    else:
-        return str(value)
