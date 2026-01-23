@@ -55,14 +55,17 @@ class TemporalVar(Generic[T]):
         """
         # Object data
         self.func: Callable[[float | NDArray, NDArray], T]
+        # Private
         self._source = source
         self._operator = operator
-        self._output_type = None
-        self._is_source = False  # If the temporal variable has no other temporal variable as a source
-        self._call_mode = call_mode
-        self.is_discrete = is_discrete
 
-        # Assign values
+        self._call_mode = call_mode
+        self._is_discrete = is_discrete
+        self._output_type = None
+        self._keys: list[str] | None = None
+        self._shape: tuple[int, ...] | None = None
+
+        # Create the function and make sources recursive when needed
         child_cls = child_cls or type(self)
         if self._operator is not None:
             # Create function for tuple and operator case
@@ -80,8 +83,6 @@ class TemporalVar(Generic[T]):
             self.func = operator_func
 
         else:
-            self._is_source = True
-
             if callable(self._source):
                 # Source is a function
                 n_args = len(inspect.signature(self._source).parameters)
@@ -110,11 +111,6 @@ class TemporalVar(Generic[T]):
             elif isinstance(self._source, (list, np.ndarray)):
                 # Source is a numpy array
                 self._output_type = np.ndarray
-
-                # Create recursively a temporal variable for each child element
-                # self.source = np.vectorize(lambda f: child_cls(f))(
-                #     np.array(source)
-                # )
                 self._source = np.array([child_cls(x) for x in self._source])
 
                 def array_func(t, y):
@@ -132,6 +128,14 @@ class TemporalVar(Generic[T]):
                 self.func = dict_func
             else:
                 raise ValueError(f"Unsupported type: {type(self._source)}.")
+
+        # Get output type by calling the func
+        sample = self.func(0, 0)
+        self._output_type = type(sample)
+        if isinstance(sample, dict):
+            self._keys = list(sample.keys())
+        if isinstance(sample, np.ndarray):
+            self._shape = sample.shape
 
     def __call__(self, t: float | NDArray, y: NDArray) -> T:
         return self.func(t, y)
