@@ -100,7 +100,10 @@ class TemporalVar(Generic[T]):
                 self._output_type = type(self._source)
 
                 def scalar_func(t, y):
-                    return self._source
+                    if np.isscalar(t):
+                        return self._source
+                    else:
+                        return np.full(len(t), self._source)
 
                 self.func = scalar_func
 
@@ -131,32 +134,7 @@ class TemporalVar(Generic[T]):
                 raise ValueError(f"Unsupported type: {type(self._source)}.")
 
     def __call__(self, t: float | NDArray, y: NDArray) -> T:
-        # Handle dict in a recursive way
-        if isinstance(self.source, dict):
-            return {key: val(t, y) for key, val in self.source.items()}
-        else:
-            if isinstance(self.source, np.ndarray):
-                if np.isscalar(t):
-                    output = np.stack(np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source))
-                else:
-                    output = np.stack(
-                        np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source.ravel())
-                    ).reshape((*self.source.shape, *np.array(t).shape))
-            elif self._operator is not None:
-                if self._operator is operator_call and not np.isscalar(t):
-                    output = np.array([self._resolve_operator(t[i], y[i]) for i in range(len(t))])
-                    if output.ndim > 1:
-                        output = np.moveaxis(output, 0, -1)
-                else:
-                    output = self._resolve_operator(t, y)
-            else:
-                if callable(self.source):
-                    output = self.source(t, y)
-                elif np.isscalar(t):
-                    output = self.source
-                else:
-                    output = np.full(len(t), self.source)
-        return output
+        return self.func(t, y)
 
     def _resolve_operator(self, t, y):
         if self._call_mode == CallMode.CALL_ARGS_FUN:
