@@ -15,6 +15,8 @@ from ..utils import operator_call, shift_array, vectorize_source
 T = TypeVar("T")
 P = ParamSpec("P")
 
+Source = Callable[[float | NDArray, NDArray], T] | Callable[[float | NDArray], T] | NDArray | dict | float
+
 
 class CallMode(enum.Enum):
     CALL_ARGS_FUN = 0
@@ -24,17 +26,30 @@ class CallMode(enum.Enum):
 class TemporalVar(Generic[T]):
     def __init__(
             self,
-            source: Callable[[float | NDArray, NDArray], T] |
-                    Callable[[float | NDArray], T] |
-                    NDArray |
-                    dict |
-                    float |
-                    tuple = None,
+            source: Source | tuple[Source, ...] = None,
             child_cls=None,
             operator=None,
             call_mode: CallMode = CallMode.CALL_ARGS_FUN,
             is_discrete=False
     ):
+        """
+        Create a temporal variable.
+
+        It represents an f(t, y) function: t is a timestamp, and y the system solution at this timestamp.
+
+        Available sources are:
+            - float
+            - NumPy Array
+            - dict
+            - f(t) function
+            - f(t, y) function
+        If the source input is a tuple, the resulting function will apply the operator input to it.
+        :param source: Input from which the internal function is built
+        :param child_cls:
+        :param operator: If the source input is a tuple, create a function that applies the operator to these source items.
+        :param call_mode:
+        :param is_discrete:
+        """
         self._output_type = None
         self._is_source = False
         self._call_mode = call_mode
