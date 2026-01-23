@@ -2,7 +2,7 @@ import functools
 import inspect
 import operator
 
-from typing import Callable, TypeVar, Generic
+from typing import Callable, TypeVar, Generic, Any
 
 import numpy as np
 import pandas as pd
@@ -128,13 +128,7 @@ class TemporalVar(Generic[T]):
                 raise ValueError(f"Unsupported type: {type(self._source)}.")
 
         # Get output type by calling the func
-        # TODO: This logic is bad because func may reference y[i], which will cause an out of range error
-        sample = self.func(0, [0])
-        self._output_type = type(sample)
-        if isinstance(sample, dict):
-            self._keys = list(sample.keys())
-        if isinstance(sample, np.ndarray):
-            self._shape = sample.shape
+        self._output_type, self._keys, self._shape = get_output_info(self.func)
 
     def __call__(self, t: float | NDArray, y: NDArray) -> T:
         return self.func(t, y)
@@ -203,7 +197,12 @@ def operator_call(obj, /, *args, **kwargs):
     return obj(*args, **kwargs)
 
 
-def vectorize_source(fun: Callable) -> Callable:
+def vectorize_source(fun: Callable[[float], Any]) -> Callable[[float], Any]:
+    """
+    Vectorize a temporal function.
+    :param fun: Temporal function input by the user
+    :return: Vectorized temporal function
+    """
     accept_arrays, has_scalar_mode, is_constant = check_if_vectorized(fun)
 
     def vectorized_wrapper(t):
@@ -269,3 +268,34 @@ def check_if_vectorized(fun) -> tuple[bool, bool, bool]:
         accept_arrays = False
 
     return accept_arrays, has_scalar_mode, is_constant
+
+
+def get_output_info(
+        fun: Callable[[float | NDArray, NDArray], NDArray]
+) -> tuple[type, list[str] | None, list[int] | None]:
+    """
+    Get the output information of a system function.
+    :param fun: System function
+    :return: Type, keys and shape
+    """
+    # Get a scalar output but watch out for IndexError
+    y = np.zeros(1)
+    found_output = False
+    while not found_output:
+        try:
+            output = fun(0, y)
+            found_output = True
+        except IndexError:
+            y = np.zeros(len(y) * 2)
+            pass
+    # Analyse the output
+    output_type = type(output)
+    if isinstance(output, dict):
+        keys = list(output.keys())
+    else:
+        keys = None
+    if isinstance(output, np.ndarray):
+        shape = output.shape
+    else:
+        shape = None
+    return output_type, keys, shape

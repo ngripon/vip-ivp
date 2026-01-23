@@ -26,10 +26,10 @@ from src.vip_ivp.domain.variables import TemporalVar
         (lambda t, y: 5 * t + 1 + y[0] + y[1], 4),
     ]
 )
-def test_output_dimension_with_scalar_time(test_input, expected):
+def test_output_dimension_with_scalar_time(test_input, expected, timestamp=0, y=np.array([1, 2])):
     sut = TemporalVar(test_input)
 
-    output = sut(0, np.array([1, 2]))
+    output = sut(timestamp, y)
 
     if isinstance(output, np.ndarray):
         np.testing.assert_array_equal(output, expected)
