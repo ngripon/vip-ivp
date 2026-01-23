@@ -31,17 +31,42 @@ def test_output_dimension_with_scalar_time(test_input, expected, timestamp=0, y=
 
     output = sut(timestamp, y)
 
-    if isinstance(output, np.ndarray):
-        np.testing.assert_array_equal(output, expected)
-    else:
-        assert output == expected
+    assert_equality(output, expected)
 
+@pytest.mark.parametrize(
+    "test_input,expected",
+    [
+        # Scalars
+        (5.2, np.array([5.2, 5.2, 5.2])),
+        (None, np.array([None, None, None])),
+        # Collections
+        (np.array([10, 20]), np.array([[10, 10, 10], [20, 20, 20]])),
+        (
+                np.arange(6).reshape(2, 3),
+                np.array([[10, 10, 10], [20, 20, 20]])),  # TODO: Find what is the right result
+        ({"a": 1, "b": 2}, {"a": np.array([1, 1, 1]), "b": np.array([2, 2, 2])}),
 
+        # Function
+        (lambda t: t + 1, np.array([1, 2, 3])),
+        (lambda t, y: t + y[0] + y[1], np.array([5, 8, 11])),
+    ]
+)
 def test_output_dimension_with_vector_time(
-        test_input, expected, time_vector=np.array([0, 1, 2]), y=np.array([[1, 2], [3, 4], [5, 6]])
+        test_input, expected, time_vector=np.array([0, 1, 2]), y=np.array([[1, 2, 3], [4, 5, 6]])
 ):
     sut = TemporalVar(test_input)
 
     output = sut(time_vector, y)
 
-    assert np.array_equal(output, expected)
+    assert_equality(output, expected)
+
+
+def assert_equality(a, b):
+    if isinstance(a, dict):
+        if not isinstance(b, dict) or list(a.keys()) != list(b.keys()):
+            assert False
+        [assert_equality(xa, xb) for xa, xb in zip(a.values(), b.values())]
+    elif isinstance(a, np.ndarray):
+        np.testing.assert_array_equal(a, b)
+    else:
+        assert a == b
