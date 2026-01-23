@@ -32,9 +32,10 @@ class TemporalVar(Generic[T]):
         - t is the time vector. Dims: len(t)
         - y is the system solution. Dims: (len(integrated_vars) x len(t))
     """
+
     def __init__(
             self,
-            source: Source | tuple[Source, ...] = None,
+            source: Source | tuple = None,
             operator_on_source_tuple=None,
             is_discrete=False,
     ):
@@ -175,12 +176,7 @@ class TemporalVar(Generic[T]):
         functools.update_wrapper(wrapper, method)
         return wrapper
 
-    @staticmethod
-    def _apply_logical(logical_fun: Callable, a, b):
-        result = logical_fun(a, b)
-        if result.size == 1:
-            result = result.item()
-        return result
+    # Magic methods
 
     def __getitem__(self, item):
         return TemporalVar(
@@ -200,6 +196,120 @@ class TemporalVar(Generic[T]):
 
     def __bool__(self):
         raise ValueError("The truth value of a Temporal Variable is ambiguous. Use vip.where() instead.")
+
+    # Addition
+    def __add__(self, other):
+        return TemporalVar((self, other), operator_on_source_tuple=operator.add)
+
+    def __radd__(self, other):
+        return TemporalVar((other, self), operator_on_source_tuple=operator.add)
+
+    # Subtraction
+    def __sub__(self, other):
+        return TemporalVar((self, other), operator_on_source_tuple=operator.sub)
+
+    def __rsub__(self, other):
+        return TemporalVar((other, self), operator_on_source_tuple=operator.sub)
+
+    # Multiplication
+    def __mul__(self, other):
+        return TemporalVar((self, other), operator_on_source_tuple=operator.mul)
+
+    def __rmul__(self, other):
+        return TemporalVar((other, self), operator_on_source_tuple=operator.mul)
+
+    # True division
+    def __truediv__(self, other):
+        return TemporalVar((self, other), operator_on_source_tuple=operator.truediv)
+
+    def __rtruediv__(self, other):
+        return TemporalVar((other, self), operator_on_source_tuple=operator.truediv)
+
+    # Floor division
+    def __floordiv__(self, other):
+        return TemporalVar((self, other), operator_on_source_tuple=operator.floordiv)
+
+    def __rfloordiv__(self, other):
+        return TemporalVar((other, self), operator_on_source_tuple=operator.floordiv)
+
+    # Modulo
+    def __mod__(self, other):
+        return TemporalVar((self, other), operator_on_source_tuple=operator.mod)
+
+    def __rmod__(self, other):
+        return TemporalVar((other, self), operator_on_source_tuple=operator.mod)
+
+    # Power
+    def __pow__(self, other):
+        return TemporalVar((self, other), operator_on_source_tuple=operator.pow)
+
+    def __rpow__(self, other):
+        return TemporalVar((other, self), operator_on_source_tuple=operator.pow)
+
+    # Unary plus
+    def __pos__(self):
+        return TemporalVar((self,), operator_on_source_tuple=operator.pos)
+
+    # Unary minus
+    def __neg__(self):
+        return TemporalVar((self,), operator_on_source_tuple=operator.neg)
+
+    # Absolute value
+    def __abs__(self):
+        return TemporalVar((self,), operator_on_source_tuple=operator.abs)
+
+    def __eq__(self, other):
+        return TemporalVar((self, other), operator_on_source_tuple=operator.eq)
+
+    def __ne__(self, other):
+        return TemporalVar((self, other), operator_on_source_tuple=operator.ne)
+
+    def __lt__(self, other):
+        return TemporalVar((self, other), operator_on_source_tuple=operator.lt)
+
+    def __le__(self, other):
+        return TemporalVar((self, other), operator_on_source_tuple=operator.le)
+
+    def __gt__(self, other):
+        return TemporalVar((self, other), operator_on_source_tuple=operator.gt)
+
+    def __ge__(self, other):
+        return TemporalVar((self, other), operator_on_source_tuple=operator.ge)
+
+    @staticmethod
+    def _apply_logical(logical_fun: Callable, a, b):
+        result = logical_fun(a, b)
+        if result.size == 1:
+            result = result.item()
+        return result
+
+    def __and__(self, other) -> "TemporalVar[bool]":
+        return TemporalVar((self._apply_logical, np.logical_and, self, other), operator_call)
+
+    def __rand__(self, other) -> "TemporalVar[bool]":
+        return TemporalVar((self._apply_logical, np.logical_and, other, self), operator_call)
+
+    def __or__(self, other) -> "TemporalVar[bool]":
+        return TemporalVar((self._apply_logical, np.logical_or, self, other), operator_call)
+
+    def __ror__(self, other) -> "TemporalVar[bool]":
+        return TemporalVar((self._apply_logical, np.logical_or, other, self), operator_call)
+
+    def __xor__(self, other) -> "TemporalVar[bool]":
+        return TemporalVar((self._apply_logical, np.logical_xor, self, other), operator_call)
+
+    def __rxor__(self, other) -> "TemporalVar[bool]":
+        return TemporalVar((self._apply_logical, np.logical_xor, other, self), operator_call)
+
+    @staticmethod
+    def _logical_not(a):
+        result = np.logical_not(a)
+        if result.size == 1:
+            result = result.item()
+        return result
+
+    def __invert__(self) -> "TemporalVar[bool]":
+        return TemporalVar((self._logical_not, self), operator_call)
 
 
 # Utils
