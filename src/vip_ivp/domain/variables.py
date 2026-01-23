@@ -2,16 +2,11 @@ import enum
 import functools
 import inspect
 import operator
-import time
-import warnings
 from collections import abc
-from copy import copy, deepcopy
-from typing import overload, Literal, Iterable, Dict, Tuple, List, Any
-from pathlib import Path
-from typing import Callable, Union, TypeVar, Generic
 
-import numpy as np
-import pandas as pd
+from pathlib import Path
+from typing import Callable, TypeVar, Generic, Literal
+
 from numpy.typing import NDArray
 from typing_extensions import ParamSpec
 
@@ -21,21 +16,23 @@ from ..utils import add_necessary_brackets, convert_to_string, operator_call, sh
 T = TypeVar("T")
 P = ParamSpec("P")
 
+
 class CallMode(enum.Enum):
     CALL_ARGS_FUN = 0
     CALL_FUN_RESULT = 1
 
+
 class TemporalVar(Generic[T]):
     def __init__(
             self,
-            source: Union[
-                Callable[[Union[float, NDArray], NDArray], T],
-                Callable[[Union[float, NDArray]], T],
-                NDArray,
-                Dict,
-                float,
-                Tuple
-            ] = None,
+            source:
+            Callable[[float | NDArray, NDArray], T] |
+            Callable[[float | NDArray], T] |
+            NDArray |
+            dict |
+            float |
+            tuple
+            = None,
             expression: str = None,
             child_cls=None,
             operator=None,
@@ -64,7 +61,7 @@ class TemporalVar(Generic[T]):
                 self._output_type = type(source)
             elif isinstance(source, (list, np.ndarray)):
                 self._output_type = np.ndarray
-                self.source = np.vectorize(lambda f: child_cls( f))(
+                self.source = np.vectorize(lambda f: child_cls(f))(
                     np.array(source)
                 )
             elif isinstance(source, TemporalVar):
@@ -82,7 +79,7 @@ class TemporalVar(Generic[T]):
         self._expression = convert_to_string(source) if expression is None else expression
         self.name = None
 
-    def __call__(self, t: Union[float, NDArray], y: NDArray) -> T:
+    def __call__(self, t: float | NDArray, y: NDArray) -> T:
         # Handle dict in a recursive way
         if isinstance(self.source, dict):
             return {key: val(t, y) for key, val in self.source.items()}
@@ -185,12 +182,11 @@ class TemporalVar(Generic[T]):
 
             return previous_value
 
-        return TemporalVar( (create_delay, self),
+        return TemporalVar((create_delay, self),
                            expression=f"#DELAY({delay}) {get_expression(self)}",
                            operator=operator_call,
                            call_mode=CallMode.CALL_FUN_RESULT,
                            is_discrete=True)
-
 
     def m(self, method: Callable[P, T]) -> Callable[P, "TemporalVar[T]"]:
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> TemporalVar:
@@ -203,13 +199,13 @@ class TemporalVar(Generic[T]):
             if kwargs_expr:
                 expression += ", ".join(kwargs_expr)
             expression += ")"
-            return TemporalVar( (method, self, *args, kwargs),
+            return TemporalVar((method, self, *args, kwargs),
                                expression=expression, operator=operator_call)
 
         functools.update_wrapper(wrapper, method)
         return wrapper
 
-    def crosses(self, value: Union["TemporalVar[T]", T],
+    def crosses(self, value: "TemporalVar[T]|T",
                 direction: Literal["rising", "falling", "both"] = "both") -> "CrossTriggerVar":
         """
         Create a signal that triggers when the specified crossing occurs.
@@ -230,16 +226,14 @@ class TemporalVar(Generic[T]):
         trigger_var = CrossTriggerVar(crossed_variable, direction, expression)
         return trigger_var
 
-
     @staticmethod
-    def _from_arg(value: Union["TemporalVar[T]", T]) -> "TemporalVar[T]":
+    def _from_arg(value: "TemporalVar[T]|T") -> "TemporalVar[T]":
         """
         Return a TemporalVar from an argument value. If the argument is already a TemporalVar, return it. If not, create a TemporalVar from the value.
         """
         if isinstance(value, TemporalVar):
             return value
         return TemporalVar(value)
-
 
     @staticmethod
     def _apply_logical(logical_fun: Callable, a, b):
