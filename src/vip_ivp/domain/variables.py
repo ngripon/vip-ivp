@@ -1,3 +1,14 @@
+"""
+This module contain the TemporalVar value object.
+
+In a IVP system, variables can be defined by a function f(t, y):
+    - t is the time vector. Dims: len(t)
+    - y is the system solution. Dims: (len(integrated_vars) x len(t))
+
+TemporalVar is a container for this function. This enables laziness: the only stored data is the system solution. The
+results of each variable are computed only when needed.
+"""
+
 import functools
 import inspect
 import operator
@@ -16,13 +27,16 @@ Source = Callable[[float | NDArray, NDArray], T] | Callable[[float | NDArray], T
 
 
 class TemporalVar(Generic[T]):
+    """
+    Function f(t, y):
+        - t is the time vector. Dims: len(t)
+        - y is the system solution. Dims: (len(integrated_vars) x len(t))
+    """
     def __init__(
             self,
             source: Source | tuple[Source, ...] = None,
-            operator=None,
+            operator_on_source_tuple=None,
             is_discrete=False,
-            child_cls=None,
-
     ):
         """
         Create a temporal variable.
@@ -37,15 +51,14 @@ class TemporalVar(Generic[T]):
             - f(t, y) function
         If the source input is a tuple, the resulting function will apply the operator input to it.
         :param source: Input from which the internal function is built
-        :param child_cls:
-        :param operator: If the source input is a tuple, create a function that applies the operator to these source items.
+        :param operator_on_source_tuple: If the source input is a tuple, create a function that applies the operator to these source items.
         :param is_discrete:
         """
         # Object data
         self.func: Callable[[float | NDArray, NDArray], T]
         # Private
         self._source = source
-        self._operator = operator
+        self._operator = operator_on_source_tuple
 
         self._is_discrete = is_discrete
         self._output_type = None
@@ -53,7 +66,6 @@ class TemporalVar(Generic[T]):
         self._shape: tuple[int, ...] | None = None
 
         # Create the function and make sources recursive when needed
-        child_cls = child_cls or type(self)
         if self._operator is not None:
             # Create function for tuple and operator case
             assert type(self._source) is tuple
@@ -109,7 +121,7 @@ class TemporalVar(Generic[T]):
             elif isinstance(self._source, (list, np.ndarray)):
                 # Source is a numpy array
                 self._output_type = np.ndarray
-                self._source = np.array([child_cls(x) for x in self._source])
+                self._source = np.array([TemporalVar(x) for x in self._source])
 
                 def array_func(t, y):
                     return np.array([x.func(t, y) for x in self._source])
@@ -118,7 +130,7 @@ class TemporalVar(Generic[T]):
 
             elif isinstance(self._source, dict):
                 self._output_type = dict
-                self._source = {key: child_cls(val) for key, val in self._source.items()}
+                self._source = {key: TemporalVar(val) for key, val in self._source.items()}
 
                 def dict_func(t, y):
                     return {key: x(t, y) for key, x in self._source.items()}
@@ -158,7 +170,7 @@ class TemporalVar(Generic[T]):
 
     def m(self, method: Callable[P, T]) -> Callable[P, "TemporalVar[T]"]:
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> TemporalVar:
-            return TemporalVar((method, self, *args, kwargs), operator=operator_call)
+            return TemporalVar((method, self, *args, kwargs), operator_on_source_tuple=operator_call)
 
         functools.update_wrapper(wrapper, method)
         return wrapper
@@ -173,7 +185,7 @@ class TemporalVar(Generic[T]):
     def __getitem__(self, item):
         return TemporalVar(
             (self, item),
-            operator=operator.getitem
+            operator_on_source_tuple=operator.getitem
         )
 
     @staticmethod
@@ -181,7 +193,7 @@ class TemporalVar(Generic[T]):
         if method == "__call__":
             return TemporalVar(
                 (ufunc, *inputs, kwargs),
-                operator=operator_call
+                operator_on_source_tuple=operator_call
             )
 
         return NotImplemented

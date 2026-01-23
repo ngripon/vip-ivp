@@ -37,10 +37,11 @@ def test_output_dimension_with_scalar_time(test_input, expected, timestamp=0, y=
         assert output == expected
 
 
-def test_output_dimension_with_vector_time():
-    time_vector = np.array([0, 1, 2, 3])
-    sut = TemporalVar(5)
+def test_output_dimension_with_vector_time(
+        test_input, expected, time_vector=np.array([0, 1, 2]), y=np.array([[1, 2], [3, 4], [5, 6]])
+):
+    sut = TemporalVar(test_input)
 
-    output = sut(np.array([0, 1, 2, 3]), np.array([]))
+    output = sut(time_vector, y)
 
-    assert np.array_equal(output, np.array([5, 5, 5, 5]))
+    assert np.array_equal(output, expected)
