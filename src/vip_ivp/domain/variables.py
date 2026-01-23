@@ -5,10 +5,12 @@ import operator
 
 from typing import Callable, TypeVar, Generic
 
+import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 from typing_extensions import ParamSpec
 
+from .. import TemporalVar
 from ..solver_utils import *
 from ..utils import operator_call, shift_array, vectorize_source
 
@@ -27,10 +29,11 @@ class TemporalVar(Generic[T]):
     def __init__(
             self,
             source: Source | tuple[Source, ...] = None,
-            child_cls=None,
             operator=None,
             call_mode: CallMode = CallMode.CALL_ARGS_FUN,
-            is_discrete=False
+            is_discrete=False,
+            child_cls=None,
+
     ):
         """
         Create a temporal variable.
@@ -50,40 +53,82 @@ class TemporalVar(Generic[T]):
         :param call_mode:
         :param is_discrete:
         """
+        # Object data
+        self.func: Callable[[float | NDArray, NDArray], T]
+        self._source = source
+        self._operator = operator
         self._output_type = None
-        self._is_source = False
+        self._is_source = False  # If the temporal variable has no other temporal variable as a source
         self._call_mode = call_mode
         self.is_discrete = is_discrete
-        # Recursive building
-        self.operator = operator
+
+        # Assign values
         child_cls = child_cls or type(self)
-        if self.operator is not None:
-            self.source = source
+        if self._operator is not None:
+            # Create function for tuple and operator case
+            assert type(self._source) is tuple
+
+            def operator_func(t, y):
+                if self._operator is operator_call and not np.isscalar(t):
+                    output = np.array([self._resolve_operator(t[i], y[i]) for i in range(len(t))])
+                    if output.ndim > 1:
+                        output = np.moveaxis(output, 0, -1)
+                else:
+                    output = self._resolve_operator(t, y)
+                return output
+
+            self.func = operator_func
+
         else:
             self._is_source = True
-            if callable(source) and not isinstance(source, child_cls):
-                n_args = len(inspect.signature(source).parameters)
+
+            if callable(self._source):
+                # Source is a function
+                n_args = len(inspect.signature(self._source).parameters)
+
                 if n_args == 1:
-                    self.source = lambda t, y: vectorize_source(source)(t)
+                    # Function is a temporal function
+                    def temporal_func(t, y):
+                        return vectorize_source(self._source)(t)
+
+                    self.func = temporal_func
                 else:
-                    self.source = lambda t, y: source(t, y)
-            elif np.isscalar(source):
-                self.source = source
-                self._output_type = type(source)
-            elif isinstance(source, (list, np.ndarray)):
+                    # Function is already a f(t, y) function
+                    self.func = self._source
+            elif np.isscalar(self._source) or self._source is None:
+                # Source is a scalar number
+                self._output_type = type(self._source)
+
+                def scalar_func(t, y):
+                    return self._source
+
+                self.func = scalar_func
+
+            elif isinstance(self._source, (list, np.ndarray)):
+                # Source is a numpy array
                 self._output_type = np.ndarray
-                self.source = np.vectorize(lambda f: child_cls(f))(
-                    np.array(source)
-                )
-            elif isinstance(source, TemporalVar):
-                vars(self).update(vars(source))
-            elif isinstance(source, dict):
+
+                # Create recursively a temporal variable for each child element
+                # self.source = np.vectorize(lambda f: child_cls(f))(
+                #     np.array(source)
+                # )
+                self._source = np.array([child_cls(x) for x in self._source])
+
+                def array_func(t, y):
+                    return np.array([x.func(t, y) for x in self._source])
+
+                self.func = array_func
+
+            elif isinstance(self._source, dict):
                 self._output_type = dict
-                self.source = {key: child_cls(val) for key, val in source.items()}
-            elif source is None:
-                self.source = None
+                self._source = {key: child_cls(val) for key, val in self._source.items()}
+
+                def dict_func(t, y):
+                    return {key: x(t, y) for key, x in self._source.items()}
+
+                self.func = dict_func
             else:
-                raise ValueError(f"Unsupported type: {type(source)}.")
+                raise ValueError(f"Unsupported type: {type(self._source)}.")
 
     def __call__(self, t: float | NDArray, y: NDArray) -> T:
         # Handle dict in a recursive way
@@ -97,8 +142,8 @@ class TemporalVar(Generic[T]):
                     output = np.stack(
                         np.frompyfunc(lambda f: f(t, y), 1, 1)(self.source.ravel())
                     ).reshape((*self.source.shape, *np.array(t).shape))
-            elif self.operator is not None:
-                if self.operator is operator_call and not np.isscalar(t):
+            elif self._operator is not None:
+                if self._operator is operator_call and not np.isscalar(t):
                     output = np.array([self._resolve_operator(t[i], y[i]) for i in range(len(t))])
                     if output.ndim > 1:
                         output = np.moveaxis(output, 0, -1)
@@ -119,11 +164,11 @@ class TemporalVar(Generic[T]):
                     not isinstance(x, dict)]
             kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
             kwargs = {k: (x(t, y) if isinstance(x, TemporalVar) else x) for k, x in kwargs.items()}
-            return self.operator(*args, **kwargs)
+            return self._operator(*args, **kwargs)
         elif self._call_mode == CallMode.CALL_FUN_RESULT:
             args = [x for x in self.source if not isinstance(x, dict)]
             kwargs = {k: v for d in [x for x in self.source if isinstance(x, dict)] for k, v in d.items()}
-            return self.operator(*args, **kwargs)(t, y)
+            return self._operator(*args, **kwargs)(t, y)
         else:
             raise ValueError(f"Unknown call mode: {self._call_mode}.")
 
