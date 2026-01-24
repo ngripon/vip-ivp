@@ -26,6 +26,10 @@ class IVPSystem:
                 "An algebraic loop has been detected."
             )
 
-    def _solve(self, t_end: float, method: str = "RK45") -> OdeSolution:
+    def solve(self, t_end: float, method: str = "RK45") -> OdeSolution:
         result = solve_ivp(self._dy, [0, t_end], self._initial_conditions, method=method, dense_output=True)
         return result.sol
+
+
+def get_integrated_variable(system_index: int) -> TemporalVar[float]:
+    return TemporalVar(lambda t, y: y[system_index])
