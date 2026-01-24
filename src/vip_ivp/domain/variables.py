@@ -312,6 +312,21 @@ class TemporalVar(Generic[T]):
         return TemporalVar((self._logical_not, self), operator_call)
 
 
+def temporal_var_where(
+        condition: TemporalVar[bool], a: T | TemporalVar[T], b: T | TemporalVar[T]
+) -> TemporalVar[T]:
+    def where(condition, a, b):
+        result = np.where(condition, a, b)
+        if result.size == 1:
+            result = result.item()
+        return result
+
+    return TemporalVar(
+        (where, condition, a, b),
+        operator_call
+    )
+
+
 # Utils
 def operator_call(obj, /, *args, **kwargs):
     """operator.call function source code copy in order to be used with Python version <3.11"""
