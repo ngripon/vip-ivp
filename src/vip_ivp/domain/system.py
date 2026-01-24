@@ -6,11 +6,26 @@ solution y(t) is computed.
 
 
 """
+import numpy as np
+from scipy.integrate import OdeSolution, solve_ivp
+
 from src.vip_ivp.domain.variables import TemporalVar
 
 
 class IVPSystem:
-    def __init__(self, derivative_expressions:tuple[TemporalVar], initial_conditions: tuple[float]):
+    def __init__(self, derivative_expressions: tuple[TemporalVar[float]], initial_conditions: tuple[float]):
         assert len(derivative_expressions) == len(initial_conditions)
         self._derivatives = derivative_expressions
         self._initial_conditions = initial_conditions
+
+    def _dy(self, t, y):
+        try:
+            return np.array([f(t, y) for f in self._derivatives])
+        except RecursionError:
+            raise RecursionError(
+                "An algebraic loop has been detected."
+            )
+
+    def _solve(self, t_end: float, method: str = "RK45") -> OdeSolution:
+        result = solve_ivp(self._dy, [0, t_end], self._initial_conditions, method=method, dense_output=True)
+        return result.sol
