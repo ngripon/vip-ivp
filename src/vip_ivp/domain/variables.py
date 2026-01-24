@@ -313,7 +313,6 @@ class TemporalVar(Generic[T]):
 
 
 # Utils
-
 def operator_call(obj, /, *args, **kwargs):
     """operator.call function source code copy in order to be used with Python version <3.11"""
     return obj(*args, **kwargs)
