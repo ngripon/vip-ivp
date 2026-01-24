@@ -12,15 +12,18 @@ T = TypeVar("T")
 class IVPSystemMutable:
     def __init__(self):
         self._system: IVPSystem = IVPSystem(tuple(), tuple())
-        self.sol: OdeSolution | None = None  # Continuous results function
+        self._sol: OdeSolution | None = None  # Continuous results function
 
     def add_state(self, x0: float) -> "IVPSystemMutable.IntegratedVar":
         self._add_equation(None, x0)
-        return self.IntegratedVar(self._system.n_equations, self)
+        return self.IntegratedVar(self._system.n_equations - 1, self)
+
+    def solve(self, t_end: float, method: str = "RK45") -> None:
+        self._sol = self._system.solve(t_end, method)
 
     def _set_system(self, system: IVPSystem) -> None:
         self._system = system
-        self.sol = None
+        self._sol = None
 
     def _set_derivative(self, variable: TemporalVar[float], eq_idx: int) -> None:
         derivatives = list(self._system.derivatives)
@@ -34,7 +37,7 @@ class IVPSystemMutable:
         derivatives.append(variable)
         initial_conditions.append(x0)
 
-        self._set_system(IVPSystem(tuple(derivatives), tuple(self._system.initial_conditions)))
+        self._set_system(IVPSystem(tuple(derivatives), tuple(initial_conditions)))
 
     class TemporalVarState(Generic[T]):
         def __init__(self, variable: TemporalVar, system: "IVPSystemMutable"):
@@ -42,13 +45,40 @@ class IVPSystemMutable:
             self._system = system
 
         def __call__(self, t):
-            if self._system.sol is not None:
-                return self._variable(t, self._system.sol(t))
+            if self._system._sol is not None:
+                return self._variable(t, self._system._sol(t))
             else:
                 raise Exception(
                     "The system has not been solved.\n"
                     "Call the solve() method before inquiring the variable values."
                 )
+
+        @staticmethod
+        def _get_variable(value) -> TemporalVar:
+            if isinstance(value, IVPSystemMutable.TemporalVarState):
+                return value._variable
+            return value
+
+        # Addition
+        def __add__(self, other):
+            return IVPSystemMutable.TemporalVarState(self._variable + self._get_variable(other), self._system)
+
+        def __radd__(self, other):
+            return IVPSystemMutable.TemporalVarState(self._get_variable(other) + self._variable, self._system)
+
+        # Subtraction
+        def __sub__(self, other):
+            return IVPSystemMutable.TemporalVarState(self._variable - self._get_variable(other), self._system)
+
+        def __rsub__(self, other):
+            return IVPSystemMutable.TemporalVarState(self._get_variable(other) - self._variable, self._system)
+
+        # Multiplication
+        def __mul__(self, other):
+            return IVPSystemMutable.TemporalVarState(self._variable * self._get_variable(other), self._system)
+
+        def __rmul__(self, other):
+            return IVPSystemMutable.TemporalVarState(self._get_variable(other) * self._variable, self._system)
 
     class IntegratedVar(TemporalVarState[float]):
         def __init__(self, index: int, system: "IVPSystemMutable"):
