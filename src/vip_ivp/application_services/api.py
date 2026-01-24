@@ -30,7 +30,7 @@ def plot(*variables: TemporalVarState) -> None:
     if not system.is_solved:
         raise RuntimeError("System is not solved")
 
-    # Try to infer names
+    # Try to infer names. This is brittle and may fail silently in some contexts
     frame = inspect.currentframe().f_back
     locals_ = frame.f_locals
 
