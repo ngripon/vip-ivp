@@ -10,9 +10,12 @@ def test_ode():
 
     solve(10)
 
-    expected_fun = lambda t: np.exp(-2 * t)
+    expected_y_fun = lambda t: np.exp(-2 * t)
     time_vector = np.linspace(0, 10, 10)
-    expected_result = expected_fun(time_vector)
-    output = y(time_vector)
+    y_expected = expected_y_fun(time_vector)
+    dy_expected=-2*y_expected
+    y_output = y(time_vector)
+    dy_output = dy(time_vector)
 
-    np.testing.assert_almost_equal(output, expected_result, 4)
+    np.testing.assert_almost_equal(y_output, y_expected, 3)
+    np.testing.assert_almost_equal(dy_output, dy_expected, 3)
