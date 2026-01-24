@@ -13,7 +13,7 @@ def test_ode():
     expected_y_fun = lambda t: np.exp(-2 * t)
     time_vector = np.linspace(0, 10, 10)
     y_expected = expected_y_fun(time_vector)
-    dy_expected=-2*y_expected
+    dy_expected = -2 * y_expected
     y_output = y(time_vector)
     dy_output = dy(time_vector)
 

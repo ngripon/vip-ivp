@@ -18,6 +18,10 @@ class IVPSystemMutable:
 
         self._system: IVPSystem = IVPSystem(tuple(), tuple())
 
+    @property
+    def is_solved(self) -> bool:
+        return self.sol is not None
+
     def add_state(self, x0: float) -> "IntegratedVar":
         self._add_equation(None, x0)
         return IntegratedVar(self._system.n_equations - 1, self)
@@ -62,6 +66,10 @@ class TemporalVarState(Generic[T]):
     @property
     def values(self):
         return self(self._system.t_eval)
+
+    @property
+    def t(self):
+        return self._system.t_eval
 
     @staticmethod
     def _unwrap(value) -> TemporalVar:
@@ -167,22 +175,15 @@ class TemporalVarState(Generic[T]):
     def __rxor__(self, other) -> "TemporalVarState[bool]":
         return TemporalVarState(self._unwrap(other) ^ self._variable, self._system)
 
-    @staticmethod
-    def _logical_not(a):
-        result = np.logical_not(a)
-        if result.size == 1:
-            result = result.item()
-        return result
-
     def __invert__(self) -> "TemporalVar[bool]":
-        return TemporalVar((self._logical_not, self), operator_call)
+        return TemporalVar(~self._variable)
 
 
 class IntegratedVar(TemporalVarState[float]):
     def __init__(self, index: int, system: "IVPSystemMutable"):
         variable = create_integrated_variable(index)
         super().__init__(variable, system)
-        self._derivative: TemporalVarState[float] | None = None
+        self._derivative: Optional[TemporalVarState[float]] = None
         self._eq_idx: int = index
 
     @property
