@@ -1,7 +1,10 @@
+import functools
 import inspect
+from typing import Callable
 
 from .system import IVPSystemMutable, TemporalVar, IntegratedVar
-from .variables import temporal_var_where
+from .variables import temporal_var_where, P, T
+from ..utils import operator_call
 
 _solver_list: list[IVPSystemMutable] = []
 
@@ -20,6 +23,13 @@ def state(x0: float) -> IntegratedVar:
 
 def where(condition, a, b) -> TemporalVar:
     return temporal_var_where(condition, a, b)
+
+def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
+    def wrapper(*args: P.args, **kwargs: P.kwargs) -> TemporalVar:
+        return TemporalVar((func, *args, kwargs), operator_call, _get_current_system())
+
+    functools.update_wrapper(wrapper, func)
+    return wrapper
 
 
 def solve(t_end: float, method: str = "RK45") -> None:
