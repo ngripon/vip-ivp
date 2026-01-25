@@ -17,3 +17,12 @@ def test_ode_result():
     output = y(time_vector, sol_fun(time_vector))
 
     np.testing.assert_almost_equal(expected_result, output, 4)
+
+
+def test_empty_system_result():
+    sut = IVPSystem((), ())
+
+    sol_fun = sut.solve(10)
+
+    assert sol_fun(0).shape == (0,)
+    assert sol_fun(np.array([1, 2, 3])).shape == (0, 3)

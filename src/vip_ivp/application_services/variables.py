@@ -13,14 +13,15 @@ import functools
 import inspect
 import operator
 
-from typing import Callable, TypeVar, Generic, Any, Optional, TYPE_CHECKING
+from typing import Callable, TypeVar, Generic, Optional, TYPE_CHECKING
 
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 from typing_extensions import ParamSpec
 
-from src.vip_ivp.domain.system import create_system_output
+from ..domain.system import create_system_output
+from .utils import operator_call, vectorize_source, get_output_info
 
 if TYPE_CHECKING:
     from .system import IVPSystemMutable
@@ -62,9 +63,10 @@ class TemporalVar(Generic[T]):
         :param is_discrete:
         """
         # Object data
-        self.func: Callable[[float | NDArray, NDArray], T]
+        self.system = system
 
         # Private
+        self._func: Callable[[float | NDArray, NDArray], T]
         self._source = source
         self._operator = operator_on_source_tuple
         self._is_discrete = is_discrete
@@ -72,10 +74,6 @@ class TemporalVar(Generic[T]):
         self._output_type = None
         self._keys: list[str] | None = None
         self._shape: tuple[int, ...] | None = None
-        # System
-        # Only used for read operations. Even tough it look bad to reference an application service in the domain, it
-        # simplifies greatly the architecture
-        self._system = system
 
         # Create the function and make sources recursive when needed
         if self._operator is not None:
@@ -102,7 +100,7 @@ class TemporalVar(Generic[T]):
                     output = resolve_operator(t, y)
                 return output
 
-            self.func = operator_func
+            self._func = operator_func
 
         else:
             if callable(self._source):
@@ -114,10 +112,10 @@ class TemporalVar(Generic[T]):
                     def temporal_func(t, _):
                         return vectorize_source(self._source)(t)
 
-                    self.func = temporal_func
+                    self._func = temporal_func
                 else:
                     # Function is already a f(t, y) function
-                    self.func = self._source
+                    self._func = self._source
             elif np.isscalar(self._source) or self._source is None:
                 # Source is a scalar number
                 self._output_type = type(self._source)
@@ -128,7 +126,7 @@ class TemporalVar(Generic[T]):
                     else:
                         return np.full(len(t), self._source)
 
-                self.func = scalar_func
+                self._func = scalar_func
 
             elif isinstance(self._source, (list, np.ndarray)):
                 # Source is a numpy array
@@ -136,9 +134,9 @@ class TemporalVar(Generic[T]):
                 self._source = np.array([TemporalVar(x, system=system) for x in self._source])
 
                 def array_func(t, y):
-                    return np.array([x.func(t, y) for x in self._source])
+                    return np.array([x(t, y) for x in self._source])
 
-                self.func = array_func
+                self._func = array_func
 
             elif isinstance(self._source, dict):
                 self._output_type = dict
@@ -147,18 +145,18 @@ class TemporalVar(Generic[T]):
                 def dict_func(t, y):
                     return {key: x(t, y) for key, x in self._source.items()}
 
-                self.func = dict_func
+                self._func = dict_func
             else:
                 raise ValueError(f"Unsupported type: {type(self._source)}.")
 
         # Get output type by calling the func
-        self._output_type, self._keys, self._shape = get_output_info(self.func)
+        self._output_type, self._keys, self._shape = get_output_info(self._func)
 
-    def __call__(self, t: float | NDArray, y: Optional[NDArray]=None) -> T:
+    def __call__(self, t: float | NDArray, y: Optional[NDArray] = None) -> T:
         if y is not None:
-            return self.func(t, y)
-        if self._system.sol is not None:
-            return self(t, self._system.sol(t))
+            return self._func(t, y)
+        if self.system.sol is not None:
+            return self(t, self.system.sol(t))
         else:
             raise RuntimeError(
                 "The system has not been solved.\n"
@@ -167,11 +165,11 @@ class TemporalVar(Generic[T]):
 
     @property
     def values(self):
-        return self(self._system.t_eval)
+        return self(self.system.t_eval)
 
     @property
     def t(self):
-        return self._system.t_eval
+        return self.system.t_eval
 
     @classmethod
     def from_scenario(
@@ -200,7 +198,7 @@ class TemporalVar(Generic[T]):
     def m(self, method: Callable[P, T]) -> Callable[P, "TemporalVar[T]"]:
         def wrapper(*args: P.args, **kwargs: P.kwargs) -> TemporalVar:
             return TemporalVar((method, self, *args, kwargs), operator_on_source_tuple=operator_call,
-                               system=self._system)
+                               system=self.system)
 
         functools.update_wrapper(wrapper, method)
         return wrapper
@@ -211,7 +209,7 @@ class TemporalVar(Generic[T]):
         return TemporalVar(
             (self, item),
             operator_on_source_tuple=operator.getitem,
-            system=self._system
+            system=self.system
         )
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs) -> "TemporalVar":
@@ -219,7 +217,7 @@ class TemporalVar(Generic[T]):
             return TemporalVar(
                 (ufunc, *inputs, kwargs),
                 operator_on_source_tuple=operator_call,
-                system=self._system
+                system=self.system
             )
 
         return NotImplemented
@@ -229,82 +227,82 @@ class TemporalVar(Generic[T]):
 
     # Addition
     def __add__(self, other):
-        return TemporalVar((self, other), operator_on_source_tuple=operator.add, system=self._system)
+        return TemporalVar((self, other), operator_on_source_tuple=operator.add, system=self.system)
 
     def __radd__(self, other):
-        return TemporalVar((other, self), operator_on_source_tuple=operator.add, system=self._system)
+        return TemporalVar((other, self), operator_on_source_tuple=operator.add, system=self.system)
 
     # Subtraction
     def __sub__(self, other):
-        return TemporalVar((self, other), operator_on_source_tuple=operator.sub, system=self._system)
+        return TemporalVar((self, other), operator_on_source_tuple=operator.sub, system=self.system)
 
     def __rsub__(self, other):
-        return TemporalVar((other, self), operator_on_source_tuple=operator.sub, system=self._system)
+        return TemporalVar((other, self), operator_on_source_tuple=operator.sub, system=self.system)
 
     # Multiplication
     def __mul__(self, other):
-        return TemporalVar((self, other), operator_on_source_tuple=operator.mul, system=self._system)
+        return TemporalVar((self, other), operator_on_source_tuple=operator.mul, system=self.system)
 
     def __rmul__(self, other):
-        return TemporalVar((other, self), operator_on_source_tuple=operator.mul, system=self._system)
+        return TemporalVar((other, self), operator_on_source_tuple=operator.mul, system=self.system)
 
     # True division
     def __truediv__(self, other):
-        return TemporalVar((self, other), operator_on_source_tuple=operator.truediv, system=self._system)
+        return TemporalVar((self, other), operator_on_source_tuple=operator.truediv, system=self.system)
 
     def __rtruediv__(self, other):
-        return TemporalVar((other, self), operator_on_source_tuple=operator.truediv, system=self._system)
+        return TemporalVar((other, self), operator_on_source_tuple=operator.truediv, system=self.system)
 
     # Floor division
     def __floordiv__(self, other):
-        return TemporalVar((self, other), operator_on_source_tuple=operator.floordiv, system=self._system)
+        return TemporalVar((self, other), operator_on_source_tuple=operator.floordiv, system=self.system)
 
     def __rfloordiv__(self, other):
-        return TemporalVar((other, self), operator_on_source_tuple=operator.floordiv, system=self._system)
+        return TemporalVar((other, self), operator_on_source_tuple=operator.floordiv, system=self.system)
 
     # Modulo
     def __mod__(self, other):
-        return TemporalVar((self, other), operator_on_source_tuple=operator.mod, system=self._system)
+        return TemporalVar((self, other), operator_on_source_tuple=operator.mod, system=self.system)
 
     def __rmod__(self, other):
-        return TemporalVar((other, self), operator_on_source_tuple=operator.mod, system=self._system)
+        return TemporalVar((other, self), operator_on_source_tuple=operator.mod, system=self.system)
 
     # Power
     def __pow__(self, other):
-        return TemporalVar((self, other), operator_on_source_tuple=operator.pow, system=self._system)
+        return TemporalVar((self, other), operator_on_source_tuple=operator.pow, system=self.system)
 
     def __rpow__(self, other):
-        return TemporalVar((other, self), operator_on_source_tuple=operator.pow, system=self._system)
+        return TemporalVar((other, self), operator_on_source_tuple=operator.pow, system=self.system)
 
     # Unary plus
     def __pos__(self):
-        return TemporalVar((self,), operator_on_source_tuple=operator.pos, system=self._system)
+        return TemporalVar((self,), operator_on_source_tuple=operator.pos, system=self.system)
 
     # Unary minus
     def __neg__(self):
-        return TemporalVar((self,), operator_on_source_tuple=operator.neg, system=self._system)
+        return TemporalVar((self,), operator_on_source_tuple=operator.neg, system=self.system)
 
     # Absolute value
     def __abs__(self):
-        return TemporalVar((self,), operator_on_source_tuple=operator.abs, system=self._system)
+        return TemporalVar((self,), operator_on_source_tuple=operator.abs, system=self.system)
 
     def __eq__(self, other):
-        return TemporalVar((self, other), operator_on_source_tuple=operator.eq, system=self._system)
+        return TemporalVar((self, other), operator_on_source_tuple=operator.eq, system=self.system)
 
     def __ne__(self, other):
-        return TemporalVar((self, other), operator_on_source_tuple=operator.ne, system=self._system)
+        return TemporalVar((self, other), operator_on_source_tuple=operator.ne, system=self.system)
 
     def __lt__(self, other):
-        return TemporalVar((self, other), operator_on_source_tuple=operator.lt, system=self._system)
+        return TemporalVar((self, other), operator_on_source_tuple=operator.lt, system=self.system)
 
     def __le__(self, other):
-        return TemporalVar((self, other), operator_on_source_tuple=operator.le, system=self._system)
+        return TemporalVar((self, other), operator_on_source_tuple=operator.le, system=self.system)
 
     def __gt__(self, other):
-        return TemporalVar((self, other), operator_on_source_tuple=operator.gt, system=self._system)
+        return TemporalVar((self, other), operator_on_source_tuple=operator.gt, system=self.system)
 
     def __ge__(self, other):
-        return TemporalVar((self, other), operator_on_source_tuple=operator.ge, system=self._system)
+        return TemporalVar((self, other), operator_on_source_tuple=operator.ge, system=self.system)
 
     @staticmethod
     def _apply_logical(logical_fun: Callable, a, b):
@@ -314,22 +312,22 @@ class TemporalVar(Generic[T]):
         return result
 
     def __and__(self, other) -> "TemporalVar[bool]":
-        return TemporalVar((self._apply_logical, np.logical_and, self, other), operator_call, system=self._system)
+        return TemporalVar((self._apply_logical, np.logical_and, self, other), operator_call, system=self.system)
 
     def __rand__(self, other) -> "TemporalVar[bool]":
-        return TemporalVar((self._apply_logical, np.logical_and, other, self), operator_call, system=self._system)
+        return TemporalVar((self._apply_logical, np.logical_and, other, self), operator_call, system=self.system)
 
     def __or__(self, other) -> "TemporalVar[bool]":
-        return TemporalVar((self._apply_logical, np.logical_or, self, other), operator_call, system=self._system)
+        return TemporalVar((self._apply_logical, np.logical_or, self, other), operator_call, system=self.system)
 
     def __ror__(self, other) -> "TemporalVar[bool]":
-        return TemporalVar((self._apply_logical, np.logical_or, other, self), operator_call, system=self._system)
+        return TemporalVar((self._apply_logical, np.logical_or, other, self), operator_call, system=self.system)
 
     def __xor__(self, other) -> "TemporalVar[bool]":
-        return TemporalVar((self._apply_logical, np.logical_xor, self, other), operator_call, system=self._system)
+        return TemporalVar((self._apply_logical, np.logical_xor, self, other), operator_call, system=self.system)
 
     def __rxor__(self, other) -> "TemporalVar[bool]":
-        return TemporalVar((self._apply_logical, np.logical_xor, other, self), operator_call, system=self._system)
+        return TemporalVar((self._apply_logical, np.logical_xor, other, self), operator_call, system=self.system)
 
     @staticmethod
     def _logical_not(a):
@@ -339,13 +337,13 @@ class TemporalVar(Generic[T]):
         return result
 
     def __invert__(self) -> "TemporalVar[bool]":
-        return TemporalVar((self._logical_not, self), operator_call, system=self._system)
+        return TemporalVar((self._logical_not, self), operator_call, system=self.system)
 
 
 class IntegratedVar(TemporalVar[float]):
     def __init__(self, index: int, system: "IVPSystemMutable"):
         func = create_system_output(index)
-        super().__init__(func,system=system)
+        super().__init__(func, system=system)
         self._derivative: TemporalVar[float] = TemporalVar(0)
         self._eq_idx: int = index
 
@@ -356,15 +354,16 @@ class IntegratedVar(TemporalVar[float]):
     @derivative.setter
     def derivative(self, value: TemporalVar[float]):
         self._derivative = value
-        self._system.set_derivative(value, self._eq_idx)
-
+        self.system.set_derivative(value, self._eq_idx)
 
 
 def temporal_var_where(
         condition: TemporalVar[bool], a: T | TemporalVar[T], b: T | TemporalVar[T]
 ) -> TemporalVar[T]:
-    def where(condition, a, b):
-        result = np.where(condition, a, b)
+    assert_system_sameness(condition, a, b)
+
+    def where(condition_, a_, b_):
+        result = np.where(condition_, a_, b_)
         if result.size == 1:
             result = result.item()
         return result
@@ -372,115 +371,21 @@ def temporal_var_where(
     return TemporalVar(
         (where, condition, a, b),
         operator_call,
-        condition._system
+        condition.system
     )
 
 
 # Utils
-def operator_call(obj, /, *args, **kwargs):
-    """operator.call function source code copy in order to be used with Python version <3.11"""
-    return obj(*args, **kwargs)
-
-
-def vectorize_source(fun: Callable[[float], Any]) -> Callable[[float], Any]:
+def assert_system_sameness(*values) -> None:
     """
-    Vectorize a temporal function.
-    :param fun: Temporal function input by the user
-    :return: Vectorized temporal function
+    Raise an error if values contains TemporalVar instances from different systems.
+    :param values: Arbitrary inputs
+    :raises: ValueError
     """
-    accept_arrays, has_scalar_mode, is_constant = check_if_vectorized(fun)
-
-    def vectorized_wrapper(t):
-        if np.isscalar(t):
-            return fun(t)
-        else:
-            return np.array([fun(ti) for ti in t])
-
-    def handle_scalar_wrapper(t):
-        output = fun(t)
-        if np.isscalar(t):
-            return output[0]
-        return output
-
-    def constant_wrapper(t):
-        if np.isscalar(t):
-            return fun(t)
-        else:
-            value = fun(0)
-            if np.isscalar(value):
-                return np.full(len(t), value)
-            else:
-                return np.moveaxis(np.broadcast_to(value, (len(t),) + value.shape), 0, -1)
-
-    if is_constant:
-        return constant_wrapper
-    elif accept_arrays and has_scalar_mode:
-        return fun
-    elif not has_scalar_mode:
-        return handle_scalar_wrapper
-    else:
-        print(f"Warning: the function '{fun.__name__}' is not vectorizable.")
-        return vectorized_wrapper
-
-
-def check_if_vectorized(fun) -> tuple[bool, bool, bool]:
-    accept_arrays = True
-    has_scalar_mode = True
-    is_constant = False
-
-    # Test with scalar
-    scalar_output = fun(0)
-
-    # Find a t length that does not match the len of a dimension of a scalar output
-    array_len = 3
-    if not np.isscalar(scalar_output):
-        while array_len in scalar_output.shape:
-            array_len += 1
-
-    # Test with array input
-    array_input = np.zeros(array_len)
-    try:
-        array_output = fun(array_input)
-        if np.isscalar(array_output) or not np.isscalar(scalar_output) and array_output.shape == scalar_output.shape:
-            is_constant = True
-            raise ValueError("The array output does not create a vector")
-        scalar_ndim = 0 if np.isscalar(scalar_output) else np.asarray(scalar_output).ndim
-        if array_output.ndim == scalar_ndim:
-            has_scalar_mode = False
-        elif scalar_ndim != array_output.ndim - 1:
-            raise ValueError("There is something wrong in the output dimensions of the function.")
-    except ValueError:
-        accept_arrays = False
-
-    return accept_arrays, has_scalar_mode, is_constant
-
-
-def get_output_info(
-        fun: Callable[[float | NDArray, NDArray], NDArray]
-) -> tuple[type, list[str] | None, list[int] | None]:
-    """
-    Get the output information of a system function.
-    :param fun: System function
-    :return: Type, keys and shape
-    """
-    # Get a scalar output but watch out for IndexError
-    y = np.zeros(1)
-    found_output = False
-    while not found_output:
-        try:
-            output = fun(0, y)
-            found_output = True
-        except IndexError:
-            y = np.zeros(len(y) * 2)
-            pass
-    # Analyse the output
-    output_type = type(output)
-    if isinstance(output, dict):
-        keys = list(output.keys())
-    else:
-        keys = None
-    if isinstance(output, np.ndarray):
-        shape = output.shape
-    else:
-        shape = None
-    return output_type, keys, shape
+    systems = []
+    for value in values:
+        if isinstance(value, TemporalVar):
+            system = value.system
+            if systems and system not in systems:
+                raise ValueError("Variables from different systems can not be combined.")
+            systems.append(system)

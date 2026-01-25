@@ -1,6 +1,6 @@
 import numpy as np
 
-from vip_ivp.application_services.api import state, solve
+from src.vip_ivp.application_services.api import *
 
 
 def test_ode():
@@ -19,3 +19,10 @@ def test_ode():
 
     np.testing.assert_almost_equal(y_output, y_expected, 3)
     np.testing.assert_almost_equal(dy_output, dy_expected, 3)
+
+def test_empty_system():
+    y=temporal(lambda t: np.sin(t))
+
+    solve(10)
+
+    np.testing.assert_array_equal(y.values, y(y.system.t_eval))

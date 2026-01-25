@@ -10,7 +10,7 @@ def new_system() -> None:
 
 
 def temporal(value) -> TemporalVar:
-    return TemporalVar(value, _get_current_system())
+    return TemporalVar(value, system=_get_current_system())
 
 
 def state(x0: float) -> IntegratedVar:
