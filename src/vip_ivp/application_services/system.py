@@ -1,12 +1,11 @@
+from typing import TypeVar, Generic, Optional
+
 import numpy as np
 from scipy.integrate import OdeSolution
-
-from src.vip_ivp.domain.system import IVPSystem, create_integrated_variable
-
-from typing import TypeVar, Generic, Optional
 from numpy.typing import NDArray
 
-from src.vip_ivp.domain.variables import TemporalVar
+from ..domain.variables import TemporalVar
+from ..domain.system import IVPSystem, create_integrated_variable
 
 T = TypeVar("T")
 

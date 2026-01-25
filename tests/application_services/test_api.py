@@ -1,6 +1,6 @@
 import numpy as np
 
-from src.vip_ivp.application_services.api import state, solve
+from vip_ivp.application_services.api import state, solve
 
 
 def test_ode():

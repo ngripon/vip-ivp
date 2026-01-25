@@ -11,7 +11,7 @@ from typing import Optional
 import numpy as np
 from scipy.integrate import OdeSolution, solve_ivp
 
-from src.vip_ivp.domain.variables import TemporalVar
+from .variables import TemporalVar
 
 
 class IVPSystem:

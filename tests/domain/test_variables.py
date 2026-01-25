@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from src.vip_ivp.domain.variables import TemporalVar
+from vip_ivp.domain.variables import TemporalVar
 
 
 @pytest.mark.parametrize(

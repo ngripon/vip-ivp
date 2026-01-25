@@ -1,6 +1,6 @@
 import inspect
 
-from src.vip_ivp.application_services.system import IVPSystemMutable, TemporalVarState, IntegratedVar
+from .system import IVPSystemMutable, TemporalVarState, IntegratedVar
 
 _solver_list: list[IVPSystemMutable] = []
 

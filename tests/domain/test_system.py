@@ -1,10 +1,10 @@
 import numpy as np
 
-from src.vip_ivp.domain.system import get_integrated_variable, IVPSystem
+from vip_ivp.domain.system import IVPSystem, create_integrated_variable
 
 
 def test_ode_result():
-    y = get_integrated_variable(0)
+    y = create_integrated_variable(0)
     dy = -2 * y
     y0 = 1
     sut = IVPSystem((dy,), (y0,))
