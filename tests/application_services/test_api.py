@@ -20,9 +20,23 @@ def test_ode():
     np.testing.assert_almost_equal(y_output, y_expected, 3)
     np.testing.assert_almost_equal(dy_output, dy_expected, 3)
 
+
 def test_empty_system():
-    y=temporal(lambda t: np.sin(t))
+    y = temporal(lambda t: np.sin(t))
 
     solve(10)
 
     np.testing.assert_array_equal(y.values, y(y.system.t_eval))
+
+
+def test_conditional_variable():
+    a = temporal(1)
+    b = temporal(2)
+    time = temporal(lambda t: t)
+    sut = where(time < 5, a, b)
+
+    solve(10)
+
+    assert sut(0)==1
+    assert sut(5)==2
+    assert sut(10)==2

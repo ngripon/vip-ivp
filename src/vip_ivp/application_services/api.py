@@ -1,6 +1,7 @@
 import inspect
 
 from .system import IVPSystemMutable, TemporalVar, IntegratedVar
+from .variables import temporal_var_where
 
 _solver_list: list[IVPSystemMutable] = []
 
@@ -15,6 +16,10 @@ def temporal(value) -> TemporalVar:
 
 def state(x0: float) -> IntegratedVar:
     return _get_current_system().add_state(x0)
+
+
+def where(condition, a, b) -> TemporalVar:
+    return temporal_var_where(condition, a, b)
 
 
 def solve(t_end: float, method: str = "RK45") -> None:

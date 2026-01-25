@@ -92,12 +92,8 @@ class TemporalVar(Generic[T]):
                     kwargs = {k: (x(t_inner, y_inner) if isinstance(x, TemporalVar) else x) for k, x in kwargs.items()}
                     return self._operator(*args, **kwargs)
 
-                if self._operator is operator_call and not np.isscalar(t):
-                    output = np.array([resolve_operator(t[i], y[i]) for i in range(len(t))])
-                    if output.ndim > 1:
-                        output = np.moveaxis(output, 0, -1)
-                else:
-                    output = resolve_operator(t, y)
+
+                output = resolve_operator(t, y)
                 return output
 
             self._func = operator_func
