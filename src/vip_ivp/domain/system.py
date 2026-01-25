@@ -6,16 +6,17 @@ solution y(t) is computed.
 
 
 """
-from typing import Optional
+from typing import Callable
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.integrate import OdeSolution, solve_ivp
 
-from .variables import TemporalVar
+SystemFun = Callable[[float | NDArray, NDArray], NDArray | float]
 
 
 class IVPSystem:
-    def __init__(self, derivative_expressions: tuple[Optional[TemporalVar[float]], ...],
+    def __init__(self, derivative_expressions: tuple[SystemFun, ...],
                  initial_conditions: tuple[float, ...]):
         assert len(derivative_expressions) == len(initial_conditions)
         self.derivatives = derivative_expressions
@@ -43,5 +44,8 @@ class IVPSystem:
             )
 
 
-def create_integrated_variable(equation_idx: int) -> TemporalVar[float]:
-    return TemporalVar(lambda t, y: y[equation_idx])
+def create_system_output(idx: int) -> SystemFun:
+    def system_output(t: float | NDArray, y: NDArray, i=idx) -> NDArray:
+        return y[i]
+
+    return system_output

@@ -1,6 +1,6 @@
 import inspect
 
-from .system import IVPSystemMutable, TemporalVarState, IntegratedVar
+from .system import IVPSystemMutable, TemporalVar, IntegratedVar
 
 _solver_list: list[IVPSystemMutable] = []
 
@@ -9,8 +9,8 @@ def new_system() -> None:
     _solver_list.append(IVPSystemMutable())
 
 
-def temporal(value) -> TemporalVarState:
-    return TemporalVarState(value, _get_current_system())
+def temporal(value) -> TemporalVar:
+    return TemporalVar(value, _get_current_system())
 
 
 def state(x0: float) -> IntegratedVar:
@@ -22,7 +22,7 @@ def solve(t_end: float, method: str = "RK45") -> None:
 
 
 # Post-processing
-def plot(*variables: TemporalVarState) -> None:
+def plot(*variables: TemporalVar) -> None:
     # Check
     if not variables:
         raise ValueError("No variable provided")
