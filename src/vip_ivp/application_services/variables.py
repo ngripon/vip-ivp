@@ -34,9 +34,19 @@ Source = Callable[[float | NDArray, NDArray], T] | Callable[[float | NDArray], T
 
 class TemporalVar(Generic[T]):
     """
-    Function f(t, y):
+    Wrapper for a function f(t, y):
         - t is the time vector. Dims: len(t)
         - y is the system solution. Dims: (len(integrated_vars) x len(t))
+        - output dims:
+            - If the function returns a scalar : len(t) array or scalar if len(t)==1
+            - If the function returns an array : (array.shape x len(t))
+            - If the function returns a dict : for each key, the shape described by those possible conditions.
+
+    This class provides the following features:
+        - Easy creation of the function for various input types through the constructor. It handles output shape and
+        vectorization of the function.
+        - Function arithmetic and logic through the usual operators.
+        - Computation of the results if the linked system is solved.
     """
 
     def __init__(
@@ -44,7 +54,6 @@ class TemporalVar(Generic[T]):
             source: Source | tuple = None,
             operator_on_source_tuple=None,
             system: Optional["IVPSystemMutable"] = None,
-            is_discrete=False,
     ):
         """
         Create a temporal variable.
@@ -60,7 +69,6 @@ class TemporalVar(Generic[T]):
         If the source input is a tuple, the resulting function will apply the operator input to it.
         :param source: Input from which the internal function is built
         :param operator_on_source_tuple: If the source input is a tuple, create a function that applies the operator to these source items.
-        :param is_discrete:
         """
         # Object data
         self.system = system
@@ -69,7 +77,6 @@ class TemporalVar(Generic[T]):
         self._func: Callable[[float | NDArray, NDArray], T]
         self._source = source
         self._operator = operator_on_source_tuple
-        self._is_discrete = is_discrete
         # Output info
         self._output_type = None
         self._keys: list[str] | None = None
@@ -97,7 +104,7 @@ class TemporalVar(Generic[T]):
                     output = resolve_operator(t, y)
                 except:
                     # If it fails, call it for each t value
-                    output = np.array([resolve_operator(t[i], y[:,i]) for i in range(len(t))])
+                    output = np.array([resolve_operator(t[i], y[:, i]) for i in range(len(t))])
 
                 return output
 
