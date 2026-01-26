@@ -50,19 +50,22 @@ def test_function_wrapping():
 
     solve(10)
 
-    plot(a,sut)
-
     for x_in,y_in in zip(map_x, map_y):
         assert sut(x_in)==y_in
-    # def foo(x, i):
-    #     if i>0:
-    #         return 2*x
-    #     return x
-    #
-    # i=temporal(lambda t: np.sin(t))
-    # x=temporal(lambda t: t)
-    #
-    # sut=f(foo)(i,x)
-    #
-    # solve(10)
-    # plot(sut)
+
+def test_non_vectorized_function_wrapping():
+    # Function that is not vectorized
+    def foo(x, i):
+        if i>0:
+            return 2*x
+        return x
+
+    i=temporal(lambda t: np.sin(t))
+    x=temporal(lambda t: t)
+    sut=f(foo)(x,i)
+
+    solve(10)
+
+    assert sut(1)==2
+    assert sut(4)==4
+    assert sut(8)==16

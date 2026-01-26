@@ -92,8 +92,13 @@ class TemporalVar(Generic[T]):
                     kwargs = {k: (x(t_inner, y_inner) if isinstance(x, TemporalVar) else x) for k, x in kwargs.items()}
                     return self._operator(*args, **kwargs)
 
+                try:
+                    # Assume that the function is vectorized
+                    output = resolve_operator(t, y)
+                except:
+                    # If it fails, call it for each t value
+                    output = np.array([resolve_operator(t[i], y[:,i]) for i in range(len(t))])
 
-                output = resolve_operator(t, y)
                 return output
 
             self._func = operator_func
