@@ -12,7 +12,45 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.integrate import OdeSolution, solve_ivp
 
+EPS = np.finfo(float).eps
+CROSSING_TOLERANCE = 1e-12
+
 SystemFun = Callable[[float | NDArray, NDArray], NDArray | float]
+
+
+class SystemEvent:
+    def __init__(self, condition: SystemFun, action: None) -> None:
+        self.condition = condition
+        self.action = action
+
+        # Cache current value
+        self._current_t = None
+        self._current_value = None
+
+    def compute_root(self, t, t_next, sol) -> float | None:
+        if not self._check_zero_crossing(t, t_next, sol):
+            return None
+
+        from scipy.optimize import brentq
+
+        if abs(self.condition(t, sol(t))) <= CROSSING_TOLERANCE:
+            return t
+        elif abs(self.condition(t_next, sol(t_next))) <= CROSSING_TOLERANCE:
+            return t_next
+        return brentq(lambda t_: self.condition(t_, sol(t_)), t, t_next, xtol=4 * EPS, rtol=4 * EPS)
+
+    def _check_zero_crossing(self, t, t_next, sol) -> bool:
+        if self._current_value is None or t != self._current_t:
+            y0 = self.condition(t, sol(t))
+        else:
+            y0 = self._current_value
+        y1 = self.condition(t_next, sol(t_next))
+        self._cache_current_value(t_next, y1)
+        return np.sign(y0) != np.sign(y1)
+
+    def _cache_current_value(self, t, value):
+        self._current_t = t
+        self._current_value = value
 
 
 class IVPSystem:
