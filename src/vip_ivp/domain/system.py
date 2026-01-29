@@ -6,6 +6,7 @@ solution y(t) is computed.
 
 
 """
+from enum import Enum
 from typing import Callable, Literal
 
 import numpy as np
@@ -16,10 +17,11 @@ EPS = np.finfo(float).eps
 CROSSING_TOLERANCE = 1e-12
 
 SystemFun = Callable[[float | NDArray, NDArray], NDArray | float]
+Direction = Literal["both", "rising", "falling"]
 
 
 class EventCondition:
-    def __init__(self, condition: SystemFun, direction: Literal["both", "rising", "falling"] = "both") -> None:
+    def __init__(self, condition: SystemFun, direction: Direction = "both") -> None:
         self.condition = condition
         self.direction = direction
 
@@ -34,29 +36,70 @@ class EventCondition:
         else:
             y0 = self._current_value
         y1 = self.condition(t_next, sol(t_next))
-        self._cache_current_value(t_next, y1)
-        if self.direction == "both":
-            zero_crossing = np.sign(y0) != np.sign(y1)
-        elif self.direction == "rising":
-            zero_crossing = np.sign(y0) != np.sign(y1) and np.sign(y0) < 0
-        elif self.direction == "falling":
-            zero_crossing = np.sign(y0) != np.sign(y1) and np.sign(y1) < 0
+
         # Return if there is no crossing
-        if not zero_crossing:
+        if not self.check_zero_crossing(y0, y1, self.direction):
             return None
 
         # Find root
-        from scipy.optimize import brentq
+        from scipy.optimize import brentq, bisect
 
-        if abs(self.condition(t, sol(t))) <= CROSSING_TOLERANCE:
-            return t
-        elif abs(self.condition(t_next, sol(t_next))) <= CROSSING_TOLERANCE:
-            return t_next
-        return brentq(lambda t_: self.condition(t_, sol(t_)), t, t_next, xtol=4 * EPS, rtol=4 * EPS)
+        discontinuous = not isinstance(y0, (float, int))
+        if discontinuous:
+            return bisect(lambda t_: 1 if self.condition(t_, sol(t_)) else -1, t, t_next, xtol=4 * EPS, rtol=4 * EPS)
+        else:
+            if abs(self.condition(t, sol(t))) <= CROSSING_TOLERANCE:
+                return t
+            elif abs(self.condition(t_next, sol(t_next))) <= CROSSING_TOLERANCE:
+                return t_next
+            return brentq(lambda t_: self.condition(t_, sol(t_)), t, t_next, xtol=4 * EPS, rtol=4 * EPS)
 
     def _cache_current_value(self, t, value):
         self._current_t = t
         self._current_value = value
+
+    @staticmethod
+    def check_zero_crossing(y0: float | bool, y1: float | bool, direction: Direction) -> bool:
+        assert type(y0) is type(y1)
+
+        if isinstance(y0, (bool, np.bool)):
+            value0 = float(y0)
+            value1 = float(y1)
+        elif isinstance(y0, (float, int)):
+            value0 = np.sign(y0)
+            value1 = np.sign(y1)
+        else:
+            raise ValueError(f"y0 must be either bool or float. Got {type(y0)}")
+
+        if direction == "both":
+            zero_crossing = value0 != value1
+        elif direction == "rising":
+            zero_crossing = value0 != value1 and value0 < value1
+        elif direction == "falling":
+            zero_crossing = value0 != value1 and value0 > value1
+        return zero_crossing
+
+
+class ActionType(Enum):
+    UPDATE_SYSTEM = 0
+    TERMINATE = 1
+    ASSERT = 2
+    SIDE_EFFECT = 3
+
+
+class Action:
+    def __init__(self, func: SystemFun, action_type: ActionType) -> None:
+        self.func = func
+        self.action_type = action_type
+
+    def __call__(self, t, y):
+        return self.func(t, y)
+
+
+class Event:
+    def __init__(self, condition: EventCondition, action: Action):
+        self.condition = condition
+        self.action = action
 
 
 class IVPSystem:
