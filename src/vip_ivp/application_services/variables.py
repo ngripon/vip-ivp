@@ -20,7 +20,7 @@ import pandas as pd
 from numpy.typing import NDArray
 from typing_extensions import ParamSpec
 
-from ..domain.system import create_system_output
+from ..domain.system import create_system_output, EPS
 from .utils import operator_call, vectorize_source, get_output_info
 
 if TYPE_CHECKING:
@@ -111,7 +111,9 @@ class TemporalVar(Generic[T]):
             self._func = operator_func
 
         else:
-            if callable(self._source):
+            if isinstance(self._source, TemporalVar):
+                self._func = self._source._func
+            elif callable(self._source):
                 # Source is a function
                 n_args = len(inspect.signature(self._source).parameters)
 
@@ -164,7 +166,7 @@ class TemporalVar(Generic[T]):
         if y is not None:
             return self._func(t, y)
         if self.system.sol is not None:
-            return self(t, self.system.sol(t))
+            return self._func(t, self.system.sol(t))
         else:
             raise RuntimeError(
                 "The system has not been solved.\n"
@@ -363,6 +365,15 @@ class IntegratedVar(TemporalVar[float]):
     def derivative(self, value: TemporalVar[float]):
         self._derivative = value
         self.system.set_derivative(value, self._eq_idx)
+
+
+class CrossTriggerVar(TemporalVar[float]):
+    def __init__(self, func: TemporalVar[float], system: "IVPSystemMutable"):
+        super().__init__(func, system=system)
+
+    def __call__(self, t, y=None):
+        value = super().__call__(t, y)
+        return np.abs(value) < EPS
 
 
 def temporal_var_where(

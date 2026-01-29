@@ -5,7 +5,7 @@ from typing import Callable
 from numpy.typing import NDArray
 
 from .system import IVPSystemMutable, TemporalVar, IntegratedVar
-from .variables import temporal_var_where, P, T
+from .variables import temporal_var_where, P, T, CrossTriggerVar
 from ..utils import operator_call
 
 _solver_list: list[IVPSystemMutable] = []
@@ -39,8 +39,8 @@ def solve(t_end: float, method: str = "RK45", t_eval: list[float] | NDArray = No
     _get_current_system().solve(t_end, method, t_eval)
 
 
-def when(condition, action):
-    _get_current_system().add_event(condition, action)
+def when(condition, action)->CrossTriggerVar:
+    return _get_current_system().add_event(condition, action)
 
 
 # Post-processing
