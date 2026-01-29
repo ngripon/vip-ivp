@@ -6,7 +6,7 @@ solution y(t) is computed.
 
 
 """
-from typing import Callable
+from typing import Callable, Literal
 
 import numpy as np
 from numpy.typing import NDArray
@@ -18,19 +18,34 @@ CROSSING_TOLERANCE = 1e-12
 SystemFun = Callable[[float | NDArray, NDArray], NDArray | float]
 
 
-class SystemEvent:
-    def __init__(self, condition: SystemFun, action: None) -> None:
+class EventCondition:
+    def __init__(self, condition: SystemFun, direction: Literal["both", "rising", "falling"]) -> None:
         self.condition = condition
-        self.action = action
+        self.direction = direction
 
         # Cache current value
         self._current_t = None
         self._current_value = None
 
     def compute_root(self, t, t_next, sol) -> float | None:
-        if not self._check_zero_crossing(t, t_next, sol):
+        # Check zero crossing
+        if self._current_value is None or t != self._current_t:
+            y0 = self.condition(t, sol(t))
+        else:
+            y0 = self._current_value
+        y1 = self.condition(t_next, sol(t_next))
+        self._cache_current_value(t_next, y1)
+        if self.direction == "both":
+            zero_crossing = np.sign(y0) != np.sign(y1)
+        elif self.direction == "rising":
+            zero_crossing = np.sign(y0) != np.sign(y1) and np.sign(y0) < 0
+        elif self.direction == "falling":
+            zero_crossing = np.sign(y0) != np.sign(y1) and np.sign(y1) < 0
+        # Return if there is no crossing
+        if not zero_crossing:
             return None
 
+        # Find root
         from scipy.optimize import brentq
 
         if abs(self.condition(t, sol(t))) <= CROSSING_TOLERANCE:
@@ -38,15 +53,6 @@ class SystemEvent:
         elif abs(self.condition(t_next, sol(t_next))) <= CROSSING_TOLERANCE:
             return t_next
         return brentq(lambda t_: self.condition(t_, sol(t_)), t, t_next, xtol=4 * EPS, rtol=4 * EPS)
-
-    def _check_zero_crossing(self, t, t_next, sol) -> bool:
-        if self._current_value is None or t != self._current_t:
-            y0 = self.condition(t, sol(t))
-        else:
-            y0 = self._current_value
-        y1 = self.condition(t_next, sol(t_next))
-        self._cache_current_value(t_next, y1)
-        return np.sign(y0) != np.sign(y1)
 
     def _cache_current_value(self, t, value):
         self._current_t = t
