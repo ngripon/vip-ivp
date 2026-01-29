@@ -2,6 +2,8 @@ import functools
 import inspect
 from typing import Callable
 
+from numpy.typing import NDArray
+
 from .system import IVPSystemMutable, TemporalVar, IntegratedVar
 from .variables import temporal_var_where, P, T
 from ..utils import operator_call
@@ -24,6 +26,7 @@ def state(x0: float) -> IntegratedVar:
 def where(condition, a, b) -> TemporalVar:
     return temporal_var_where(condition, a, b)
 
+
 def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> TemporalVar:
         return TemporalVar((func, *args, kwargs), operator_call, _get_current_system())
@@ -32,8 +35,8 @@ def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
     return wrapper
 
 
-def solve(t_end: float, method: str = "RK45") -> None:
-    _get_current_system().solve(t_end, method)
+def solve(t_end: float, method: str = "RK45", t_eval: list[float] | NDArray = None) -> None:
+    _get_current_system().solve(t_end, method, t_eval)
 
 
 # Post-processing

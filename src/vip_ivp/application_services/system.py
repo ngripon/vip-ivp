@@ -25,9 +25,10 @@ class IVPSystemMutable:
         self._add_equation(None, x0)
         return IntegratedVar(self._system.n_equations - 1, self)
 
-    def solve(self, t_end: float, method: str = "RK45") -> None:
-        self.sol = self._system.solve(t_end, method)
-        self.t_eval = np.linspace(0, t_end, 100)
+    def solve(self, t_end: float, method: str = "RK45", t_eval: list[float] = None) -> None:
+        self.t_eval, self.sol = self._system.solve(t_end, method)
+        if t_eval is not None:
+            self.t_eval = t_eval
 
     def set_derivative(self, variable: TemporalVar[float], eq_idx: int) -> None:
         derivatives = list(self._system.derivatives)

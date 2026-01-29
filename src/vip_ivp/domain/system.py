@@ -10,7 +10,7 @@ from typing import Callable, Literal
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy.integrate import OdeSolution, solve_ivp
+from scipy.integrate import OdeSolution, RK23, RK45, DOP853, Radau, BDF, LSODA, OdeSolver
 
 EPS = np.finfo(float).eps
 CROSSING_TOLERANCE = 1e-12
@@ -60,6 +60,15 @@ class EventCondition:
 
 
 class IVPSystem:
+    METHODS: dict[str, type[OdeSolver]] = {'RK23': RK23,
+                                           'RK45': RK45,
+                                           'DOP853': DOP853,
+                                           'Radau': Radau,
+                                           'BDF': BDF,
+                                           'LSODA': LSODA}
+    MESSAGES = {0: "The solver successfully reached the end of the integration interval.",
+                1: "A termination event occurred."}
+
     def __init__(self, derivative_expressions: tuple[SystemFun, ...],
                  initial_conditions: tuple[float, ...]):
         assert len(derivative_expressions) == len(initial_conditions)
@@ -70,14 +79,52 @@ class IVPSystem:
     def n_equations(self) -> int:
         return len(self.derivatives)
 
-    def solve(self, t_end: float, method: str = "RK45") -> OdeSolution:
+    def solve(self, t_end: float, method: str = "RK45") -> tuple[NDArray, OdeSolution]:
         # Check
         for der_idx, der in enumerate(self.derivatives):
             if der is None:
                 raise ValueError(f"Derivative at index {der_idx} is None. Solving aborted.")
+
         # Solve
-        result = solve_ivp(self._dy, [0, t_end], self.initial_conditions, method=method, dense_output=True)
-        return result.sol
+        # result = solve_ivp(self._dy, [0, t_end], self.initial_conditions, method=method, dense_output=True)
+
+        # Init
+        t0 = 0.0
+        # Data to fill
+        interpolants = []
+        ts = [t0]
+        # Init solver
+        solver_method = self.METHODS[method]
+        solver = solver_method(self._dy, t0, self.initial_conditions, t_end, vectorized=False)
+
+        # Step loop
+        status = None
+        while status is None:
+            # Do step
+            message = solver.step()
+
+            if solver.status == 'finished':
+                status = 0
+            elif solver.status == 'failed':
+                status = -1
+                break
+
+            t_old = solver.t_old
+            t = solver.t
+            y = solver.y
+            sub_sol = solver.dense_output()
+            interpolants.append(sub_sol)
+
+            # Handle events
+
+            ts.append(t)
+        # End loop
+        message = self.MESSAGES[status]
+
+        ts = np.array(ts)
+        sol = OdeSolution(ts, interpolants, alt_segment=True if solver_method in [BDF, LSODA] else False)
+
+        return ts, sol
 
     def _dy(self, t, y):
         try:
