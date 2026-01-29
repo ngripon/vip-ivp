@@ -20,7 +20,7 @@ import pandas as pd
 from numpy.typing import NDArray
 from typing_extensions import ParamSpec
 
-from ..domain.system import create_system_output, EPS
+from ..domain.system import create_system_output, EPS, Direction
 from .utils import operator_call, vectorize_source, get_output_info
 
 if TYPE_CHECKING:
@@ -213,8 +213,10 @@ class TemporalVar(Generic[T]):
         functools.update_wrapper(wrapper, method)
         return wrapper
 
-    # Magic methods
+    def crosses(self, value: "float|TemporalVar[float]", direction: Direction = "both") -> "CrossTriggerVar":
+        return CrossTriggerVar(self - value, direction, self.system)
 
+    # Magic methods
     def __getitem__(self, item):
         return TemporalVar(
             (self, item),
@@ -368,12 +370,25 @@ class IntegratedVar(TemporalVar[float]):
 
 
 class CrossTriggerVar(TemporalVar[float]):
-    def __init__(self, func: TemporalVar[float], system: "IVPSystemMutable"):
+    def __init__(self, func: TemporalVar[float], direction: Direction, system: "IVPSystemMutable"):
+        self.direction = direction
         super().__init__(func, system=system)
 
     def __call__(self, t, y=None):
         value = super().__call__(t, y)
-        return np.abs(value) < EPS
+        # TODO: Not sure it will work at all because the function likely depends more on y(t)
+        if np.abs(value) < EPS:
+            if self.direction == "both":
+                return True
+            value_prev = super().__call__(t - EPS, y)
+            if self.direction == "rising":
+                return value_prev < value
+            elif self.direction == "falling":
+                return value_prev > value
+        return False
+
+    def guard(self, t, y=None):
+        return super().__call__(t, y)
 
 
 def temporal_var_where(
