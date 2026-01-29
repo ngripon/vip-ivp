@@ -39,6 +39,10 @@ def solve(t_end: float, method: str = "RK45", t_eval: list[float] | NDArray = No
     _get_current_system().solve(t_end, method, t_eval)
 
 
+def when(condition, action):
+    _get_current_system().add_event(condition, action)
+
+
 # Post-processing
 def plot(*variables: TemporalVar) -> None:
     # Check

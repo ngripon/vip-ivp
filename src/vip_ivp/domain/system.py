@@ -19,7 +19,7 @@ SystemFun = Callable[[float | NDArray, NDArray], NDArray | float]
 
 
 class EventCondition:
-    def __init__(self, condition: SystemFun, direction: Literal["both", "rising", "falling"]) -> None:
+    def __init__(self, condition: SystemFun, direction: Literal["both", "rising", "falling"] = "both") -> None:
         self.condition = condition
         self.direction = direction
 
@@ -69,11 +69,16 @@ class IVPSystem:
     MESSAGES = {0: "The solver successfully reached the end of the integration interval.",
                 1: "A termination event occurred."}
 
-    def __init__(self, derivative_expressions: tuple[SystemFun, ...],
-                 initial_conditions: tuple[float, ...]):
+    def __init__(
+            self,
+            derivative_expressions: tuple[SystemFun, ...],
+            initial_conditions: tuple[float, ...],
+            event_conditions: tuple[EventCondition, ...] = None,
+    ):
         assert len(derivative_expressions) == len(initial_conditions)
         self.derivatives = derivative_expressions
         self.initial_conditions = initial_conditions
+        self.event_conditions = event_conditions or []
 
     @property
     def n_equations(self) -> int:
@@ -116,6 +121,12 @@ class IVPSystem:
             interpolants.append(sub_sol)
 
             # Handle events
+            event_hits = [ec.compute_root(t_old, t, sub_sol) for ec in self.event_conditions]
+            event_hits = [t for t in event_hits if t is not None]
+            # If there are events, roll back time to the first event
+            if len(event_hits):
+                te = np.min(event_hits)
+                t = te
 
             ts.append(t)
         # End loop
