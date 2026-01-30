@@ -378,14 +378,14 @@ class IntegratedVar(TemporalVar[float]):
 
 
 class CrossTriggerVar(TemporalVar[float]):
-    def __init__(self, func: TemporalVar[float], direction: Direction, event_idx: int, system: "IVPSystemMutable"):
+    def __init__(self, func: TemporalVar[float], direction: Direction, crossing_idx: int, system: "IVPSystemMutable"):
         self.direction = direction
         super().__init__(func, system=system)
-        self.event_idx = event_idx
+        self.crossing_idx = crossing_idx
 
     def __call__(self, t, y=None):
-        if self.event_idx < len(self.system.events_trigger):
-            return np.isin(t, self.system.events_trigger[self.event_idx])
+        if self.crossing_idx < len(self.system.crossing_triggers):
+            return np.isin(t, self.system.crossing_triggers[self.crossing_idx])
         if np.isscalar(t):
             return False
         return np.full(t.shape, False)

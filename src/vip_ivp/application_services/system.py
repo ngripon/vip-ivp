@@ -6,7 +6,7 @@ from scipy.integrate import OdeSolution
 from numpy.typing import NDArray
 
 from .variables import TemporalVar, IntegratedVar, CrossTriggerVar
-from ..domain.system import IVPSystem, Crossing, Direction, EventTriggers, Event, Action, ActionType
+from ..domain.system import IVPSystem, Crossing, Direction, CrossingTriggers, Event, Action, ActionType
 
 T = TypeVar("T")
 
@@ -18,7 +18,7 @@ class IVPSystemMutable:
         # Results
         self.sol: OdeSolution | None = None  # Continuous results function
         self.t_eval: Optional[NDArray] = None
-        self.events_trigger: EventTriggers = ()
+        self.crossing_triggers: CrossingTriggers = ()
 
         # System inputs
         self.derivatives: list[Optional[TemporalVar]] = []
@@ -42,11 +42,11 @@ class IVPSystemMutable:
         system = IVPSystem(tuple(self.derivatives), tuple(self._initial_conditions), tuple(self._crossings),
                            tuple(self._events))
 
-        self.t_eval, self.sol, self.events_trigger = system.solve(t_end, method)
+        self.t_eval, self.sol, self.crossing_triggers = system.solve(t_end, method)
         if t_eval is not None:
             # Add trigger instants to t_eval
             new_t_eval = list(t_eval)
-            [new_t_eval.extend(te) for te in self.events_trigger]
+            [new_t_eval.extend(tc) for tc in self.crossing_triggers]
             new_t_eval = np.sort(new_t_eval)
             self.t_eval = new_t_eval
 
@@ -66,7 +66,7 @@ class IVPSystemMutable:
         return cross_trigger
 
     def set_event_action(self, condition: CrossTriggerVar, action: Action | SideEffectFun) -> None:
-        event_idx = condition.event_idx
+        event_idx = condition.crossing_idx
 
         if not isinstance(action, Action):
             n_args = len(inspect.signature(action).parameters)

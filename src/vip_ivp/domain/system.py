@@ -20,7 +20,7 @@ CROSSING_TOLERANCE = 1e-12
 # Types
 SystemFun = Callable[[NDArray, NDArray], NDArray] | Callable[[float, NDArray], float]
 Direction = Literal["both", "rising", "falling"]
-EventTriggers = tuple[list[float], ...]
+CrossingTriggers = tuple[list[float], ...]
 
 
 class Crossing:
@@ -139,7 +139,7 @@ class IVPSystem:
     def n_events(self) -> int:
         return len(self.events)
 
-    def solve(self, t_end: float, method: str = "RK45") -> tuple[NDArray, OdeSolution, EventTriggers]:
+    def solve(self, t_end: float, method: str = "RK45") -> tuple[NDArray, OdeSolution, CrossingTriggers]:
         # Check
         for der_idx, der in enumerate(self.derivatives):
             if der is None:
@@ -153,7 +153,7 @@ class IVPSystem:
         # Data to fill
         interpolants = []
         ts = [t0]
-        event_triggers = tuple([[] for _ in range(len(self.events))])
+        crossing_triggers = tuple([[] for _ in range(len(self.events))])
         # Init solver
         solver_method = self.METHODS[method]
         solver = solver_method(self._dy, t0, self.initial_conditions, t_end, vectorized=False)
@@ -177,25 +177,28 @@ class IVPSystem:
 
             print(f"T = {t_old} s")
 
-            # Handle events
-            te: float | None = None
-            first_event: Event | None = None
-            first_event_idx = None
-            for e_idx, event in enumerate(self.events):
-                root = event.condition.compute_root(t_old, t, sub_sol)
+            # CROSSING HANDLING
+            tc = float | None
+            first_crossing_idx: int | None = None
+            for c_idx, crossing in enumerate(self.crossings):
+                root = crossing.compute_root(t_old, t, sub_sol)
                 if root is None:
                     continue
-                if te is None or root < te:
-                    te = root
-                    first_event = event
-                    first_event_idx = e_idx
+                if tc is None or root < tc:
+                    tc = root
+                    first_crossing_idx = c_idx
+            # If there is a crossing, roll back time
+            if tc is not None and tc > t_old:
+                t = tc
+                crossing_triggers[first_crossing_idx].append(t)
 
-            # If there are events, roll back time to the first event
-            if te is not None and te > t_old:
-                t = te
-                event_triggers[first_event_idx].append(t)
+            # EVENT HANDLING
+            for event in self.events:
+                # Pass if condition is False
+                if not event.condition(t, sub_sol(t)):
+                    continue
                 # Apply action
-                action = first_event.action
+                action = event.action
                 if action is None:
                     pass
                 elif action.action_type == ActionType.UPDATE_SYSTEM:
@@ -220,7 +223,7 @@ class IVPSystem:
         ts = np.array(ts)
         sol = OdeSolution(ts, interpolants, alt_segment=True if solver_method in [BDF, LSODA] else False)
 
-        return ts, sol, event_triggers
+        return ts, sol, crossing_triggers
 
     def _dy(self, t, y):
         try:
