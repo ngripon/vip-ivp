@@ -23,9 +23,9 @@ Direction = Literal["both", "rising", "falling"]
 EventTriggers = tuple[list[float], ...]
 
 
-class EventCondition:
-    def __init__(self, condition: SystemFun, direction: Direction = "both") -> None:
-        self.condition = condition
+class Crossing:
+    def __init__(self, guard: SystemFun, direction: Direction = "both") -> None:
+        self.guard = guard
         self.direction = direction
 
         # Cache current value
@@ -35,10 +35,10 @@ class EventCondition:
     def compute_root(self, t, t_next, sol) -> float | None:
         # Check zero crossing
         if self._current_value is None or t != self._current_t:
-            y0 = self.condition(t, sol(t))
+            y0 = self.guard(t, sol(t))
         else:
             y0 = self._current_value
-        y1 = self.condition(t_next, sol(t_next))
+        y1 = self.guard(t_next, sol(t_next))
         self._cache_current_value(t_next, y1)
 
         # Return if there is no crossing
@@ -50,13 +50,13 @@ class EventCondition:
 
         discontinuous = not isinstance(y0, (float, int))
         if discontinuous:
-            return bisect(lambda t_: 1 if self.condition(t_, sol(t_)) else -1, t, t_next, xtol=4 * EPS, rtol=4 * EPS)
+            return bisect(lambda t_: 1 if self.guard(t_, sol(t_)) else -1, t, t_next, xtol=4 * EPS, rtol=4 * EPS)
         else:
-            if abs(self.condition(t, sol(t))) <= CROSSING_TOLERANCE:
+            if abs(self.guard(t, sol(t))) <= CROSSING_TOLERANCE:
                 return t
-            elif abs(self.condition(t_next, sol(t_next))) <= CROSSING_TOLERANCE:
+            elif abs(self.guard(t_next, sol(t_next))) <= CROSSING_TOLERANCE:
                 return t_next
-            return brentq(lambda t_: self.condition(t_, sol(t_)), t, t_next, xtol=4 * EPS, rtol=4 * EPS)
+            return brentq(lambda t_: self.guard(t_, sol(t_)), t, t_next, xtol=4 * EPS, rtol=4 * EPS)
 
     def _cache_current_value(self, t, value):
         self._current_t = t
@@ -103,7 +103,7 @@ class Action:
 
 
 class Event:
-    def __init__(self, condition: EventCondition, action: Optional[Action] = None):
+    def __init__(self, condition: Callable, action: Optional[Action] = None):
         self.condition = condition
         self.action = action
 
@@ -122,11 +122,13 @@ class IVPSystem:
             self,
             derivative_expressions: tuple[SystemFun, ...],
             initial_conditions: tuple[float, ...],
+            crossings: tuple[Crossing, ...] = None,
             events: tuple[Event, ...] = None,
     ):
         assert len(derivative_expressions) == len(initial_conditions)
         self.derivatives = derivative_expressions
         self.initial_conditions = initial_conditions
+        self.crossings = crossings or []
         self.events = events or []
 
     @property
@@ -189,7 +191,7 @@ class IVPSystem:
                     first_event_idx = e_idx
 
             # If there are events, roll back time to the first event
-            if te is not None and te>t_old:
+            if te is not None and te > t_old:
                 t = te
                 event_triggers[first_event_idx].append(t)
                 # Apply action

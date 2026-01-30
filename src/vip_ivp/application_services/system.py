@@ -6,7 +6,7 @@ from scipy.integrate import OdeSolution
 from numpy.typing import NDArray
 
 from .variables import TemporalVar, IntegratedVar, CrossTriggerVar
-from ..domain.system import IVPSystem, EventCondition, Direction, EventTriggers, Event, Action, ActionType
+from ..domain.system import IVPSystem, Crossing, Direction, EventTriggers, Event, Action, ActionType
 
 T = TypeVar("T")
 
@@ -24,6 +24,7 @@ class IVPSystemMutable:
         self.derivatives: list[Optional[TemporalVar]] = []
         self._initial_conditions: list[float] = []
         self._events: list[Event] = []
+        self._crossings: list[Crossing] = []
 
     @property
     def is_solved(self) -> bool:
@@ -38,7 +39,7 @@ class IVPSystemMutable:
         return len(self._events)
 
     def solve(self, t_end: float, method: str = "RK45", t_eval: list[float] = None) -> None:
-        system = IVPSystem(tuple(self.derivatives), tuple(self._initial_conditions),
+        system = IVPSystem(tuple(self.derivatives), tuple(self._initial_conditions), tuple(self._crossings),
                            tuple(self._events))
 
         self.t_eval, self.sol, self.events_trigger = system.solve(t_end, method)
@@ -59,9 +60,8 @@ class IVPSystemMutable:
         cross_trigger = CrossTriggerVar(variable, direction, self.n_events, self)
 
         # Add to system
-        new_event_condition = EventCondition(cross_trigger.guard, cross_trigger.direction)
-        new_event = Event(new_event_condition)
-        self._events.append(new_event)
+        new_crossing = Crossing(cross_trigger.guard, cross_trigger.direction)
+        self._crossings.append(new_crossing)
 
         return cross_trigger
 

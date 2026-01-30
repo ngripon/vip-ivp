@@ -109,7 +109,6 @@ class TemporalVar(Generic[T]):
                     # If it fails, call it for each t value
                     output = np.array([resolve_operator(t[i], y[:, i]) for i in range(len(t))])
 
-
                 return output
 
             self._func = operator_func
@@ -385,7 +384,11 @@ class CrossTriggerVar(TemporalVar[float]):
         self.event_idx = event_idx
 
     def __call__(self, t, y=None):
-        return np.isin(t, self.system.events_trigger[self.event_idx])
+        if self.event_idx < len(self.system.events_trigger):
+            return np.isin(t, self.system.events_trigger[self.event_idx])
+        if np.isscalar(t):
+            return False
+        return np.full(t.shape, False)
 
     def guard(self, t, y=None):
         return super().__call__(t, y)
