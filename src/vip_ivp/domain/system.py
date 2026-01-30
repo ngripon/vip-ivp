@@ -13,11 +13,14 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.integrate import OdeSolution, RK23, RK45, DOP853, Radau, BDF, LSODA, OdeSolver
 
+# Constants
 EPS = np.finfo(float).eps
 CROSSING_TOLERANCE = 1e-12
 
+# Types
 SystemFun = Callable[[float | NDArray, NDArray], NDArray | float]
 Direction = Literal["both", "rising", "falling"]
+EventTriggers = tuple[list[float], ...]
 
 
 class EventCondition:
@@ -36,6 +39,7 @@ class EventCondition:
         else:
             y0 = self._current_value
         y1 = self.condition(t_next, sol(t_next))
+        self._cache_current_value(t_next,y1)
 
         # Return if there is no crossing
         if not self.check_zero_crossing(y0, y1, self.direction):
@@ -102,7 +106,6 @@ class Event:
         self.action = action
 
 
-
 class IVPSystem:
     METHODS: dict[str, type[OdeSolver]] = {'RK23': RK23,
                                            'RK45': RK45,
@@ -129,10 +132,10 @@ class IVPSystem:
         return len(self.derivatives)
 
     @property
-    def n_events(self)->int:
+    def n_events(self) -> int:
         return len(self.event_conditions)
 
-    def solve(self, t_end: float, method: str = "RK45") -> tuple[NDArray, OdeSolution]:
+    def solve(self, t_end: float, method: str = "RK45") -> tuple[NDArray, OdeSolution, EventTriggers]:
         # Check
         for der_idx, der in enumerate(self.derivatives):
             if der is None:
@@ -146,6 +149,7 @@ class IVPSystem:
         # Data to fill
         interpolants = []
         ts = [t0]
+        event_triggers = tuple([[] for _ in range(len(self.event_conditions))])
         # Init solver
         solver_method = self.METHODS[method]
         solver = solver_method(self._dy, t0, self.initial_conditions, t_end, vectorized=False)
@@ -171,26 +175,30 @@ class IVPSystem:
             # Handle events
             te: float = None
             first_event: EventCondition | None = None
-            for ec in self.event_conditions:
+            first_event_idx = None
+            for e_idx, ec in enumerate(self.event_conditions):
                 root = ec.compute_root(t_old, t, sub_sol)
                 if root is None:
                     continue
                 if te is None or root < te:
                     te = root
                     first_event = ec
+                    first_event_idx = e_idx
 
             # If there are events, roll back time to the first event
             if te is not None:
                 t = te
+                event_triggers[first_event_idx].append(t)
 
             ts.append(t)
+
         # End loop
         message = self.MESSAGES[status]
 
         ts = np.array(ts)
         sol = OdeSolution(ts, interpolants, alt_segment=True if solver_method in [BDF, LSODA] else False)
 
-        return ts, sol
+        return ts, sol, event_triggers
 
     def _dy(self, t, y):
         try:

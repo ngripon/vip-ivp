@@ -214,7 +214,7 @@ class TemporalVar(Generic[T]):
         return wrapper
 
     def crosses(self, value: "float|TemporalVar[float]", direction: Direction = "both") -> "CrossTriggerVar":
-        return self.system.add_crossing_detection(value, direction)
+        return self.system.add_crossing_detection(self - value, direction)
 
     # Magic methods
     def __getitem__(self, item):
