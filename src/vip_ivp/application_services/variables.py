@@ -165,7 +165,7 @@ class TemporalVar(Generic[T]):
         # Get output type by calling the func
         self._output_type, self._keys, self._shape = get_output_info(self._func)
 
-    def __call__(self, t: float | NDArray, y: Optional[NDArray] = None) -> T:
+    def __call__(self, t: float | NDArray, y: Optional[NDArray] = None, **kwargs) -> T:
         if y is not None:
             return self._func(t, y)
         if self.system.sol is not None:
@@ -383,9 +383,14 @@ class CrossTriggerVar(TemporalVar[float]):
         super().__init__(func, system=system)
         self.crossing_idx = crossing_idx
 
-    def __call__(self, t, y=None):
-        if self.crossing_idx < len(self.system.crossing_triggers):
-            return np.isin(t, self.system.crossing_triggers[self.crossing_idx])
+    def __call__(self, t, y=None, **kwargs):
+        if "crossing_triggers" in kwargs:
+            crossing_triggers = kwargs["crossing_triggers"]
+        else:
+            crossing_triggers = self.system.crossing_triggers
+
+        if self.crossing_idx < len(crossing_triggers):
+            return np.isin(t, crossing_triggers[self.crossing_idx])
         if np.isscalar(t):
             return False
         return np.full(t.shape, False)

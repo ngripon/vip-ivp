@@ -107,6 +107,9 @@ class Event:
         self.condition = condition
         self.action = action
 
+    def evaluate(self, t: float, y: NDArray, t_triggers: tuple[list[float], ...]) -> bool:
+        return bool(self.condition(t, y, crossing_triggers=t_triggers))
+
 
 class IVPSystem:
     METHODS: dict[str, type[OdeSolver]] = {'RK23': RK23,
@@ -195,7 +198,7 @@ class IVPSystem:
             # EVENT HANDLING
             for event in self.events:
                 # Pass if condition is False
-                if not event.condition(t, sub_sol(t)):
+                if not event.evaluate(t, sub_sol(t), crossing_triggers):
                     continue
                 # Apply action
                 action = event.action
