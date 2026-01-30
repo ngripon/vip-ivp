@@ -373,19 +373,10 @@ class CrossTriggerVar(TemporalVar[float]):
     def __init__(self, func: TemporalVar[float], direction: Direction, system: "IVPSystemMutable"):
         self.direction = direction
         super().__init__(func, system=system)
+        self.t_trigger=[]
 
     def __call__(self, t, y=None):
-        value = super().__call__(t, y)
-        # TODO: Not sure it will work at all because the function likely depends more on y(t)
-        if np.abs(value) < EPS:
-            if self.direction == "both":
-                return True
-            value_prev = super().__call__(t - EPS, y)
-            if self.direction == "rising":
-                return value_prev < value
-            elif self.direction == "falling":
-                return value_prev > value
-        return False
+        return np.isin(t, self.t_trigger)
 
     def guard(self, t, y=None):
         return super().__call__(t, y)

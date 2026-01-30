@@ -25,16 +25,16 @@ class IVPSystemMutable:
         self._add_equation(None, x0)
         return IntegratedVar(self._system.n_equations - 1, self)
 
-    def add_event(self, crossing_variable: TemporalVar, action=None)->CrossTriggerVar:
+    def add_event(self, crossing_variable: CrossTriggerVar, action=None) -> None:
+        assert isinstance(crossing_variable, CrossTriggerVar), ("Condition should be a cross-trigger variable. "
+                                                                "Use the .crosses(value) method instead.")
         events = list(self._system.event_conditions)
-        new_event = EventCondition(crossing_variable)
+        new_event = EventCondition(crossing_variable.guard)
         events.append(new_event)
 
         self._set_system(
             IVPSystem(self._system.derivatives, self._system.initial_conditions, events)
         )
-
-        return CrossTriggerVar(crossing_variable, self)
 
     def solve(self, t_end: float, method: str = "RK45", t_eval: list[float] = None) -> None:
         self.t_eval, self.sol = self._system.solve(t_end, method)

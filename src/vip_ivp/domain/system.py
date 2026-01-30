@@ -7,7 +7,7 @@ solution y(t) is computed.
 
 """
 from enum import Enum
-from typing import Callable, Literal
+from typing import Callable, Literal, Optional
 
 import numpy as np
 from numpy.typing import NDArray
@@ -21,13 +21,19 @@ Direction = Literal["both", "rising", "falling"]
 
 
 class EventCondition:
-    def __init__(self, condition: SystemFun, direction: Direction = "both") -> None:
+    def __init__(self, condition: SystemFun, direction: Direction = "both",
+                 on_trigger: Optional[Callable[[float | NDArray, NDArray], None]] = None) -> None:
         self.condition = condition
         self.direction = direction
+        self.on_trigger = on_trigger
 
         # Cache current value
         self._current_t = None
         self._current_value = None
+
+    def trigger(self, t, y) -> None:
+        if self.on_trigger is not None:
+            self.on_trigger(t, y)
 
     def compute_root(self, t, t_next, sol) -> float | None:
         # Check zero crossing
@@ -164,12 +170,20 @@ class IVPSystem:
             interpolants.append(sub_sol)
 
             # Handle events
-            event_hits = [ec.compute_root(t_old, t, sub_sol) for ec in self.event_conditions]
-            event_hits = [t for t in event_hits if t is not None]
+            te = None
+            first_event = None
+            for ec in self.event_conditions:
+                root = ec.compute_root(t_old, t, sub_sol)
+                if root is None:
+                    continue
+                if te is None or root < te:
+                    te = root
+                    first_event = ec
+
             # If there are events, roll back time to the first event
-            if len(event_hits):
-                te = np.min(event_hits)
+            if te is not None:
                 t = te
+                first_event.trigger(t, sub_sol(t))
 
             ts.append(t)
         # End loop
