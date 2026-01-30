@@ -7,7 +7,7 @@ solution y(t) is computed.
 
 """
 from enum import Enum
-from typing import Callable, Literal
+from typing import Callable, Literal, Optional
 
 import numpy as np
 from numpy.typing import NDArray
@@ -18,7 +18,7 @@ EPS = np.finfo(float).eps
 CROSSING_TOLERANCE = 1e-12
 
 # Types
-SystemFun = Callable[[float | NDArray, NDArray], NDArray | float]
+SystemFun = Callable[[NDArray, NDArray], NDArray] | Callable[[float, NDArray], float]
 Direction = Literal["both", "rising", "falling"]
 EventTriggers = tuple[list[float], ...]
 
@@ -101,7 +101,7 @@ class Action:
 
 
 class Event:
-    def __init__(self, condition: EventCondition, action: Action):
+    def __init__(self, condition: EventCondition, action: Optional[Action]=None):
         self.condition = condition
         self.action = action
 
@@ -120,12 +120,12 @@ class IVPSystem:
             self,
             derivative_expressions: tuple[SystemFun, ...],
             initial_conditions: tuple[float, ...],
-            event_conditions: tuple[EventCondition, ...] = None,
+            events: tuple[Event, ...] = None,
     ):
         assert len(derivative_expressions) == len(initial_conditions)
         self.derivatives = derivative_expressions
         self.initial_conditions = initial_conditions
-        self.event_conditions = event_conditions or []
+        self.events = events or []
 
     @property
     def n_equations(self) -> int:
@@ -133,7 +133,7 @@ class IVPSystem:
 
     @property
     def n_events(self) -> int:
-        return len(self.event_conditions)
+        return len(self.events)
 
     def solve(self, t_end: float, method: str = "RK45") -> tuple[NDArray, OdeSolution, EventTriggers]:
         # Check
@@ -149,7 +149,7 @@ class IVPSystem:
         # Data to fill
         interpolants = []
         ts = [t0]
-        event_triggers = tuple([[] for _ in range(len(self.event_conditions))])
+        event_triggers = tuple([[] for _ in range(len(self.events))])
         # Init solver
         solver_method = self.METHODS[method]
         solver = solver_method(self._dy, t0, self.initial_conditions, t_end, vectorized=False)
@@ -173,16 +173,16 @@ class IVPSystem:
             interpolants.append(sub_sol)
 
             # Handle events
-            te: float = None
-            first_event: EventCondition | None = None
+            te: float | None = None
+            first_event: Event | None = None
             first_event_idx = None
-            for e_idx, ec in enumerate(self.event_conditions):
-                root = ec.compute_root(t_old, t, sub_sol)
+            for e_idx, event in enumerate(self.events):
+                root = event.condition.compute_root(t_old, t, sub_sol)
                 if root is None:
                     continue
                 if te is None or root < te:
                     te = root
-                    first_event = ec
+                    first_event = event
                     first_event_idx = e_idx
 
             # If there are events, roll back time to the first event

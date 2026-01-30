@@ -5,7 +5,7 @@ from scipy.integrate import OdeSolution
 from numpy.typing import NDArray
 
 from .variables import TemporalVar, IntegratedVar, CrossTriggerVar
-from ..domain.system import IVPSystem, EventCondition, Direction, EventTriggers
+from ..domain.system import IVPSystem, EventCondition, Direction, EventTriggers, Event, Action
 
 T = TypeVar("T")
 
@@ -20,7 +20,7 @@ class IVPSystemMutable:
         # System inputs
         self._derivatives: list[Optional[TemporalVar]] = []
         self._initial_conditions: list[float] = []
-        self._events: list[EventCondition] = []
+        self._events: list[Event] = []
 
     @property
     def is_solved(self) -> bool:
@@ -56,10 +56,15 @@ class IVPSystemMutable:
         cross_trigger = CrossTriggerVar(variable, direction, self.n_events, self)
 
         # Add to system
-        new_event = EventCondition(cross_trigger.guard, cross_trigger.direction)
+        new_event_condition = EventCondition(cross_trigger.guard, cross_trigger.direction)
+        new_event = Event(new_event_condition)
         self._events.append(new_event)
 
         return cross_trigger
+
+    def set_event_action(self, condition: CrossTriggerVar, action: Action) -> None:
+        event_idx = condition.event_idx
+        self._events[event_idx].action = action
 
     def set_derivative(self, variable: TemporalVar[float], eq_idx: int) -> None:
         self._derivatives[eq_idx] = variable
