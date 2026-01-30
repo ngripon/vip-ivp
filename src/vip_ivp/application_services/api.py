@@ -29,13 +29,6 @@ def n_order_state(
     return tuple(states)
 
 
-def second_order_state(x0: float, dx0: float) -> tuple[IntegratedVar, IntegratedVar]:
-    x = _get_current_system().add_state(x0)
-    dx = _get_current_system().add_state(dx0)
-    x.derivative = dx
-    return x, dx
-
-
 def where(condition, a, b) -> TemporalVar:
     return temporal_var_where(condition, a, b)
 
