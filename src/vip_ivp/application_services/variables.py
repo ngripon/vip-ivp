@@ -20,7 +20,7 @@ import pandas as pd
 from numpy.typing import NDArray
 from typing_extensions import ParamSpec
 
-from ..domain.system import create_system_output_fun, EPS, Direction, Action, create_set_system_output_fun, ActionType
+from ..domain.system import create_system_output_fun, Direction, Action, create_set_system_output_fun, ActionType
 from .utils import operator_call, vectorize_source, get_output_info
 
 if TYPE_CHECKING:
@@ -102,7 +102,7 @@ class TemporalVar(Generic[T]):
                 try:
                     # Assume that the function is vectorized
                     output = resolve_operator(t, y)
-                except:
+                except e:
                     # If it fails, call it for each t value
                     output = np.array([resolve_operator(t[i], y[:, i]) for i in range(len(t))])
 

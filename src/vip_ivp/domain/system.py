@@ -12,7 +12,6 @@ from typing import Callable, Literal, Optional
 import numpy as np
 from numpy.typing import NDArray
 from scipy.integrate import OdeSolution, RK23, RK45, DOP853, Radau, BDF, LSODA, OdeSolver
-from sympy.physics.units import action
 
 # Constants
 EPS = np.finfo(float).eps
@@ -229,7 +228,7 @@ class IVPSystem:
 
 
 def create_system_output_fun(idx: int) -> SystemFun:
-    def system_output(t: float | NDArray, y: NDArray, i=idx) -> NDArray:
+    def system_output(_, y: NDArray, i=idx) -> NDArray:
         return y[i]
 
     return system_output

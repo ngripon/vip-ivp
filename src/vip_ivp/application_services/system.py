@@ -1,13 +1,16 @@
-from typing import TypeVar, Optional
+import inspect
+from typing import TypeVar, Optional, Callable
 
 import numpy as np
 from scipy.integrate import OdeSolution
 from numpy.typing import NDArray
 
 from .variables import TemporalVar, IntegratedVar, CrossTriggerVar
-from ..domain.system import IVPSystem, EventCondition, Direction, EventTriggers, Event, Action
+from ..domain.system import IVPSystem, EventCondition, Direction, EventTriggers, Event, Action, ActionType
 
 T = TypeVar("T")
+
+SideEffectFun = Callable[[], None] | Callable[[float], None]
 
 
 class IVPSystemMutable:
@@ -62,9 +65,22 @@ class IVPSystemMutable:
 
         return cross_trigger
 
-    def set_event_action(self, condition: CrossTriggerVar, action: Action) -> None:
+    def set_event_action(self, condition: CrossTriggerVar, action: Action | SideEffectFun) -> None:
         event_idx = condition.event_idx
-        self._events[event_idx].action = action
+
+        if not isinstance(action, Action):
+            n_args = len(inspect.signature(action).parameters)
+            if n_args == 0:
+                action_fun = lambda t, y: action()
+            elif n_args == 1:
+                action_fun = lambda t, y: action(t)
+            else:
+                action_fun = action
+            new_action = Action(action_fun, ActionType.SIDE_EFFECT)
+        else:
+            new_action = action
+
+        self._events[event_idx].action = new_action
 
     def set_derivative(self, variable: TemporalVar[float], eq_idx: int) -> None:
         self._derivatives[eq_idx] = variable

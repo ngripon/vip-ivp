@@ -33,7 +33,7 @@ def solve(t_end: float, method: str = "RK45", t_eval: list[float] | NDArray = No
     _get_current_system().solve(t_end, method, t_eval)
 
 
-def when(condition:CrossTriggerVar, action:Action)->None:
+def when(condition:CrossTriggerVar, action:Action|SideEffectFun)->None:
     _get_current_system().set_event_action(condition, action)
 
 terminate=Action(None, ActionType.TERMINATE)
