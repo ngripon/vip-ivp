@@ -102,9 +102,13 @@ class TemporalVar(Generic[T]):
                 try:
                     # Assume that the function is vectorized
                     output = resolve_operator(t, y)
-                except:
+                except Exception as e:
+                    # If it fails with a scalar t, the function failed for another reason
+                    if np.isscalar(t):
+                        raise e
                     # If it fails, call it for each t value
                     output = np.array([resolve_operator(t[i], y[:, i]) for i in range(len(t))])
+
 
                 return output
 
