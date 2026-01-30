@@ -102,7 +102,7 @@ class TemporalVar(Generic[T]):
                 try:
                     # Assume that the function is vectorized
                     output = resolve_operator(t, y)
-                except e:
+                except:
                     # If it fails, call it for each t value
                     output = np.array([resolve_operator(t[i], y[:, i]) for i in range(len(t))])
 
@@ -356,21 +356,21 @@ class IntegratedVar(TemporalVar[float]):
     def __init__(self, index: int, system: "IVPSystemMutable"):
         func = create_system_output_fun(index)
         super().__init__(func, system=system)
-        self._derivative: TemporalVar[float] = TemporalVar(0)
         self._eq_idx: int = index
 
     @property
     def derivative(self):
-        return self._derivative
+        return self.system.derivatives[self._eq_idx]
 
     @derivative.setter
-    def derivative(self, value: TemporalVar[float]):
-        self._derivative = value
+    def derivative(self, value: float | TemporalVar[float]):
+        if not isinstance(value, TemporalVar):
+            value = TemporalVar(value, system=self.system)
         self.system.set_derivative(value, self._eq_idx)
 
-    def reinit(self, value: float|TemporalVar[float]) -> Action:
+    def reinit(self, value: float | TemporalVar[float]) -> Action:
         if not isinstance(value, TemporalVar):
-            value=TemporalVar(value)
+            value = TemporalVar(value)
         return Action(create_set_system_output_fun(self._eq_idx, value), ActionType.UPDATE_SYSTEM)
 
 

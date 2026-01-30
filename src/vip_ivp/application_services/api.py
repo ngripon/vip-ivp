@@ -16,6 +16,23 @@ def temporal(value) -> TemporalVar:
 def state(x0: float) -> IntegratedVar:
     return _get_current_system().add_state(x0)
 
+def n_order_state(
+    *initial_conditions: float
+) -> tuple[IntegratedVar, ...]:
+    system = _get_current_system()
+    states = [system.add_state(x0) for x0 in initial_conditions]
+
+    for s, ds in zip(states[:-1], states[1:]):
+        s.derivative = ds
+
+    return tuple(states)
+
+def second_order_state(x0: float, dx0: float) -> tuple[IntegratedVar, IntegratedVar]:
+    x = _get_current_system().add_state(x0)
+    dx = _get_current_system().add_state(dx0)
+    x.derivative = dx
+    return x, dx
+
 
 def where(condition, a, b) -> TemporalVar:
     return temporal_var_where(condition, a, b)
@@ -33,10 +50,11 @@ def solve(t_end: float, method: str = "RK45", t_eval: list[float] | NDArray = No
     _get_current_system().solve(t_end, method, t_eval)
 
 
-def when(condition:CrossTriggerVar, action:Action|SideEffectFun)->None:
+def when(condition: CrossTriggerVar, action: Action | SideEffectFun) -> None:
     _get_current_system().set_event_action(condition, action)
 
-terminate=Action(None, ActionType.TERMINATE)
+
+terminate = Action(None, ActionType.TERMINATE)
 
 
 # Post-processing

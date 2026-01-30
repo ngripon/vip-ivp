@@ -21,7 +21,7 @@ class IVPSystemMutable:
         self.events_trigger: EventTriggers = ()
 
         # System inputs
-        self._derivatives: list[Optional[TemporalVar]] = []
+        self.derivatives: list[Optional[TemporalVar]] = []
         self._initial_conditions: list[float] = []
         self._events: list[Event] = []
 
@@ -31,14 +31,14 @@ class IVPSystemMutable:
 
     @property
     def n_equations(self) -> int:
-        return len(self._derivatives)
+        return len(self.derivatives)
 
     @property
     def n_events(self) -> int:
         return len(self._events)
 
     def solve(self, t_end: float, method: str = "RK45", t_eval: list[float] = None) -> None:
-        system = IVPSystem(tuple(self._derivatives), tuple(self._initial_conditions),
+        system = IVPSystem(tuple(self.derivatives), tuple(self._initial_conditions),
                            tuple(self._events))
 
         self.t_eval, self.sol, self.events_trigger = system.solve(t_end, method)
@@ -50,7 +50,7 @@ class IVPSystemMutable:
             self.t_eval = new_t_eval
 
     def add_state(self, x0: float) -> "IntegratedVar":
-        self._derivatives.append(None)
+        self.derivatives.append(None)
         self._initial_conditions.append(x0)
         return IntegratedVar(self.n_equations - 1, self)
 
@@ -83,4 +83,4 @@ class IVPSystemMutable:
         self._events[event_idx].action = new_action
 
     def set_derivative(self, variable: TemporalVar[float], eq_idx: int) -> None:
-        self._derivatives[eq_idx] = variable
+        self.derivatives[eq_idx] = variable
