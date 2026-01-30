@@ -39,7 +39,8 @@ class IVPSystemMutable:
         return len(self._events)
 
     def solve(self, t_end: float, method: str = "RK45", t_eval: list[float] = None, step_eval:float=None) -> None:
-        system = IVPSystem(tuple(self.derivatives), tuple(self._initial_conditions), tuple(self._crossings),
+        output_bounds=tuple([(None,None) for _ in self.derivatives])
+        system = IVPSystem(tuple(self.derivatives), tuple(self._initial_conditions),output_bounds, tuple(self._crossings),
                            tuple(self._events))
 
         self.t_eval, self.sol, self.crossing_triggers = system.solve(t_end, method)

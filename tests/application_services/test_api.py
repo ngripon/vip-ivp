@@ -1,6 +1,6 @@
 import numpy as np
 
-from src.vip_ivp.application_services.api import *
+from vip_ivp.application_services.api import *
 
 
 def test_ode():

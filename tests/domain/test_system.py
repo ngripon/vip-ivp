@@ -1,10 +1,10 @@
 import numpy as np
 
-from vip_ivp.domain.system import IVPSystem, create_system_output
+from vip_ivp.domain.system import IVPSystem, create_system_output_fun
 
 
 def test_ode_result():
-    y = create_system_output(0)
+    y = create_system_output_fun(0)
     dy = lambda t, y_: -2 * y(t, y_)
     y0 = 1
     sut = IVPSystem((dy,), (y0,))

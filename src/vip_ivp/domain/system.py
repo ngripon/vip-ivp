@@ -125,12 +125,14 @@ class IVPSystem:
             self,
             derivative_expressions: tuple[SystemFun, ...],
             initial_conditions: tuple[float, ...],
+            output_bounds: tuple[tuple[SystemFun | None, SystemFun | None], ...],
             crossings: tuple[Crossing, ...] = None,
             events: tuple[Event, ...] = None,
     ):
         assert len(derivative_expressions) == len(initial_conditions)
         self.derivatives = derivative_expressions
         self.initial_conditions = initial_conditions
+        self.output_bounds = output_bounds
         self.crossings = crossings or []
         self.events = events or []
 
@@ -176,7 +178,7 @@ class IVPSystem:
             t_old = solver.t_old
             t = solver.t
             y = solver.y
-            sub_sol = solver.dense_output()
+            sub_sol = self._bound_sol(solver.dense_output())
 
             print(f"T = {t_old} s")
 
@@ -236,6 +238,30 @@ class IVPSystem:
             raise RecursionError(
                 "An algebraic loop has been detected."
             )
+
+    def _bound_sol(self, sol):
+
+        def wrapper(t: float | NDArray):
+            y = sol(t)
+            lower, upper = self._get_bounds(t, y)
+            output_bounded_max = np.where(y <= upper, y, upper)
+            output_bounded = np.where(output_bounded_max >= lower, output_bounded_max, lower)
+            return output_bounded
+
+        return wrapper
+
+    def _get_bounds(self, t, y):
+        upper_bounds = []
+        lower_bounds = []
+        for der_idx, (lower, upper) in enumerate(self.output_bounds):
+            maximum = upper(t, y) if upper is not None else np.full(t.shape,np.inf) if not np.isscalar(t) else np.inf
+            minimum = lower(t, y) if lower is not None else np.full(t.shape,-np.inf) if not np.isscalar(t) else -np.inf
+            if np.any(minimum > maximum):
+                raise ValueError(
+                    f"Lower bound {minimum} is greater than upper bound {maximum} a time {t} s for equation {der_idx}")
+            upper_bounds.append(maximum)
+            lower_bounds.append(minimum)
+        return lower_bounds, upper_bounds
 
 
 def create_system_output_fun(idx: int) -> SystemFun:
