@@ -101,7 +101,7 @@ class Action:
 
 
 class Event:
-    def __init__(self, condition: EventCondition, action: Optional[Action]=None):
+    def __init__(self, condition: EventCondition, action: Optional[Action] = None):
         self.condition = condition
         self.action = action
 
@@ -170,7 +170,6 @@ class IVPSystem:
             t = solver.t
             y = solver.y
             sub_sol = solver.dense_output()
-            interpolants.append(sub_sol)
 
             # Handle events
             te: float | None = None
@@ -189,8 +188,24 @@ class IVPSystem:
             if te is not None:
                 t = te
                 event_triggers[first_event_idx].append(t)
+                # Apply action
+                action = first_event.action
+                if action is None:
+                    pass
+                elif action.action_type == ActionType.UPDATE_SYSTEM:
+                    # Update state and restart the solver to handle the discontinuity
+                    y = action(t, sub_sol(t))
+                    solver = solver_method(self._dy, t, y, t_end, vectorized=False)
+                elif action.action_type == ActionType.TERMINATE:
+                    break
+                elif action.action_type == ActionType.ASSERT:
+                    ...
+                elif action.action_type == ActionType.SIDE_EFFECT:
+                    action(t, sub_sol(t))
 
+            # Update solution
             ts.append(t)
+            interpolants.append(sub_sol)
 
         # End loop
         message = self.MESSAGES[status]
