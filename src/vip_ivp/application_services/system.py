@@ -23,6 +23,7 @@ class IVPSystemMutable:
         # System inputs
         self.derivatives: list[Optional[TemporalVar]] = []
         self._initial_conditions: list[float] = []
+        self.bounds: list[tuple[None | TemporalVar[float], None | TemporalVar[float]]] = []
         self._events: list[Event] = []
         self._crossings: list[Crossing] = []
 
@@ -38,9 +39,12 @@ class IVPSystemMutable:
     def n_events(self) -> int:
         return len(self._events)
 
-    def solve(self, t_end: float, method: str = "RK45", t_eval: list[float] = None, step_eval:float=None) -> None:
-        output_bounds=tuple([(None,None) for _ in self.derivatives])
-        system = IVPSystem(tuple(self.derivatives), tuple(self._initial_conditions),output_bounds, tuple(self._crossings),
+    def solve(self, t_end: float, method: str = "RK45", t_eval: list[float] = None, step_eval: float = None) -> None:
+
+        system = IVPSystem(tuple(self.derivatives),
+                           tuple(self._initial_conditions),
+                           tuple(self.bounds),
+                           tuple(self._crossings),
                            tuple(self._events))
 
         self.t_eval, self.sol, self.crossing_triggers = system.solve(t_end, method)
@@ -56,11 +60,10 @@ class IVPSystemMutable:
             new_t_eval = np.sort(new_t_eval)
             self.t_eval = new_t_eval
 
-
-
-    def add_state(self, x0: float) -> "IntegratedVar":
+    def add_state(self, x0: float, lower=None, upper=None) -> "IntegratedVar":
         self.derivatives.append(None)
         self._initial_conditions.append(x0)
+        self.bounds.append((lower, upper))
         return IntegratedVar(self.n_equations - 1, self)
 
     def add_crossing_detection(self, variable: TemporalVar[float], direction: Direction) -> CrossTriggerVar:
@@ -90,3 +93,10 @@ class IVPSystemMutable:
 
     def set_derivative(self, variable: TemporalVar[float], eq_idx: int) -> None:
         self.derivatives[eq_idx] = variable
+
+    def set_bound(self, variable: TemporalVar[float], eq_idx: int, is_lower: bool) -> None:
+        current_bounds = self.bounds[eq_idx]
+        if is_lower:
+            self.bounds[eq_idx] = (variable, current_bounds[1])
+        else:
+            self.bounds[eq_idx] = (current_bounds[0], variable)

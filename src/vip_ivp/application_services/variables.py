@@ -373,6 +373,26 @@ class IntegratedVar(TemporalVar[float]):
             value = TemporalVar(value, system=self.system)
         self.system.set_derivative(value, self._eq_idx)
 
+    @property
+    def lower(self):
+        return self.system.bounds[self._eq_idx][0]
+
+    @lower.setter
+    def lower(self, value: float | TemporalVar[float]):
+        if not isinstance(value, TemporalVar):
+            value = TemporalVar(value, system=self.system)
+        self.system.set_bound(value, self._eq_idx, True)
+
+    @property
+    def upper(self):
+        return self.system.bounds[self._eq_idx][0]
+
+    @upper.setter
+    def upper(self, value: float | TemporalVar[float]):
+        if not isinstance(value, TemporalVar):
+            value = TemporalVar(value, system=self.system)
+        self.system.set_bound(value, self._eq_idx, False)
+
     def reinit(self, value: float | TemporalVar[float]) -> Action:
         if not isinstance(value, TemporalVar):
             value = TemporalVar(value)

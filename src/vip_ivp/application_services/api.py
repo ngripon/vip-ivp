@@ -13,8 +13,8 @@ def temporal(value) -> TemporalVar:
     return TemporalVar(value, system=_get_current_system())
 
 
-def state(x0: float) -> IntegratedVar:
-    return _get_current_system().add_state(x0)
+def state(x0: float, lower_bound:float|TemporalVar=None, upper_bound:float|TemporalVar=None) -> IntegratedVar:
+    return _get_current_system().add_state(x0, lower_bound, upper_bound)
 
 
 def n_order_state(
