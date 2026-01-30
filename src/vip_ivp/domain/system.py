@@ -39,7 +39,7 @@ class EventCondition:
         else:
             y0 = self._current_value
         y1 = self.condition(t_next, sol(t_next))
-        self._cache_current_value(t_next,y1)
+        self._cache_current_value(t_next, y1)
 
         # Return if there is no crossing
         if not self.check_zero_crossing(y0, y1, self.direction):
@@ -209,8 +209,17 @@ class IVPSystem:
             )
 
 
-def create_system_output(idx: int) -> SystemFun:
+def create_system_output_fun(idx: int) -> SystemFun:
     def system_output(t: float | NDArray, y: NDArray, i=idx) -> NDArray:
         return y[i]
 
     return system_output
+
+
+def create_set_system_output_fun(idx: int, value: float) -> SystemFun:
+    def set_system_output(t: float | NDArray, y: NDArray, i=idx) -> NDArray:
+        y_new = np.copy(y)
+        y_new[i] = value
+        return y_new
+
+    return set_system_output

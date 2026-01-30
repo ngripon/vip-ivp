@@ -20,7 +20,7 @@ import pandas as pd
 from numpy.typing import NDArray
 from typing_extensions import ParamSpec
 
-from ..domain.system import create_system_output, EPS, Direction
+from ..domain.system import create_system_output_fun, EPS, Direction, Action, create_set_system_output_fun, ActionType
 from .utils import operator_call, vectorize_source, get_output_info
 
 if TYPE_CHECKING:
@@ -354,7 +354,7 @@ class TemporalVar(Generic[T]):
 
 class IntegratedVar(TemporalVar[float]):
     def __init__(self, index: int, system: "IVPSystemMutable"):
-        func = create_system_output(index)
+        func = create_system_output_fun(index)
         super().__init__(func, system=system)
         self._derivative: TemporalVar[float] = TemporalVar(0)
         self._eq_idx: int = index
@@ -367,6 +367,9 @@ class IntegratedVar(TemporalVar[float]):
     def derivative(self, value: TemporalVar[float]):
         self._derivative = value
         self.system.set_derivative(value, self._eq_idx)
+
+    def reinit(self, value: float) -> Action:
+        return Action(create_set_system_output_fun(self._eq_idx, value), ActionType.UPDATE_SYSTEM)
 
 
 class CrossTriggerVar(TemporalVar[float]):
