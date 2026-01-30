@@ -107,8 +107,8 @@ class Event:
         self.condition = condition
         self.action = action
 
-    def evaluate(self, t: float, y: NDArray, t_triggers: tuple[list[float], ...]) -> bool:
-        return bool(self.condition(t, y, crossing_triggers=t_triggers))
+    def evaluate(self, t: float, y: NDArray, cross_triggers: tuple[list[float], ...]) -> bool:
+        return bool(self.condition(t, y, cross_triggers=cross_triggers))
 
 
 class IVPSystem:
@@ -202,6 +202,7 @@ class IVPSystem:
                     continue
                 # Apply action
                 action = event.action
+                print(action.action_type)
                 if action is None:
                     pass
                 elif action.action_type == ActionType.UPDATE_SYSTEM:
@@ -238,7 +239,7 @@ class IVPSystem:
 
 
 def create_system_output_fun(idx: int) -> SystemFun:
-    def system_output(_, y: NDArray, i=idx) -> NDArray:
+    def system_output(_, y: NDArray, i=idx, **kwargs) -> NDArray:
         return y[i]
 
     return system_output
