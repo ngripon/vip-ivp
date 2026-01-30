@@ -38,7 +38,7 @@ class IVPSystemMutable:
     def n_events(self) -> int:
         return len(self._events)
 
-    def solve(self, t_end: float, method: str = "RK45", t_eval: list[float] = None) -> None:
+    def solve(self, t_end: float, method: str = "RK45", t_eval: list[float] = None, step_eval:float=None) -> None:
         system = IVPSystem(tuple(self.derivatives), tuple(self._initial_conditions), tuple(self._crossings),
                            tuple(self._events))
 
@@ -49,6 +49,13 @@ class IVPSystemMutable:
             [new_t_eval.extend(tc) for tc in self.crossing_triggers]
             new_t_eval = np.sort(new_t_eval)
             self.t_eval = new_t_eval
+        elif step_eval is not None:
+            new_t_eval = list(np.arange(self.t_eval[0], self.t_eval[-1], step_eval))
+            [new_t_eval.extend(tc) for tc in self.crossing_triggers]
+            new_t_eval = np.sort(new_t_eval)
+            self.t_eval = new_t_eval
+
+
 
     def add_state(self, x0: float) -> "IntegratedVar":
         self.derivatives.append(None)

@@ -16,8 +16,9 @@ def temporal(value) -> TemporalVar:
 def state(x0: float) -> IntegratedVar:
     return _get_current_system().add_state(x0)
 
+
 def n_order_state(
-    *initial_conditions: float
+        *initial_conditions: float
 ) -> tuple[IntegratedVar, ...]:
     system = _get_current_system()
     states = [system.add_state(x0) for x0 in initial_conditions]
@@ -26,6 +27,7 @@ def n_order_state(
         s.derivative = ds
 
     return tuple(states)
+
 
 def second_order_state(x0: float, dx0: float) -> tuple[IntegratedVar, IntegratedVar]:
     x = _get_current_system().add_state(x0)
@@ -46,11 +48,11 @@ def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
     return wrapper
 
 
-def solve(t_end: float, method: str = "RK45", t_eval: list[float] | NDArray = None) -> None:
-    _get_current_system().solve(t_end, method, t_eval)
+def solve(t_end: float, method: str = "RK45", t_eval: list[float] | NDArray = None, step_eval: float = None) -> None:
+    _get_current_system().solve(t_end, method, t_eval, step_eval)
 
 
-def when(condition: CrossTriggerVar|TemporalVar[bool], action: Action | SideEffectFun) -> None:
+def when(condition: CrossTriggerVar | TemporalVar[bool], action: Action | SideEffectFun) -> None:
     _get_current_system().add_event(condition, action)
 
 
