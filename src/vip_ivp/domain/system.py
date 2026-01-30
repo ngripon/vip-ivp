@@ -231,10 +231,10 @@ def create_system_output_fun(idx: int) -> SystemFun:
     return system_output
 
 
-def create_set_system_output_fun(idx: int, value: float) -> SystemFun:
+def create_set_system_output_fun(idx: int, value_fun: Callable[[float, NDArray], float]) -> SystemFun:
     def set_system_output(t: float | NDArray, y: NDArray, i=idx) -> NDArray:
         y_new = np.copy(y)
-        y_new[i] = value
+        y_new[i] = value_fun(t, y)
         return y_new
 
     return set_system_output

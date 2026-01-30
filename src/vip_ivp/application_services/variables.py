@@ -368,7 +368,9 @@ class IntegratedVar(TemporalVar[float]):
         self._derivative = value
         self.system.set_derivative(value, self._eq_idx)
 
-    def reinit(self, value: float) -> Action:
+    def reinit(self, value: float|TemporalVar[float]) -> Action:
+        if not isinstance(value, TemporalVar):
+            value=TemporalVar(value)
         return Action(create_set_system_output_fun(self._eq_idx, value), ActionType.UPDATE_SYSTEM)
 
 
