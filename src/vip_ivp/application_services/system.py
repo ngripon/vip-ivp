@@ -5,7 +5,7 @@ from scipy.integrate import OdeSolution
 from numpy.typing import NDArray
 
 from .variables import TemporalVar, IntegratedVar, CrossTriggerVar
-from ..domain.system import IVPSystem, EventCondition
+from ..domain.system import IVPSystem, EventCondition, Direction
 
 T = TypeVar("T")
 
@@ -14,6 +14,7 @@ class IVPSystemMutable:
     def __init__(self):
         self.sol: OdeSolution | None = None  # Continuous results function
         self.t_eval: Optional[NDArray] = None
+        self.events_trigger = tuple[list[float], ...]
 
         self._system: IVPSystem = IVPSystem(tuple(), tuple())
 
@@ -24,6 +25,21 @@ class IVPSystemMutable:
     def add_state(self, x0: float) -> "IntegratedVar":
         self._add_equation(None, x0)
         return IntegratedVar(self._system.n_equations - 1, self)
+
+    def add_crossing_detection(self, variable: TemporalVar[float], direction: Direction) -> CrossTriggerVar:
+        # Create variable
+        cross_trigger = CrossTriggerVar(variable, direction, self._system.n_events - 1, self)
+
+        # Update system
+        events = list(self._system.event_conditions)
+        new_event = EventCondition(cross_trigger.guard)
+        events.append(new_event)
+
+        self._set_system(
+            IVPSystem(self._system.derivatives, self._system.initial_conditions, events)
+        )
+
+        return cross_trigger
 
     def add_event(self, crossing_variable: CrossTriggerVar, action=None) -> None:
         assert isinstance(crossing_variable, CrossTriggerVar), ("Condition should be a cross-trigger variable. "
@@ -50,6 +66,7 @@ class IVPSystemMutable:
         self._system = system
         self.sol = None
         self.t_eval = None
+        self.events_trigger = None
 
     def _add_equation(self, variable: Optional[TemporalVar[float]], x0: float) -> None:
         derivatives = list(self._system.derivatives)

@@ -102,6 +102,7 @@ class Event:
         self.action = action
 
 
+
 class IVPSystem:
     METHODS: dict[str, type[OdeSolver]] = {'RK23': RK23,
                                            'RK45': RK45,
@@ -126,6 +127,10 @@ class IVPSystem:
     @property
     def n_equations(self) -> int:
         return len(self.derivatives)
+
+    @property
+    def n_events(self)->int:
+        return len(self.event_conditions)
 
     def solve(self, t_end: float, method: str = "RK45") -> tuple[NDArray, OdeSolution]:
         # Check

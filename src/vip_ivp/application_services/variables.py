@@ -214,7 +214,7 @@ class TemporalVar(Generic[T]):
         return wrapper
 
     def crosses(self, value: "float|TemporalVar[float]", direction: Direction = "both") -> "CrossTriggerVar":
-        return CrossTriggerVar(self - value, direction, self.system)
+        return self.system.add_crossing_detection(value, direction)
 
     # Magic methods
     def __getitem__(self, item):
@@ -370,13 +370,13 @@ class IntegratedVar(TemporalVar[float]):
 
 
 class CrossTriggerVar(TemporalVar[float]):
-    def __init__(self, func: TemporalVar[float], direction: Direction, system: "IVPSystemMutable"):
+    def __init__(self, func: TemporalVar[float], direction: Direction, event_idx: int, system: "IVPSystemMutable"):
         self.direction = direction
         super().__init__(func, system=system)
-        self.t_trigger=[]
+        self.event_idx = event_idx
 
     def __call__(self, t, y=None):
-        return np.isin(t, self.t_trigger)
+        return np.isin(t, self.system.events_trigger[self.event_idx])
 
     def guard(self, t, y=None):
         return super().__call__(t, y)
