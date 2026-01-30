@@ -65,9 +65,7 @@ class IVPSystemMutable:
 
         return cross_trigger
 
-    def set_event_action(self, condition: CrossTriggerVar, action: Action | SideEffectFun) -> None:
-        event_idx = condition.crossing_idx
-
+    def add_event(self, condition: CrossTriggerVar | TemporalVar[bool], action: Action | SideEffectFun) -> None:
         if not isinstance(action, Action):
             n_args = len(inspect.signature(action).parameters)
             if n_args == 0:
@@ -80,7 +78,7 @@ class IVPSystemMutable:
         else:
             new_action = action
 
-        self._events[event_idx].action = new_action
+        self._events.append(Event(condition, new_action))
 
     def set_derivative(self, variable: TemporalVar[float], eq_idx: int) -> None:
         self.derivatives[eq_idx] = variable

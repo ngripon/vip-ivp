@@ -178,7 +178,7 @@ class IVPSystem:
             print(f"T = {t_old} s")
 
             # CROSSING HANDLING
-            tc = float | None
+            tc: float | None = None
             first_crossing_idx: int | None = None
             for c_idx, crossing in enumerate(self.crossings):
                 root = crossing.compute_root(t_old, t, sub_sol)
