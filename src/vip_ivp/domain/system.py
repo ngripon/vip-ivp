@@ -173,6 +173,8 @@ class IVPSystem:
             y = solver.y
             sub_sol = solver.dense_output()
 
+            print(f"T = {t_old} s")
+
             # Handle events
             te: float | None = None
             first_event: Event | None = None
@@ -187,7 +189,7 @@ class IVPSystem:
                     first_event_idx = e_idx
 
             # If there are events, roll back time to the first event
-            if te is not None:
+            if te is not None and te>t_old:
                 t = te
                 event_triggers[first_event_idx].append(t)
                 # Apply action
