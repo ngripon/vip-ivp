@@ -36,6 +36,8 @@ def solve(t_end: float, method: str = "RK45", t_eval: list[float] | NDArray = No
 def when(condition:CrossTriggerVar, action:Action)->None:
     _get_current_system().set_event_action(condition, action)
 
+terminate=Action(None, ActionType.TERMINATE)
+
 
 # Post-processing
 def plot(*variables: TemporalVar) -> None:

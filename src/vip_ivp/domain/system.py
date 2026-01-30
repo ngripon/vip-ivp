@@ -12,6 +12,7 @@ from typing import Callable, Literal, Optional
 import numpy as np
 from numpy.typing import NDArray
 from scipy.integrate import OdeSolution, RK23, RK45, DOP853, Radau, BDF, LSODA, OdeSolver
+from sympy.physics.units import action
 
 # Constants
 EPS = np.finfo(float).eps
@@ -92,11 +93,13 @@ class ActionType(Enum):
 
 
 class Action:
-    def __init__(self, func: SystemFun, action_type: ActionType) -> None:
+    def __init__(self, func: SystemFun | None, action_type: ActionType) -> None:
         self.func = func
         self.action_type = action_type
 
     def __call__(self, t, y):
+        if self.action_type == ActionType.TERMINATE:
+            return None
         return self.func(t, y)
 
 
@@ -197,6 +200,7 @@ class IVPSystem:
                     y = action(t, sub_sol(t))
                     solver = solver_method(self._dy, t, y, t_end, vectorized=False)
                 elif action.action_type == ActionType.TERMINATE:
+                    status = 0
                     break
                 elif action.action_type == ActionType.ASSERT:
                     ...
