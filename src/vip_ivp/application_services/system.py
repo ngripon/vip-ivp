@@ -29,8 +29,7 @@ class IVPSystemMutable:
         assert isinstance(crossing_variable, CrossTriggerVar), ("Condition should be a cross-trigger variable. "
                                                                 "Use the .crosses(value) method instead.")
         events = list(self._system.event_conditions)
-        new_event = EventCondition(crossing_variable.guard,
-                                   on_trigger=lambda t, y: crossing_variable.t_trigger.append(t))
+        new_event = EventCondition(crossing_variable.guard)
         events.append(new_event)
 
         self._set_system(
