@@ -128,7 +128,7 @@ class IVPSystem:
             crossings: tuple[Crossing, ...] = None,
             events: tuple[Event, ...] = None,
             on_crossing_detection: Callable[[CrossingTriggers], None] = None,
-            on_step_finished: Callable[[OdeSolution], None] = None,
+            on_solution_update: Callable[[OdeSolution], None] = None,
     ):
         assert len(derivative_expressions) == len(initial_conditions)
         self.derivatives = derivative_expressions
@@ -139,7 +139,7 @@ class IVPSystem:
 
         # Callbacks
         self.on_crossing_detection = on_crossing_detection
-        self.on_step_finished = on_step_finished
+        self.on_solution_update = on_solution_update
 
     @property
     def n_equations(self) -> int:
@@ -185,6 +185,13 @@ class IVPSystem:
             y = solver.y
             sub_sol = self._bound_sol(solver.dense_output())
 
+            # Trigger the temporary step solution to improve results in the event detection stage
+            if self.on_solution_update:
+                self.on_solution_update(
+                    OdeSolution([*ts, t], [*interpolants, sub_sol],
+                                alt_segment=True if solver_method in [BDF, LSODA] else False)
+                )
+
             print(f"T = {t_old} s")
 
             # CROSSING HANDLING
@@ -229,8 +236,8 @@ class IVPSystem:
             # Update solution
             ts.append(t)
             interpolants.append(sub_sol)
-            if self.on_step_finished:
-                self.on_step_finished(
+            if self.on_solution_update:
+                self.on_solution_update(
                     OdeSolution(ts, interpolants, alt_segment=True if solver_method in [BDF, LSODA] else False)
                 )
 

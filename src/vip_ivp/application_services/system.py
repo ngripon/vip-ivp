@@ -50,7 +50,7 @@ class IVPSystemMutable:
             tuple(self._crossings),
             tuple(self._events),
             on_crossing_detection=self._update_crossing_triggers,
-            on_step_finished=self._update_sol
+            on_solution_update=self._update_sol
         )
 
         self.t_eval, self.sol, self.crossing_triggers = system.solve(t_end, method)
