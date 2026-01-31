@@ -185,7 +185,6 @@ class IVPSystem:
             y = solver.y
             sub_sol = self._bound_sol(solver.dense_output())
 
-            # Trigger the temporary step solution to improve results in the event detection stage
             if self.on_solution_update:
                 self.on_solution_update(
                     OdeSolution([*ts, t], [*interpolants, sub_sol],
@@ -210,6 +209,12 @@ class IVPSystem:
                 crossing_triggers[first_crossing_idx].append(t)
                 if self.on_crossing_detection:
                     self.on_crossing_detection(crossing_triggers)
+                # Trigger the solution update to communicate the time rollback
+                if self.on_solution_update:
+                    self.on_solution_update(
+                        OdeSolution([*ts, t], [*interpolants, sub_sol],
+                                    alt_segment=True if solver_method in [BDF, LSODA] else False)
+                    )
 
             # EVENT HANDLING
             for event in self.events:
@@ -236,10 +241,6 @@ class IVPSystem:
             # Update solution
             ts.append(t)
             interpolants.append(sub_sol)
-            if self.on_solution_update:
-                self.on_solution_update(
-                    OdeSolution(ts, interpolants, alt_segment=True if solver_method in [BDF, LSODA] else False)
-                )
 
         # End loop
         message = self.MESSAGES[status]
