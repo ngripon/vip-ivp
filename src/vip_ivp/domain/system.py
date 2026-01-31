@@ -128,6 +128,8 @@ class IVPSystem:
             output_bounds: tuple[tuple[SystemFun | None, SystemFun | None], ...],
             crossings: tuple[Crossing, ...] = None,
             events: tuple[Event, ...] = None,
+            on_crossing_detection: Callable[[CrossingTriggers], None] = None,
+            on_step_finished: Callable[[OdeSolution], None] = None,
     ):
         assert len(derivative_expressions) == len(initial_conditions)
         self.derivatives = derivative_expressions
@@ -135,6 +137,10 @@ class IVPSystem:
         self.output_bounds = output_bounds
         self.crossings = crossings or []
         self.events = events or []
+
+        # Callbacks
+        self.on_crossing_detection = on_crossing_detection
+        self.on_step_finished = on_step_finished
 
     @property
     def n_equations(self) -> int:
@@ -196,6 +202,8 @@ class IVPSystem:
             if tc is not None and tc > t_old:
                 t = tc
                 crossing_triggers[first_crossing_idx].append(t)
+                if self.on_crossing_detection:
+                    self.on_crossing_detection(crossing_triggers)
 
             # EVENT HANDLING
             for event in self.events:
@@ -222,6 +230,10 @@ class IVPSystem:
             # Update solution
             ts.append(t)
             interpolants.append(sub_sol)
+            if self.on_step_finished:
+                self.on_step_finished(
+                    OdeSolution(ts, interpolants, alt_segment=True if solver_method in [BDF, LSODA] else False)
+                )
 
         # End loop
         message = self.MESSAGES[status]
@@ -254,8 +266,8 @@ class IVPSystem:
         upper_bounds = []
         lower_bounds = []
         for der_idx, (lower, upper) in enumerate(self.output_bounds):
-            maximum = upper(t, y) if upper is not None else np.full(t.shape,np.inf) if not np.isscalar(t) else np.inf
-            minimum = lower(t, y) if lower is not None else np.full(t.shape,-np.inf) if not np.isscalar(t) else -np.inf
+            maximum = upper(t, y) if upper is not None else np.full(t.shape, np.inf) if not np.isscalar(t) else np.inf
+            minimum = lower(t, y) if lower is not None else np.full(t.shape, -np.inf) if not np.isscalar(t) else -np.inf
             if np.any(minimum > maximum):
                 raise ValueError(
                     f"Lower bound {minimum} is greater than upper bound {maximum} a time {t} s for equation {der_idx}")
