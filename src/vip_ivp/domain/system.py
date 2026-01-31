@@ -107,8 +107,8 @@ class Event:
         self.condition = condition
         self.action = action
 
-    def evaluate(self, t: float, y: NDArray, cross_triggers: tuple[list[float], ...]) -> bool:
-        return bool(self.condition(t, y, cross_triggers=cross_triggers))
+    def evaluate(self, t: float, y: NDArray) -> bool:
+        return bool(self.condition(t, y))
 
 
 class IVPSystem:
@@ -208,7 +208,7 @@ class IVPSystem:
             # EVENT HANDLING
             for event in self.events:
                 # Pass if condition is False
-                if not event.evaluate(t, sub_sol(t), crossing_triggers):
+                if not event.evaluate(t, sub_sol(t)):
                     continue
                 # Apply action
                 action = event.action

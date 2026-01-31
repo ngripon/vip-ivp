@@ -440,7 +440,6 @@ def temporal_var_where(
         condition.system
     )
 
-
 # Utils
 def assert_system_sameness(*values) -> None:
     """
