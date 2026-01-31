@@ -14,6 +14,8 @@ SideEffectFun = Callable[[], None] | Callable[[float], None]
 
 
 class IVPSystemMutable:
+    N_T_EVAL_DEFAULT = 500
+
     def __init__(self):
         # Results
         self.sol: OdeSolution | None = None  # Continuous results function
@@ -22,7 +24,7 @@ class IVPSystemMutable:
 
         # System inputs
         self.derivatives: list[Optional[TemporalVar]] = []
-        self._initial_conditions: list[float] = []
+        self.initial_conditions: list[float] = []
         self.bounds: list[tuple[None | TemporalVar[float], None | TemporalVar[float]]] = []
         self._events: list[Event] = []
         self._crossings: list[Crossing] = []
@@ -43,7 +45,7 @@ class IVPSystemMutable:
 
         system = IVPSystem(
             tuple(self.derivatives),
-            tuple(self._initial_conditions),
+            tuple(self.initial_conditions),
             tuple(self.bounds),
             tuple(self._crossings),
             tuple(self._events),
@@ -52,21 +54,24 @@ class IVPSystemMutable:
         )
 
         self.t_eval, self.sol, self.crossing_triggers = system.solve(t_end, method)
+
         if t_eval is not None:
             # Add trigger instants to t_eval
-            new_t_eval = list(t_eval)
-            [new_t_eval.extend(tc) for tc in self.crossing_triggers]
-            new_t_eval = np.sort(new_t_eval)
+            new_t_eval = np.array(t_eval)
+            new_t_eval = np.unique(np.concatenate((new_t_eval, *self.crossing_triggers)))
             self.t_eval = new_t_eval
         elif step_eval is not None:
-            new_t_eval = list(np.arange(self.t_eval[0], self.t_eval[-1], step_eval))
-            [new_t_eval.extend(tc) for tc in self.crossing_triggers]
-            new_t_eval = np.sort(new_t_eval)
+            new_t_eval = np.arange(self.t_eval[0], self.t_eval[-1], step_eval)
+            new_t_eval = np.unique(np.concatenate((new_t_eval, *self.crossing_triggers)))
+            self.t_eval = new_t_eval
+        elif len(self.t_eval) < self.N_T_EVAL_DEFAULT:
+            new_t_eval = np.linspace(self.t_eval[0], self.t_eval[-1], self.N_T_EVAL_DEFAULT)
+            new_t_eval = np.unique(np.concatenate((new_t_eval, self.t_eval)))
             self.t_eval = new_t_eval
 
     def add_state(self, x0: float, lower=None, upper=None) -> "IntegratedVar":
         self.derivatives.append(None)
-        self._initial_conditions.append(x0)
+        self.initial_conditions.append(x0)
         self.bounds.append((lower, upper))
         return IntegratedVar(self.n_equations - 1, self)
 

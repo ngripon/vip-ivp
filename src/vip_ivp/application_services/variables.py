@@ -421,6 +421,24 @@ class CrossTriggerVar(TemporalVar[float]):
         return super().__call__(t, y)
 
 
+def delay(value: TemporalVar, delay_s: float) -> TemporalVar:
+    def delayed_func(t, y):
+        if np.isscalar(t):
+            if not value.system.is_solved:
+                return value(0, np.array(value.system.initial_conditions))
+            else:
+                t_delayed = np.max([t - delay_s, 0])
+                return value(t_delayed, value.system.sol(t_delayed))
+        else:
+            if not value.system.is_solved:
+                ...
+            else:
+                t_delayed = np.max([t - delay_s, np.zeros_like(t)], 0)
+                return value(t_delayed, value.system.sol(t_delayed))
+
+    return TemporalVar(delayed_func, system=value.system)
+
+
 def temporal_var_where(
         condition: TemporalVar[bool], a: T | TemporalVar[T], b: T | TemporalVar[T]
 ) -> TemporalVar[T]:
@@ -437,6 +455,7 @@ def temporal_var_where(
         operator_call,
         condition.system
     )
+
 
 # Utils
 def assert_system_sameness(*values) -> None:

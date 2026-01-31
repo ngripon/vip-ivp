@@ -7,6 +7,7 @@ solution y(t) is computed.
 
 """
 from enum import Enum
+from numbers import Real
 from typing import Callable, Literal, Optional
 
 import numpy as np
@@ -64,12 +65,10 @@ class Crossing:
 
     @staticmethod
     def check_zero_crossing(y0: float | bool, y1: float | bool, direction: Direction) -> bool:
-        assert type(y0) is type(y1)
-
         if isinstance(y0, (bool, np.bool)):
             value0 = float(y0)
             value1 = float(y1)
-        elif isinstance(y0, (float, int)):
+        elif isinstance(y0, Real):
             value0 = np.sign(y0)
             value1 = np.sign(y1)
         else:
