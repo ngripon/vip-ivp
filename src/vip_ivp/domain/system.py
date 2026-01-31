@@ -277,7 +277,7 @@ class IVPSystem:
 
 
 def create_system_output_fun(idx: int) -> SystemFun:
-    def system_output(_, y: NDArray, i=idx, **kwargs) -> NDArray:
+    def system_output(_, y: NDArray, i=idx) -> NDArray:
         return y[i]
 
     return system_output

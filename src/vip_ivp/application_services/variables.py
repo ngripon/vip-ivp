@@ -87,29 +87,29 @@ class TemporalVar(Generic[T]):
             # Create function for tuple and operator case
             assert type(self._source) is tuple
 
-            def operator_func(t, y, **kwargs):
+            def operator_func(t, y):
 
-                def resolve_operator(t_inner, y_inner, **kwargs_inner):
+                def resolve_operator(t_inner, y_inner):
                     """
                     Compute args and kwargs value and call the operator
                     """
-                    args = [x(t_inner, y_inner, **kwargs_inner) if isinstance(x, TemporalVar) else x for x in
+                    args = [x(t_inner, y_inner) if isinstance(x, TemporalVar) else x for x in
                             self._source if
                             not isinstance(x, dict)]
                     kwargs = {k: v for d in [x for x in self._source if isinstance(x, dict)] for k, v in d.items()}
-                    kwargs = {k: (x(t_inner, y_inner, **kwargs_inner) if isinstance(x, TemporalVar) else x) for k, x in
+                    kwargs = {k: (x(t_inner, y_inner) if isinstance(x, TemporalVar) else x) for k, x in
                               kwargs.items()}
                     return self._operator(*args, **kwargs)
 
                 try:
                     # Assume that the function is vectorized
-                    output = resolve_operator(t, y, **kwargs)
+                    output = resolve_operator(t, y)
                 except Exception as e:
                     # If it fails with a scalar t, the function failed for another reason
                     if np.isscalar(t):
                         raise e
                     # If it fails, call it for each t value
-                    output = np.array([resolve_operator(t[i], y[:, i], **kwargs) for i in range(len(t))])
+                    output = np.array([resolve_operator(t[i], y[:, i]) for i in range(len(t))])
 
                 return output
 
@@ -135,7 +135,7 @@ class TemporalVar(Generic[T]):
                 # Source is a scalar number
                 self._output_type = type(self._source)
 
-                def scalar_func(t, _, **kwargs):
+                def scalar_func(t, _):
                     if np.isscalar(t):
                         return self._source
                     else:
@@ -148,8 +148,8 @@ class TemporalVar(Generic[T]):
                 self._output_type = np.ndarray
                 self._source = np.array([TemporalVar(x, system=system) for x in self._source])
 
-                def array_func(t, y, **kwargs):
-                    return np.array([x(t, y, **kwargs) for x in self._source])
+                def array_func(t, y):
+                    return np.array([x(t, y) for x in self._source])
 
                 self._func = array_func
 
@@ -157,8 +157,8 @@ class TemporalVar(Generic[T]):
                 self._output_type = dict
                 self._source = {key: TemporalVar(val, system=system) for key, val in self._source.items()}
 
-                def dict_func(t, y, **kwargs):
-                    return {key: x(t, y, **kwargs) for key, x in self._source.items()}
+                def dict_func(t, y):
+                    return {key: x(t, y) for key, x in self._source.items()}
 
                 self._func = dict_func
             else:
@@ -167,11 +167,11 @@ class TemporalVar(Generic[T]):
         # Get output type by calling the func
         self._output_type, self._keys, self._shape = get_output_info(self._func)
 
-    def __call__(self, t: float | NDArray, y: Optional[NDArray] = None, **kwargs) -> T:
+    def __call__(self, t: float | NDArray, y: Optional[NDArray] = None) -> T:
         if y is not None:
-            return self._func(t, y, **kwargs)
+            return self._func(t, y)
         if self.system.sol is not None:
-            return self._func(t, self.system.sol(t), **kwargs)
+            return self._func(t, self.system.sol(t))
         else:
             raise RuntimeError(
                 "The system has not been solved.\n"
@@ -405,12 +405,10 @@ class CrossTriggerVar(TemporalVar[float]):
         super().__init__(func, system=system)
         self.crossing_idx = crossing_idx
 
-    def __call__(self, t, y=None, **kwargs):
+    def __call__(self, t, y=None):
         crossing_triggers = None
         if self.system.is_solved:
             crossing_triggers = self.system.crossing_triggers
-        elif "cross_triggers" in kwargs:
-            crossing_triggers = kwargs["cross_triggers"]
 
         if crossing_triggers is not None and self.crossing_idx < len(crossing_triggers):
             return np.isin(t, crossing_triggers[self.crossing_idx])
