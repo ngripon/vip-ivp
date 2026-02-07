@@ -1,6 +1,11 @@
+import json
+
 from .variables import *
 from .system import *
 from ..utils import operator_call
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 _solver_list: list[IVPSystemMutable] = []
 
@@ -13,7 +18,7 @@ def temporal(value) -> TemporalVar:
     return TemporalVar(value, system=_get_current_system())
 
 
-def state(x0: float, lower_bound:float|TemporalVar=None, upper_bound:float|TemporalVar=None) -> IntegratedVar:
+def state(x0: float, lower_bound: float | TemporalVar = None, upper_bound: float | TemporalVar = None) -> IntegratedVar:
     return _get_current_system().add_state(x0, lower_bound, upper_bound)
 
 
@@ -27,6 +32,51 @@ def n_order_state(
         s.derivative = ds
 
     return tuple(states)
+
+
+def create_scenario(scenario_table: str | dict | pd.DataFrame, time_key: str, interpolation_kind: str = "linear",
+                    sep: str = ',') -> TemporalVar[dict]:
+    """
+    Creates a scenario from a given input table, which can be in various formats such as CSV, JSON, dictionary, or DataFrame.
+
+    The maps in the scenario table are interpolated over time and converted into TemporalVar objects.
+    The function processes the data and returns a TemporalVar containing a dictionary of TemporalVar objects.
+
+    :param scenario_table: The input data, which can be one of the following formats:
+        - A CSV file path (string)
+        - A JSON file path (string)
+        - A dictionary of data
+        - A pandas DataFrame
+    :param time_key: The key (column) to use as time for the scenario.
+    :param interpolation_kind: Specifies the kind of interpolation as a string or as an integer specifying the order of
+        the spline interpolator to use. The string has to be one of ‘linear’, ‘nearest’, ‘nearest-up’, ‘zero’, ‘slinear’,
+        ‘quadratic’, ‘cubic’, ‘previous’, or ‘next’. ‘zero’, ‘slinear’, ‘quadratic’ and ‘cubic’ refer to a spline
+        interpolation of zeroth, first, second or third order; ‘previous’ and ‘next’ simply return the previous or next
+        value of the point; ‘nearest-up’ and ‘nearest’ differ when interpolating half-integers (e.g. 0.5, 1.5) in that
+        ‘nearest-up’ rounds up and ‘nearest’ rounds down. Default is ‘linear’.
+    :param sep: The separator to use when reading CSV files. Default is a comma.
+    :return: A dictionary of TemporalVar objects representing the scenario, where the keys are the variables and the values are the corresponding TemporalVar instances.
+
+    """
+    import pandas as pd
+
+    solver = _get_current_system()
+    if isinstance(scenario_table, str):
+        if scenario_table.endswith(".csv"):
+            input_data = pd.read_csv(scenario_table, sep=sep)
+        elif scenario_table.endswith(".json"):
+            with open(scenario_table, "r") as file:
+                dict_data = json.load(file)
+            input_data = pd.DataFrame(dict_data)
+        else:
+            raise ValueError("Unsupported file type")
+    elif isinstance(scenario_table, dict):
+        input_data = pd.DataFrame(scenario_table)
+    elif isinstance(scenario_table, pd.DataFrame):
+        input_data = scenario_table
+    else:
+        raise ValueError("Unsupported input type")
+    return TemporalVar.from_scenario(input_data, time_key, solver, interpolation_kind)
 
 
 def where(condition, a, b) -> TemporalVar:

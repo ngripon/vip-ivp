@@ -192,8 +192,8 @@ class TemporalVar(Generic[T]):
             scenario_table: pd.DataFrame,
             time_key: str,
             system: Optional["IVPSystemMutable"] = None,
-            interpolation_kind: str = "linear",
-    ) -> "TemporalVar":
+            interpolation_kind = "linear",
+    ) -> "TemporalVar[dict]":
         from scipy.interpolate import interp1d
 
         variables = {}
