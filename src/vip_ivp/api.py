@@ -51,7 +51,8 @@ def temporal(value: Callable[[float], T]) -> TemporalVar[T]:
     return TemporalVar(value, system=_get_current_system())
 
 
-def state(x0: float, lower_bound: float | TemporalVar = None, upper_bound: float | TemporalVar = None) -> IntegratedVar:
+def state(x0: float, lower_bound: float | TemporalVar = None, upper_bound: float | TemporalVar = None,
+          derivative: float | TemporalVar[float] = None) -> IntegratedVar:
     """
     Create a system state whose derivative can be set.
 
@@ -60,12 +61,17 @@ def state(x0: float, lower_bound: float | TemporalVar = None, upper_bound: float
 
     The integrated output can be bounded with the **lower_bound** and **upper_bound** arguments.
 
+    :param derivative: Derivative of the state. If the derivative is a function of the state, set it with y.der = value
+     instead.
     :param x0: The initial condition for the integration.
     :param lower_bound: Lower integration bound. Can be a TemporalVar
     :param upper_bound: Higher integration bound. Can be a TemporalVar
     :return: The integrated TemporalVar.
     """
-    return _get_current_system().add_state(x0, lower_bound, upper_bound)
+    state_variable = _get_current_system().add_state(x0, lower_bound, upper_bound)
+    if derivative is not None:
+        state_variable.der = derivative
+    return state_variable
 
 
 def n_order_state(
