@@ -27,7 +27,7 @@ def test_rc_circuit():
                 # Compute solver solution
                 vip.new_system()
                 q = vip.state(q0)
-                q.der= -q / (R * C)
+                q.der = -q / (R * C)
                 vip.solve(t_end, t_eval=t)
                 error_array = exact_solution - q.values
                 assert all(error_array < ABSOLUTE_TOLERANCE)
@@ -40,10 +40,8 @@ def test_harmonic_equation():
     x = np.linspace(0, x_end, 11)
     y_exact = np.cos(3 * x) + 2 / 3 * np.sin(3 * x)
     # Compute solver solution
-    ddy = vip.loop_node()
-    dy = vip.integrate(ddy, 2)
-    y = vip.integrate(dy, 1)
-    ddy.loop_into(-9 * y)
+    y, dy = vip.n_order_state(1, 2)
+    dy.der = -9 * y
     vip.solve(x_end, t_eval=x)
     error_array = y_exact - y.values
     assert all(error_array < ABSOLUTE_TOLERANCE)
@@ -56,16 +54,18 @@ def test_second_order_ode():
     x = np.linspace(0, x_end, 1001)
     y_exact = (2 * x + 1) * np.exp(-2 * x)
     # Compute solver solution
-    ddy = vip.loop_node()
-    dy = vip.integrate(ddy, 0)
-    y = vip.integrate(dy, 1)
-    ddy.loop_into(-4 * dy - 4 * y)
+    y, dy = vip.n_order_state(1, 0)
+    dy.der = -4 * dy - 4 * y
+
     vip.solve(x_end, t_eval=x)
     error_array = y_exact - y.values
+
     assert all(error_array < ABSOLUTE_TOLERANCE)
 
 
 def test_bouncing_ball():
+    # Arrange
+    # Build true solution
     gravity = -9.81
     h = 10
     k = 0.5
@@ -102,6 +102,7 @@ def test_bouncing_ball():
         t0 = t_g
         current_h = 0
 
+    # Create SUT
     acc = vip.temporal(gravity)
     velocity = vip.integrate(acc, 0)
     h = vip.integrate(velocity, h)
@@ -119,5 +120,5 @@ def test_bouncing_ball():
     # plt.hlines([-v_min, v_min], 0, 5)
     # plt.grid()
     # plt.show()
-
+    # Asser
     assert np.allclose(h.values, solution)
