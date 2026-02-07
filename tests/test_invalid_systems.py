@@ -12,6 +12,7 @@ def test_crossing_integration_bounds():
     with pytest.raises(ValueError):
         try:
             solve(10)
+            _ = ia.values
         except Exception as e:
             print(e)
             raise e
