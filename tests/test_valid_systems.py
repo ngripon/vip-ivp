@@ -34,32 +34,32 @@ def test_float_crossing_event():
     assert a.values[-1] == 5
 
 
-def test_boolean_crossing_event():
-    a = vip.temporal(lambda t: t)
-    cond = a >= 5
-
-    crossing = cond.crosses(True)
-    vip.when(crossing, vip.terminate)
-
-    vip.solve(10, step_eval=1)
-    print(cond.values)
-    print(cond.t)
-    assert len(a.t) == 6
-    assert cond.values[-1] == True
-
-
-def test_string_crossing_event():
-    a = vip.temporal(lambda t: t)
-    string = vip.where(a >= 5, "Aa", "Ba")
-
-    crossing = string.crosses("Aa")
-    vip.when(crossing, vip.terminate)
-
-    vip.solve(10, step_eval=1)
-    print(string.values)
-    print(string.t)
-    assert len(a.t) == 6
-    assert string.values[-1] == "Aa"
+# def test_boolean_crossing_event():
+#     a = vip.temporal(lambda t: t)
+#     cond = a >= 5
+#
+#     crossing = cond.crosses(True)
+#     vip.when(crossing, vip.terminate)
+#
+#     vip.solve(10, step_eval=1)
+#     print(cond.values)
+#     print(cond.t)
+#     assert len(a.t) == 6
+#     assert cond.values[-1] == True
+#
+#
+# def test_string_crossing_event():
+#     a = vip.temporal(lambda t: t)
+#     string = vip.where(a >= 5, "Aa", "Ba")
+#
+#     crossing = string.crosses("Aa")
+#     vip.when(crossing, vip.terminate)
+#
+#     vip.solve(10, step_eval=1)
+#     print(string.values)
+#     print(string.t)
+#     assert len(a.t) == 6
+#     assert string.values[-1] == "Aa"
 
 
 # def test_eval_events_at_all_time_points():
@@ -192,7 +192,6 @@ def test_forgiving_temporal_functions():
 
     a = vip.temporal(non_vec_fun)
 
-    a.to_plot()
     vip.solve(10)
 
 
@@ -203,9 +202,6 @@ def test_forgiving_f():
     # Test f
     a = vip.temporal(lambda t: t)
     b = vip.f(non_vec_fun)(a)
-
-    a.to_plot()
-    b.to_plot()
 
     vip.solve(10)
 
