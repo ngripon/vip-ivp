@@ -13,7 +13,7 @@ import vip_ivp as vip
 def test_differentiate():
     n = vip.state(1)
     n.der = -0.5 * n
-    d_n2 = n.compute_derivative(t=0.001)
+    d_n2 = n.compute_derivative(0.001)
 
     vip.solve(10)
 

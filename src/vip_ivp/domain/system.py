@@ -268,9 +268,11 @@ class IVPSystem:
         def wrapper(t: float | NDArray):
             y = sol(t)
             lower, upper = self._get_bounds(t, y)
-            output_bounded_max = np.where(y <= upper, y, upper)
-            output_bounded = np.where(output_bounded_max >= lower, output_bounded_max, lower)
-            return output_bounded
+            if upper:
+                y = np.where(y <= upper, y, upper)
+            if lower:
+                y = np.where(y >= lower, y, lower)
+            return y
 
         return wrapper
 

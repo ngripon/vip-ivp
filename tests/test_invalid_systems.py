@@ -9,8 +9,6 @@ def test_crossing_integration_bounds():
     ia = state(0, -1,signal)
     ia.der=a
 
-    ia.to_plot("Integral")
-
     with pytest.raises(ValueError):
         try:
             solve(10)
