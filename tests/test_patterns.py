@@ -108,9 +108,6 @@ def test_use_basic_function():
     input = vip.temporal(lambda t: np.cos(t))
     output = vip.f(basic_function)(input)
 
-    input.to_plot()
-    output.to_plot()
-
     vip.solve(10)
 
     # TODO: Add assert
@@ -121,14 +118,14 @@ def test_use_numpy_method():
     reshaped_array = array_source.m(array_source.output_type.reshape)((2, 2))
     square_array_source = vip.temporal([[lambda t: t, lambda t: 2 * t], [lambda t: 3 * t, lambda t: 4 * t]])
     # reshaped_array.to_plot()
-    vip.solve(3)
-    print(array_source.values[0])
+    vip.solve(3, step_eval=1)
+
     print(reshaped_array.values)
     print(square_array_source.values)
     # Bug explanation: When the TemporalVariable possess a numpy array that is computed from an operation, it does not
     # manipulate the shape to have the time dimensions the last instead of the first.
 
-    assert np.array_equal(reshaped_array.values, square_array_source.values)
+    assert np.testing.assert_array_equal(reshaped_array.values, square_array_source.values)
 
 
 def test_conditions():
@@ -152,7 +149,7 @@ def test_scenario_interpolation():
         vip.new_system()
         scenario_variable = vip.create_scenario(scenario, time_key="t", sep=";", interpolation_kind="linear")
 
-        vip.solve(4, time_step=0.5)
+        vip.solve(4, step_eval=0.5)
 
         a = scenario_variable["a"]
         b = scenario_variable["b"]
@@ -201,7 +198,7 @@ def test_array_comparisons_operators():
     ge1 = b[0] >= a[0]
     ge2 = b[1] >= a[1]
 
-    vip.solve(10, 1)
+    vip.solve(10)
 
     # Assertions for equality
     equ_arr.values
@@ -248,14 +245,11 @@ def test_bounded_integration_by_variable():
     ia_inc = vip.state(0, upper_bound=signal, derivative=a)
     ia_dec = vip.state(0, lower_bound=-signal, derivative=-a)
 
-    # ia_inc.to_plot("Integral")
-    # ia_dec.to_plot("Decreasing integral")
+    vip.solve(10, step_eval=1)
 
-    vip.solve(10)
-
-    assert ia_inc.values[3] == 3
+    assert ia_inc(3) == 3
     assert ia_inc.values[-1] == -4
-    assert ia_dec.values[3] == -3
+    assert ia_dec(3) == -3
     assert ia_dec.values[-1] == 4
 
 
@@ -266,13 +260,8 @@ def test_terminate_event():
     vip.when(crossing & (a < 3), vip.terminate)
 
     vip.solve(10)
-    print(a.solver.events)
 
-    assert a.t[-1] == 10
-
-
-
-
+    assert a.t[-1] == 6
 
 # TEMPORARILY DELETED. IT WILL BECOME RELEVANT AGAIN WITH STATEFUL VARIABLES
 

@@ -78,7 +78,7 @@ class TemporalVar(Generic[T]):
         self._source = source
         self._operator = operator_on_source_tuple
         # Output info
-        self._output_type = None
+        self.output_type = None
         self._keys: list[str] | None = None
         self._shape: tuple[int, ...] | None = None
 
@@ -133,7 +133,7 @@ class TemporalVar(Generic[T]):
                     self._func = self._source
             elif np.isscalar(self._source) or self._source is None:
                 # Source is a scalar number
-                self._output_type = type(self._source)
+                self.output_type = type(self._source)
 
                 def scalar_func(t, _):
                     if np.isscalar(t):
@@ -145,7 +145,7 @@ class TemporalVar(Generic[T]):
 
             elif isinstance(self._source, (list, np.ndarray)):
                 # Source is a numpy array
-                self._output_type = np.ndarray
+                self.output_type = np.ndarray
                 self._source = np.array([TemporalVar(x, system=system) for x in self._source])
 
                 def array_func(t, y):
@@ -154,7 +154,7 @@ class TemporalVar(Generic[T]):
                 self._func = array_func
 
             elif isinstance(self._source, dict):
-                self._output_type = dict
+                self.output_type = dict
                 self._source = {key: TemporalVar(val, system=system) for key, val in self._source.items()}
 
                 def dict_func(t, y):
@@ -165,7 +165,7 @@ class TemporalVar(Generic[T]):
                 raise ValueError(f"Unsupported type: {type(self._source)}.")
 
         # Get output type by calling the func
-        self._output_type, self._keys, self._shape = get_output_info(self._func)
+        self.output_type, self._keys, self._shape = get_output_info(self._func)
 
     def __call__(self, t: float | NDArray, y: Optional[NDArray] = None) -> T:
         if y is not None:

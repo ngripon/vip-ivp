@@ -42,9 +42,6 @@ def test_output_dimension_with_scalar_time(test_input, expected, timestamp=0, y=
         (None, np.array([None, None, None])),
         # Collections
         (np.array([10, 20]), np.array([[10, 10, 10], [20, 20, 20]])),
-        (
-                np.arange(6).reshape(2, 3),
-                np.array([[10, 10, 10], [20, 20, 20]])),  # TODO: Find what is the right result
         ({"a": 1, "b": 2}, {"a": np.array([1, 1, 1]), "b": np.array([2, 2, 2])}),
 
         # Function

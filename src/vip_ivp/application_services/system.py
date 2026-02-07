@@ -62,7 +62,7 @@ class IVPSystemMutable:
             new_t_eval = np.unique(np.concatenate((new_t_eval, *self.crossing_triggers)))
             self.t_eval = new_t_eval
         elif step_eval is not None:
-            new_t_eval = np.arange(self.t_eval[0], self.t_eval[-1], step_eval)
+            new_t_eval = np.arange(self.t_eval[0], self.t_eval[-1]+step_eval, step_eval)
             new_t_eval = np.unique(np.concatenate((new_t_eval, *self.crossing_triggers)))
             self.t_eval = new_t_eval
         elif len(self.t_eval) < self.N_T_EVAL_DEFAULT:
@@ -70,10 +70,12 @@ class IVPSystemMutable:
             new_t_eval = np.unique(np.concatenate((new_t_eval, self.t_eval)))
             self.t_eval = new_t_eval
 
-    def add_state(self, x0: float, lower=None, upper=None) -> "IntegratedVar":
+    def add_state(self, x0: float, lower: float | TemporalVar[float] = None,
+                  upper: float | TemporalVar[float] = None) -> "IntegratedVar":
         self.derivatives.append(None)
         self.initial_conditions.append(x0)
-        self.bounds.append((lower, upper))
+        self.bounds.append((TemporalVar(lower, system=self) if lower is not None else None,
+                            TemporalVar(upper, system=self) if upper is not None else None))
         return IntegratedVar(self.n_equations - 1, self)
 
     def add_crossing_detection(self, variable: TemporalVar[float], direction: Direction) -> CrossTriggerVar:
