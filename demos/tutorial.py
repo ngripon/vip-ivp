@@ -1,3 +1,5 @@
+import time
+
 import vip_ivp as vip
 import matplotlib.pyplot as plt
 
@@ -5,10 +7,11 @@ import matplotlib.pyplot as plt
 class Counter:
     def __init__(self):
         self.count = 0
+        self._start_time = time.time()
 
     def increment(self):
         self.count += 1
-        print(f"Counter incremented to {self.count}")
+        print(f"Counter incremented to {self.count} at time {time.time() - self._start_time} s")
 
 
 counter = Counter()
