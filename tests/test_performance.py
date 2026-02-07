@@ -28,7 +28,7 @@ def rc_circuit_scipy(q0=1, r=1, c=1):
 def test_circuit_new_api(q0=1, r=1, c=1):
     new_system()
     q=state(q0)
-    q.derivative=-q/(r*c)
+    q.der= -q / (r * c)
     solve(10)
     return q.values
 

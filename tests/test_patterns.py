@@ -204,8 +204,8 @@ def test_multidimensional_integration_loop_node():
 def test_multidimensional_differentiation():
     source = [lambda t: t, lambda t: 2 * t, lambda t: 3 * t, lambda t: 4 * t]
     array_source = vip.temporal(source)
-    diff = array_source.derivative()
-    truth = [array_source[i].derivative() for i in range(len(source))]
+    diff = array_source.der()
+    truth = [array_source[i].der() for i in range(len(source))]
 
     array_source.to_plot()
     diff.to_plot()

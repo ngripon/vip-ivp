@@ -75,7 +75,7 @@ def n_order_state(
     states = [system.add_state(x0) for x0 in initial_conditions]
 
     for s, ds in zip(states[:-1], states[1:]):
-        s.derivative = ds
+        s.der = ds
 
     return tuple(states)
 

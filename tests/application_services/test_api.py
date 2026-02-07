@@ -6,7 +6,7 @@ from vip_ivp import *
 def test_ode():
     y = state(1)
     dy = -2 * y
-    y.derivative = dy
+    y.der = dy
 
     solve(10)
 

@@ -141,7 +141,7 @@ def test_differentiate():
     d_n = vip.loop_node()
     n = vip.integrate(d_n, 1)
     d_n.loop_into(-0.5 * n)
-    d_n2 = n.derivative()
+    d_n2 = n.der()
 
     d_n2.to_plot()
     d_n.to_plot()
@@ -158,12 +158,12 @@ def test_differentiate():
 def test_integrated_differentiation():
     step = vip.temporal(lambda t: 0 if t < 1 else 1)
     # Differentiate then integrate
-    d_step_bad = step.derivative()
+    d_step_bad = step.der()
     step_bad = vip.integrate(d_step_bad, 0)
 
     # Integrate then differentiate
     i_step = vip.integrate(step, 0)
-    step_ok = i_step.derivative()
+    step_ok = i_step.der()
 
     step.to_plot()
     step_ok.to_plot()

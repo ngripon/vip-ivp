@@ -377,11 +377,11 @@ class IntegratedVar(TemporalVar[float]):
         self._eq_idx: int = index
 
     @property
-    def derivative(self):
+    def der(self):
         return self.system.derivatives[self._eq_idx]
 
-    @derivative.setter
-    def derivative(self, value: float | TemporalVar[float]):
+    @der.setter
+    def der(self, value: float | TemporalVar[float]):
         if not isinstance(value, TemporalVar):
             value = TemporalVar(value, system=self.system)
         self.system.set_derivative(value, self._eq_idx)

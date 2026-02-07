@@ -1,14 +1,13 @@
 import numpy as np
 
 import vip_ivp as vip
-from matplotlib import pyplot as plt
 
 ABSOLUTE_TOLERANCE = 0.01
 
 
 def test_t_end():
     a = vip.temporal(lambda t: t)
-    vip.solve(10, 2)
+    vip.solve(10)
     assert a.t[-1] == 10
 
 
@@ -27,9 +26,8 @@ def test_rc_circuit():
                 exact_solution = q0 * np.exp(-t / (R * C))
                 # Compute solver solution
                 vip.new_system()
-                dq = vip.loop_node()
-                q = vip.integrate(dq, q0)
-                dq.loop_into(-q / (R * C))
+                q = vip.state(q0)
+                q.der= -q / (R * C)
                 vip.solve(t_end, t_eval=t)
                 error_array = exact_solution - q.values
                 assert all(error_array < ABSOLUTE_TOLERANCE)

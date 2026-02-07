@@ -7,7 +7,7 @@ def test_crossing_integration_bounds():
     a = temporal(1)
     signal = temporal(lambda t: 6 - t)
     ia = state(0, -1,signal)
-    ia.derivative=a
+    ia.der=a
 
     ia.to_plot("Integral")
 
