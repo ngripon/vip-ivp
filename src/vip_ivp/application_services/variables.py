@@ -221,6 +221,19 @@ class TemporalVar(Generic[T]):
     def crosses(self, value: "float|TemporalVar[float]", direction: Direction = "both") -> "CrossTriggerVar":
         return self.system.add_crossing_detection(self - value, direction)
 
+    def compute_derivative(self, dt: float) -> "TemporalVar":
+
+        def derivative_func(t,y):
+            if self.system.sol is None:
+                return 0
+            y_current = self(t, y)
+            y_previous = self(t - dt, self.system.sol(t - dt))
+            dy=(y_current - y_previous)/dt
+            return dy
+
+        return TemporalVar(derivative_func, system=self.system)
+
+
     # Magic methods
     def __getitem__(self, item):
         return TemporalVar(
@@ -430,10 +443,18 @@ def delay(value: TemporalVar, delay_s: float) -> TemporalVar:
                 t_delayed = np.max([t - delay_s, 0])
                 return value(t_delayed, value.system.sol(t_delayed))
         else:
+            t = np.asarray(t)
+
             if not value.system.is_solved:
-                ...
+                t0 = np.zeros_like(t)
+                y0 = np.broadcast_to(
+                    np.array(value.system.initial_conditions),
+                    (t.size, len(value.system.initial_conditions))
+                )
+                return value(t0, y0)
+
             else:
-                t_delayed = np.max([t - delay_s, np.zeros_like(t)], 0)
+                t_delayed = np.maximum(t - delay_s, 0)
                 return value(t_delayed, value.system.sol(t_delayed))
 
     return TemporalVar(delayed_func, system=value.system)
