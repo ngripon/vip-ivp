@@ -103,15 +103,14 @@ def test_bouncing_ball():
         current_h = 0
 
     # Create SUT
-    acc = vip.temporal(gravity)
-    velocity = vip.integrate(acc, 0)
-    h = vip.integrate(velocity, h)
+    h, v= vip.n_order_state(h, 0)
+    v.der=gravity
 
     hit_ground = h.crosses(0, "falling")
-    velocity.reset_on(hit_ground, -k * velocity)
-    vip.terminate_on(hit_ground & (0 > velocity) & (velocity >= -v_min))
+    vip.when(hit_ground, v.reinit(-k*v))
+    vip.when(hit_ground & (abs(v) < v_min),vip.terminate)
 
-    vip.solve(10, time_step=time_step, plot=False, include_crossing_times=False)
+    vip.solve(10)
 
     # plt.plot(t, solution)
     # plt.plot(h.t, h.values)
