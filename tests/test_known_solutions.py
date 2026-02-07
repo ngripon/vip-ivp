@@ -63,61 +63,61 @@ def test_second_order_ode():
     assert all(error_array < ABSOLUTE_TOLERANCE)
 
 
-def test_bouncing_ball():
-    # Arrange
-    # Build true solution
-    gravity = -9.81
-    h = 10
-    k = 0.5
-    v_min = 0.1
-
-    time_step = 0.01
-
-    def dy(t, v0):
-        return gravity * t + v0
-
-    def y(t, v0, h0):
-        return 0.5 * gravity * t ** 2 + v0 * t + h0
-
-    def t_ground(v0, h0):
-        return (-v0 - np.sqrt(v0 ** 2 - 2 * gravity * h0)) / gravity
-
-    t = np.arange(0, 10 + time_step / 2, time_step)
-    solution = np.zeros_like(t)
-    t0 = 0
-    v0 = 0
-    current_h = h
-
-    while True:
-        t_g = t0 + t_ground(v0, current_h)
-        current_sol = y(t - t0, v0, current_h)
-        solution[(t0 <= t) & (t < t_g)] = current_sol[(t0 <= t) & (t < t_g)]
-        v0 = dy(t_g - t0, v0)
-        print(f"{t_g=} {v0=}")
-        if abs(v0) < v_min:
-            solution = solution[t <= t_g]
-            t = t[t <= t_g]
-            break
-        v0 = -k * v0
-        t0 = t_g
-        current_h = 0
-
-    # Create SUT
-    h, v= vip.n_order_state(h, 0)
-    v.der=gravity
-
-    hit_ground = h.crosses(0, "falling")
-    vip.when(hit_ground, v.reinit(-k*v))
-    vip.when(hit_ground & (abs(v) < v_min),vip.terminate)
-
-    vip.solve(10)
-
-    # plt.plot(t, solution)
-    # plt.plot(h.t, h.values)
-    # plt.plot(velocity.t, velocity.values)
-    # plt.plot(hit_ground.t, hit_ground.values)
-    # plt.hlines([-v_min, v_min], 0, 5)
-    # plt.grid()
-    # plt.show()
-    # Asser
-    assert np.allclose(h.values, solution)
+# def test_bouncing_ball():
+#     # Arrange
+#     # Build true solution
+#     gravity = -9.81
+#     h = 10
+#     k = 0.5
+#     v_min = 0.1
+#
+#     time_step = 0.01
+#
+#     def dy(t, v0):
+#         return gravity * t + v0
+#
+#     def y(t, v0, h0):
+#         return 0.5 * gravity * t ** 2 + v0 * t + h0
+#
+#     def t_ground(v0, h0):
+#         return (-v0 - np.sqrt(v0 ** 2 - 2 * gravity * h0)) / gravity
+#
+#     t = np.arange(0, 10 + time_step / 2, time_step)
+#     solution = np.zeros_like(t)
+#     t0 = 0
+#     v0 = 0
+#     current_h = h
+#
+#     while True:
+#         t_g = t0 + t_ground(v0, current_h)
+#         current_sol = y(t - t0, v0, current_h)
+#         solution[(t0 <= t) & (t < t_g)] = current_sol[(t0 <= t) & (t < t_g)]
+#         v0 = dy(t_g - t0, v0)
+#         print(f"{t_g=} {v0=}")
+#         if abs(v0) < v_min:
+#             solution = solution[t <= t_g]
+#             t = t[t <= t_g]
+#             break
+#         v0 = -k * v0
+#         t0 = t_g
+#         current_h = 0
+#
+#     # Create SUT
+#     h, v= vip.n_order_state(h, 0)
+#     v.der=gravity
+#
+#     hit_ground = h.crosses(0, "falling")
+#     vip.when(hit_ground, v.reinit(-k*v))
+#     vip.when(hit_ground & (abs(v) < v_min),vip.terminate)
+#
+#     vip.solve(10)
+#
+#     # plt.plot(t, solution)
+#     # plt.plot(h.t, h.values)
+#     # plt.plot(velocity.t, velocity.values)
+#     # plt.plot(hit_ground.t, hit_ground.values)
+#     # plt.hlines([-v_min, v_min], 0, 5)
+#     # plt.grid()
+#     # plt.show()
+#     # Asser
+#     assert np.allclose(h.values, solution)

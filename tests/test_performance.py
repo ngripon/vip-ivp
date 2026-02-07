@@ -6,10 +6,13 @@ from scipy.integrate import solve_ivp
 
 
 def rc_circuit_vip(q0=1, r=1, c=1):
+    t_eval = np.linspace(0, 10, 10001)
+
     vip.new_system()
     q = vip.state(q0)
     q.der=-q / (r * c)
-    vip.solve(10, step_eval=0.001)
+
+    vip.solve(10, t_eval=t_eval)
     return q.values
 
 
