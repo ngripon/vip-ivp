@@ -1,4 +1,6 @@
 import json
+from pathlib import Path
+from typing import Iterable, Literal
 
 from .variables import *
 from .system import *
@@ -6,6 +8,8 @@ from ..utils import operator_call
 
 if TYPE_CHECKING:
     import pandas as pd
+
+AVAILABLE_EXPORT_FILE_FORMATS = ["csv", "json"]
 
 _solver_list: list[IVPSystemMutable] = []
 
@@ -138,6 +142,46 @@ def plot(*variables: TemporalVar) -> None:
     plt.tight_layout()
     plt.show()
 
+
+def export_to_df(*variables: TemporalVar) -> "pd.DataFrame":
+    # Try to infer names. This is brittle and may fail silently in some contexts
+    frame = inspect.currentframe().f_back
+    locals_ = frame.f_locals
+
+    def infer_name(obj):
+        for name, val in locals_.items():
+            if val is obj:
+                return name
+        return None
+
+
+    import pandas as pd
+
+    solver = _get_current_system()
+    if not solver.is_solved:
+        raise Exception("System must be solved before exporting the results. Please call 'vip.solve(t_end)'.")
+    variables_dict = {"Time (s)": solver.t_eval}
+    variable_dict = {**variables_dict, **{infer_name(var): var.values for var in variables}}
+
+    return pd.DataFrame(variable_dict)
+
+
+def export_file(filename: str, variable_list: Iterable[TemporalVar] = None,
+                file_format: Literal["csv", "json"] = None) -> None:
+    if file_format is None:
+        file_format = Path(filename).suffix.lstrip(".")
+    if file_format not in AVAILABLE_EXPORT_FILE_FORMATS:
+        raise ValueError(
+            f"Unsupported file format: {file_format}. "
+            f"The available file formats are {', '.join(AVAILABLE_EXPORT_FILE_FORMATS)}"
+        )
+    df = export_to_df(*variable_list)
+    if file_format == "csv":
+        df.to_csv(filename, index=False)
+    elif file_format == "json":
+        df.to_json(filename, orient="records")
+
+# Utils
 
 def _get_current_system() -> IVPSystemMutable:
     if not _solver_list:
