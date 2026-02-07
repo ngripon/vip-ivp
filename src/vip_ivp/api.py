@@ -14,9 +14,17 @@ AVAILABLE_EXPORT_FILE_FORMATS = ["csv", "json"]
 _solver_list: list[IVPSystemMutable] = []
 
 
+# Solver functions
+
 def new_system() -> None:
     _solver_list.append(IVPSystemMutable())
 
+
+def clear() -> None:
+    _solver_list.clear()
+
+
+# System building functions
 
 @overload
 def temporal(value: list[T] | NDArray[T]) -> TemporalVar[NDArray[T]]: ...
@@ -139,7 +147,7 @@ def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
 
 
 def solve(t_end: float, method: str = "RK45", t_eval: list[float] | NDArray = None, step_eval: float = None,
-           atol:float=1e-6, rtol:float=1e-3,verbose: bool = False) -> None:
+          atol: float = 1e-6, rtol: float = 1e-3, verbose: bool = False) -> None:
     """
     Solve the equations of the dynamical system through a hybrid solver.
 
@@ -153,7 +161,7 @@ def solve(t_end: float, method: str = "RK45", t_eval: list[float] | NDArray = No
     :param rtol: Relative tolerance. The solver keeps the local error estimates less than `atol + rtol * abs(y)`.
     :param atol: Absolute tolerance. The solver keeps the local error estimates less than `atol + rtol * abs(y)`.
     """
-    _get_current_system().solve(t_end, method, t_eval, step_eval,atol, rtol, verbose)
+    _get_current_system().solve(t_end, method, t_eval, step_eval, atol, rtol, verbose)
 
 
 def when(condition: CrossTriggerVar | TemporalVar[bool], action: Action | SideEffectFun) -> None:
