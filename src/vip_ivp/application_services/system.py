@@ -87,6 +87,11 @@ class IVPSystemMutable:
         return cross_trigger
 
     def add_event(self, condition: CrossTriggerVar | TemporalVar[bool], action: Action | SideEffectFun) -> None:
+        # Checks
+        # Catch the most likely mistake.
+        if isinstance(action, TemporalVar):
+            raise ValueError(f"Argument 'action' must be of type Action or a side-effect function. Got {type(action)}")
+
         if not isinstance(action, Action):
             n_args = len(inspect.signature(action).parameters)
             if n_args == 0:

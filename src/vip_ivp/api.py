@@ -75,14 +75,15 @@ def state(x0: float, lower_bound: float | TemporalVar = None, upper_bound: float
 
 
 def n_order_state(
-        *initial_conditions: float
+        *initial_conditions: float, derivative: float | TemporalVar[float] = None
 ) -> tuple[IntegratedVar, ...]:
     system = _get_current_system()
     states = [system.add_state(x0) for x0 in initial_conditions]
 
     for s, ds in zip(states[:-1], states[1:]):
         s.der = ds
-
+    if derivative is not None:
+        states[-1].der = derivative
     return tuple(states)
 
 

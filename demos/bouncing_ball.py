@@ -7,17 +7,15 @@ k = 0.7  # Bouncing coefficient
 v_min = 0.01  # Minimum velocity need to bounce
 
 # Create the system
-acceleration = vip.temporal(GRAVITY)
-velocity = vip.integrate(acceleration, x0=0)
-height = vip.integrate(velocity, x0=initial_height)
+height, velocity = vip.n_order_state(initial_height, 0, derivative=GRAVITY)
 
 # Create the bouncing event
 hit_ground = height.crosses(0, "falling")
-velocity.reset_on(hit_ground, -0.8 * velocity)
-vip.terminate_on(hit_ground & (abs(velocity) <= v_min))
-
-# Add variables to plot
-height.to_plot("Height (m)")
+vip.when(hit_ground, velocity.reinit(-k * velocity))
+vip.when(hit_ground & (abs(velocity) <= v_min), vip.terminate)
 
 # Solve the system
-vip.solve(20, time_step=0.005)
+vip.solve(20, step_eval=0.005)
+
+# Post-processing
+vip.plot(height)
