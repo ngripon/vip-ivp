@@ -41,7 +41,8 @@ class IVPSystemMutable:
     def n_events(self) -> int:
         return len(self._events)
 
-    def solve(self, t_end: float, method: str = "RK45", t_eval: list[float] = None, step_eval: float = None) -> None:
+    def solve(self, t_end: float, method: str = "RK45", t_eval: list[float] = None, step_eval: float = None,
+              atol: float = 1e-6, rtol: float = 1e-3, verbose: bool = False) -> None:
 
         system = IVPSystem(
             tuple(self.derivatives),
@@ -53,7 +54,7 @@ class IVPSystemMutable:
             on_solution_update=self._update_sol
         )
 
-        self.t_eval, self.sol, self.crossing_triggers = system.solve(t_end, method)
+        self.t_eval, self.sol, self.crossing_triggers = system.solve(t_end, method, atol, rtol, verbose)
 
         if t_eval is not None:
             # Add trigger instants to t_eval

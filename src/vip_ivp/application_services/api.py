@@ -1,6 +1,6 @@
 import json
 from pathlib import Path
-from typing import Iterable, Literal
+from typing import Iterable, Literal, overload
 
 from .variables import *
 from .system import *
@@ -18,11 +18,45 @@ def new_system() -> None:
     _solver_list.append(IVPSystemMutable())
 
 
-def temporal(value) -> TemporalVar:
+@overload
+def temporal(value: list[T] | NDArray[T]) -> TemporalVar[NDArray[T]]: ...
+
+
+@overload
+def temporal(value: int) -> TemporalVar[float]: ...
+
+
+@overload
+def temporal(value: T) -> TemporalVar[T]: ...
+
+
+def temporal(value: Callable[[float], T]) -> TemporalVar[T]:
+    """
+    Create a Temporal Variable from a temporal function, a scalar value, a dict, a list or a NumPy array.
+
+    If the input value is a list, the variable content will be converted to a NumPy array. As a consequence, a nested
+    list must represent a valid rectangular matrix.
+
+    :param value: A function f(t), a scalar value, a dict, a list or a NumPy array.
+    :return: The created TemporalVar.
+    """
     return TemporalVar(value, system=_get_current_system())
 
 
 def state(x0: float, lower_bound: float | TemporalVar = None, upper_bound: float | TemporalVar = None) -> IntegratedVar:
+    """
+    Create a system state whose derivative can be set.
+
+    For Simulink users, this function is akin to the Integrator block. Set the derivative of the state variable to
+    achieve the integration.
+
+    The integrated output can be bounded with the **lower_bound** and **upper_bound** arguments.
+
+    :param x0: The initial condition for the integration.
+    :param lower_bound: Lower integration bound. Can be a TemporalVar
+    :param upper_bound: Higher integration bound. Can be a TemporalVar
+    :return: The integrated TemporalVar.
+    """
     return _get_current_system().add_state(x0, lower_bound, upper_bound)
 
 
@@ -84,6 +118,15 @@ def create_scenario(scenario_table: str | dict | pd.DataFrame, time_key: str, in
 
 
 def where(condition, a, b) -> TemporalVar:
+    """
+    Create a conditional TemporalVar.
+    If condition is `True` at time $t$, the output value will have value **a**, else **b**.
+
+    :param condition: Condition to evaluate through time.
+    :param a: Output value if the condition is `True` at time $t$
+    :param b: Output value if the condition is `False` at time $t$
+    :return: TemporalVar.
+    """
     return temporal_var_where(condition, a, b)
 
 
@@ -95,8 +138,22 @@ def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
     return wrapper
 
 
-def solve(t_end: float, method: str = "RK45", t_eval: list[float] | NDArray = None, step_eval: float = None) -> None:
-    _get_current_system().solve(t_end, method, t_eval, step_eval)
+def solve(t_end: float, method: str = "RK45", t_eval: list[float] | NDArray = None, step_eval: float = None,
+           atol:float=1e-6, rtol:float=1e-3,verbose: bool = False) -> None:
+    """
+    Solve the equations of the dynamical system through a hybrid solver.
+
+    The hybrid solver is a modified version of SciPy's solve_ivp() function.
+
+    :param verbose: If True, print solving information to the console.
+    :param t_end: Time at which the integration stops.
+    :param method: Integration method to use. Default is 'RK45'. For a list of available methods, see SciPy's
+        `solve_ivp()` documentation.
+    :param t_eval: Times at which to store the computed solution. If None, use points selected by the solver.
+    :param rtol: Relative tolerance. The solver keeps the local error estimates less than `atol + rtol * abs(y)`.
+    :param atol: Absolute tolerance. The solver keeps the local error estimates less than `atol + rtol * abs(y)`.
+    """
+    _get_current_system().solve(t_end, method, t_eval, step_eval,atol, rtol, verbose)
 
 
 def when(condition: CrossTriggerVar | TemporalVar[bool], action: Action | SideEffectFun) -> None:
@@ -154,7 +211,6 @@ def export_to_df(*variables: TemporalVar) -> "pd.DataFrame":
                 return name
         return None
 
-
     import pandas as pd
 
     solver = _get_current_system()
@@ -180,6 +236,7 @@ def export_file(filename: str, variable_list: Iterable[TemporalVar] = None,
         df.to_csv(filename, index=False)
     elif file_format == "json":
         df.to_json(filename, orient="records")
+
 
 # Utils
 

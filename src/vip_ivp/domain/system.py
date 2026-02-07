@@ -149,7 +149,7 @@ class IVPSystem:
     def n_events(self) -> int:
         return len(self.events)
 
-    def solve(self, t_end: float, method: str = "RK45") -> tuple[NDArray, OdeSolution, CrossingTriggers]:
+    def solve(self, t_end: float, method: str = "RK45", atol:float=1e-6, rtol:float=1e-3, verbose:bool=False) -> tuple[NDArray, OdeSolution, CrossingTriggers]:
         # Check
         for der_idx, der in enumerate(self.derivatives):
             if der is None:
@@ -166,7 +166,7 @@ class IVPSystem:
         crossing_triggers = tuple([[] for _ in range(len(self.events))])
         # Init solver
         solver_method = self.METHODS[method]
-        solver = solver_method(self._dy, t0, self.initial_conditions, t_end, vectorized=False)
+        solver = solver_method(self._dy, t0, self.initial_conditions, t_end, vectorized=False, atol=atol, rtol=rtol)
 
         # Step loop
         status = None
@@ -190,8 +190,8 @@ class IVPSystem:
                     OdeSolution([*ts, t], [*interpolants, sub_sol],
                                 alt_segment=True if solver_method in [BDF, LSODA] else False)
                 )
-
-            print(f"T = {t_old} s")
+            if verbose:
+                print(f"Computed major step to T = {t} s")
 
             # CROSSING HANDLING
             tc: float | None = None
@@ -206,6 +206,8 @@ class IVPSystem:
             # If there is a crossing, roll back time
             if tc is not None and tc > t_old:
                 t = tc
+                if verbose:
+                    print(f"Crossing detected: Roll back time to T = {t} s")
                 crossing_triggers[first_crossing_idx].append(t)
                 if self.on_crossing_detection:
                     self.on_crossing_detection(crossing_triggers)
@@ -223,13 +225,14 @@ class IVPSystem:
                     continue
                 # Apply action
                 action = event.action
-                print(action.action_type)
+                if verbose:
+                    print(f"Action executed: type = {action.action_type}")
                 if action is None:
                     pass
                 elif action.action_type == ActionType.UPDATE_SYSTEM:
                     # Update state and restart the solver to handle the discontinuity
                     y = action(t, sub_sol(t))
-                    solver = solver_method(self._dy, t, y, t_end, vectorized=False)
+                    solver = solver_method(self._dy, t, y, t_end, vectorized=False, atol=atol, rtol=rtol)
                 elif action.action_type == ActionType.TERMINATE:
                     status = 0
                     break
@@ -244,6 +247,8 @@ class IVPSystem:
 
         # End loop
         message = self.MESSAGES[status]
+        if verbose:
+            print(message)
 
         ts = np.array(ts)
         sol = OdeSolution(ts, interpolants, alt_segment=True if solver_method in [BDF, LSODA] else False)
