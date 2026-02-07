@@ -1,7 +1,7 @@
 from typing import Callable, Any
 
 import numpy as np
-from numpy._typing import NDArray
+from numpy.typing import NDArray
 
 
 def operator_call(obj, /, *args, **kwargs):
