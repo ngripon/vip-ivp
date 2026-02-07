@@ -163,7 +163,7 @@ class IVPSystem:
         # Data to fill
         interpolants = []
         ts = [t0]
-        crossing_triggers = tuple([[] for _ in range(len(self.events))])
+        crossing_triggers = tuple([[] for _ in range(len(self.crossings))])
         # Init solver
         solver_method = self.METHODS[method]
         solver = solver_method(self._dy, t0, self.initial_conditions, t_end, vectorized=False, atol=atol, rtol=rtol)
