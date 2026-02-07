@@ -149,24 +149,28 @@ class IVPSystem:
     def n_events(self) -> int:
         return len(self.events)
 
-    def solve(self, t_end: float, method: str = "RK45", atol:float=1e-6, rtol:float=1e-3, verbose:bool=False) -> tuple[NDArray, OdeSolution, CrossingTriggers]:
+    def solve(self, t_end: float, method: str = "RK45", atol: float = 1e-6, rtol: float = 1e-3,
+              verbose: bool = False) -> tuple[NDArray, OdeSolution, CrossingTriggers]:
+
         # Check
         for der_idx, der in enumerate(self.derivatives):
             if der is None:
                 raise ValueError(f"Derivative at index {der_idx} is None. Solving aborted.")
 
-        # Solve
-        # result = solve_ivp(self._dy, [0, t_end], self.initial_conditions, method=method, dense_output=True)
-
         # Init
+        solver_method = self.METHODS[method]
+
+        def init_solver(t0, y0):
+            return solver_method(self._dy, t0, y0, t_end, vectorized=False, atol=atol, rtol=rtol)
+
         t0 = 0.0
         # Data to fill
         interpolants = []
         ts = [t0]
         crossing_triggers = tuple([[] for _ in range(len(self.crossings))])
+
         # Init solver
-        solver_method = self.METHODS[method]
-        solver = solver_method(self._dy, t0, self.initial_conditions, t_end, vectorized=False, atol=atol, rtol=rtol)
+        solver = init_solver(t0, self.initial_conditions)
 
         # Step loop
         status = None
@@ -206,6 +210,7 @@ class IVPSystem:
             # If there is a crossing, roll back time
             if tc is not None and tc > t_old:
                 t = tc
+                solver=init_solver(t, sub_sol(t))
                 if verbose:
                     print(f"Crossing detected: Roll back time to T = {t} s")
                 crossing_triggers[first_crossing_idx].append(t)
@@ -232,7 +237,7 @@ class IVPSystem:
                 elif action.action_type == ActionType.UPDATE_SYSTEM:
                     # Update state and restart the solver to handle the discontinuity
                     y = action(t, sub_sol(t))
-                    solver = solver_method(self._dy, t, y, t_end, vectorized=False, atol=atol, rtol=rtol)
+                    solver = init_solver(t,y)
                 elif action.action_type == ActionType.TERMINATE:
                     status = 0
                     break
