@@ -51,7 +51,7 @@ def temporal(value: Callable[[float], T]) -> TemporalVar[T]:
     return TemporalVar(value, system=_get_current_system())
 
 
-def state(x0: float, lower_bound: float | TemporalVar = None, upper_bound: float | TemporalVar = None,
+def state(x0: float|list[float], lower_bound: float | TemporalVar = None, upper_bound: float | TemporalVar = None,
           derivative: float | TemporalVar[float] = None) -> IntegratedVar:
     """
     Create a system state whose derivative can be set.

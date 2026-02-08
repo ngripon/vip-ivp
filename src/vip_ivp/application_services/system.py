@@ -70,20 +70,8 @@ class IVPSystemMutable:
             new_t_eval = np.unique(np.concatenate((new_t_eval, self.t_eval)))
             self.t_eval = new_t_eval
 
-    def add_state(self, x0: float, lower: float | TemporalVar[float] = None,
+    def add_state(self, x0: float|list[float], lower: float | TemporalVar[float] = None,
                   upper: float | TemporalVar[float] = None) -> "IntegratedVar":
-        # Check
-        if lower is not None or upper is not None:
-            y0=np.array([*self.initial_conditions, x0])
-            if lower is not None:
-                lower0=lower if not isinstance(lower, TemporalVar) else lower(0, y0)
-                if x0<lower0:
-                    raise ValueError("Initial condition must be greater than the specified lower bound.")
-            if upper is not None:
-                upper0=upper if not isinstance(upper, TemporalVar) else upper(0, y0)
-                if x0>upper0:
-                    raise ValueError("Initial condition must be lower than the specified upper bound.")
-
         # Add state
         self.derivatives.append(None)
         self.initial_conditions.append(x0)
