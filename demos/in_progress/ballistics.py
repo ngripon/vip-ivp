@@ -2,6 +2,8 @@ import matplotlib.pyplot as plt
 import vip_ivp as vip
 import numpy as np
 
+# TODO: Refactor when multidimensional states will be available
+
 # Parameters
 GRAVITY = -9.81
 v0 = 30

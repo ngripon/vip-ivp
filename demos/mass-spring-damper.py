@@ -10,15 +10,14 @@ x0 = 1.0  # Initial position (m)
 v0 = 0.0  # Initial velocity (m/s)
 
 # Build the system
-a = vip.loop_node()  # Acceleration
-v = vip.integrate(a, v0)  # Velocity
-x = vip.integrate(v, x0)  # Displacement
-a.loop_into(-(c * v + k * x) / m)  # Set acceleration value
+x, v = vip.n_order_state(x0, v0)
+v.der = -(c * v + k * x) / m  # Set acceleration value
 
-# Choose results to plot
-x.to_plot("Displacement (m)")
 # Solve the system
-vip.solve(10, time_step=0.01)
+vip.solve(10)
+
+# Plot the variable evolution
+vip.plot(x, v)
 
 # Create a phase space diagram
 plt.plot(x.values, v.values)

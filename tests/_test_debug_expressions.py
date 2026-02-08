@@ -127,7 +127,7 @@ def test_diff_equation():
 def test_transformations():
     a = vip.temporal(5)
 
-    da = a.derivative()
+    da = a.der()
     ia = vip.integrate(a, 0)
     delay_a = a.delayed(1)
 
