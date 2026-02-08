@@ -22,6 +22,6 @@ setuptools.setup(
     ],
     package_dir={"": "src"},
     packages=setuptools.find_packages(where="src"),
-    python_requires=">=3.9",
-    install_requires=['numpy', 'scipy', 'matplotlib', 'pandas', 'cachebox', 'typing_extensions']
+    python_requires=">=3.10",
+    install_requires=['numpy', 'scipy', 'matplotlib', 'pandas', 'typing_extensions']
 )
