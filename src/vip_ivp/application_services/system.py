@@ -62,7 +62,7 @@ class IVPSystemMutable:
             new_t_eval = np.unique(np.concatenate((new_t_eval, *self.crossing_triggers)))
             self.t_eval = new_t_eval
         elif step_eval is not None:
-            new_t_eval = np.arange(self.t_eval[0], self.t_eval[-1]+step_eval, step_eval)
+            new_t_eval = np.arange(self.t_eval[0], self.t_eval[-1] + step_eval, step_eval)
             new_t_eval = np.unique(np.concatenate((new_t_eval, *self.crossing_triggers)))
             self.t_eval = new_t_eval
         elif len(self.t_eval) < self.N_T_EVAL_DEFAULT:
@@ -70,8 +70,10 @@ class IVPSystemMutable:
             new_t_eval = np.unique(np.concatenate((new_t_eval, self.t_eval)))
             self.t_eval = new_t_eval
 
-    def add_state(self, x0: float|list[float], lower: float | TemporalVar[float] = None,
+    def add_state(self, x0: float, lower: float | TemporalVar[float] = None,
                   upper: float | TemporalVar[float] = None) -> "IntegratedVar":
+        if not np.isscalar(x0):
+            raise ValueError(f"Initial condition and bounds must all be scalar.")
         # Add state
         self.derivatives.append(None)
         self.initial_conditions.append(x0)
