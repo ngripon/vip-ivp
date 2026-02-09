@@ -294,3 +294,19 @@ def test_terminate_event():
 #     assert count.values[6] == 3
 #     assert count.values[8] == 4
 #     assert count.values[10] == 5
+
+
+def test_multidimensional_integration():
+    t=np.linspace(0, 1, 100)
+    x0, y0=1,2
+    x=[vip.state(x) for x in (x0, y0)]
+    x[0].der=x[0]+x[1]
+    x[1].der=-x[1]
+
+    vip.solve(10)
+
+    expected=[np.exp(t)*(x0+y0/2*(1-np.exp(-2*t))),y0*np.exp(-t)]
+    np.testing.assert_array_almost_equal(x[0](t), expected[0],decimal=3)
+    np.testing.assert_array_almost_equal(x[1](t), expected[1], decimal=3)
+
+

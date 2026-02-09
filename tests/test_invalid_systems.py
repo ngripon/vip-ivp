@@ -30,3 +30,4 @@ def test_if_statement():
 def test_x0_outside_bound():
     with pytest.raises(ValueError):
         x = state(0, 2, 10)
+        solve(10)

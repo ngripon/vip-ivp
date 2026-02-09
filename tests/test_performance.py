@@ -27,18 +27,17 @@ def rc_circuit_scipy(q0=1, r=1, c=1):
     return sol.y[0]
 
 
-# def stiff_ode_vip():
-#     vip.new_system()
-#     dy=vip.loop_node(3)
-#     # Robertson problem
-#     y=vip.integrate(dy,[1,0,0])
-#     dy1 = -0.04 * y[0] + 1e4 * y[1] * y[2]
-#     dy2 = 0.04 * y[0] - 1e4 * y[1] * y[2] - 3e7 * y[1] ** 2
-#     dy3 = 3e7 * y[1] ** 2
-#     dy.loop_into([dy1,dy2,dy3])
-#
-#     vip.solve(1e3, method="BDF")
-#     return y.values
+def stiff_ode_vip():
+    t_eval = np.linspace(0, 1e3, 10001)
+    vip.new_system()
+    # Robertson problem
+    y=[vip.state(x) for x in [1,0,0]]
+    y[0].der = -0.04 * y[0] + 1e4 * y[1] * y[2]
+    y[1].der = 0.04 * y[0] - 1e4 * y[1] * y[2] - 3e7 * y[1] ** 2
+    y[2].der = 3e7 * y[1] ** 2
+
+    vip.solve(1e3, method="BDF", t_eval=t_eval)
+    return [x.values for x in y]
 
 
 def stiff_ode_scipy():
@@ -71,11 +70,11 @@ def test_differential_equation_scipy(benchmark):
 def test_differential_equation_new_api(benchmark):
     result = benchmark(rc_circuit_scipy)
 
-# def test_stiff_ode_equality():
-#     assert np.allclose(stiff_ode_vip(), stiff_ode_scipy())
-#
-# def test_stiff_ode_vip(benchmark):
-#     result = benchmark(stiff_ode_vip)
+def test_stiff_ode_equality():
+    np.testing.assert_almost_equal(stiff_ode_vip(), stiff_ode_scipy(), decimal=3)
+
+def test_stiff_ode_vip(benchmark):
+    result = benchmark(stiff_ode_vip)
 
 
 def test_stiff_ode_scipy(benchmark):
