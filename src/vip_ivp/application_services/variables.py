@@ -20,6 +20,7 @@ import pandas as pd
 from numpy.typing import NDArray
 from typing_extensions import ParamSpec
 
+from .variable_expressions import VariableExpression
 from ..domain.system import create_system_output_fun, Direction, Action, create_set_system_output_fun, ActionType
 from .utils import operator_call, vectorize_source, get_output_info
 
@@ -72,6 +73,7 @@ class TemporalVar(Generic[T]):
         """
         # Object data
         self.system = system
+        self.expression=VariableExpression(id(self),"")
 
         # Private
         self._func: Callable[[float | NDArray, NDArray], T]
@@ -81,6 +83,14 @@ class TemporalVar(Generic[T]):
         self.output_type = None
         self._keys: list[str] | None = None
         self._shape: tuple[int, ...] | None = None
+
+        # Get names in sources
+        if isinstance(self._source, TemporalVar):
+            self._source.expression.get_name()
+        elif isinstance(self._source, (tuple, list, np.ndarray)):
+            for source in self._source:
+                if isinstance(source, TemporalVar):
+                    source.expression.get_name()
 
         # Create the function and make sources recursive when needed
         if self._operator is not None:
