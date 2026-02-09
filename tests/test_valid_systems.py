@@ -239,14 +239,15 @@ def test_forgiving_f():
 #     assert count.values[-1] == 18
 
 
-# def test_stiff_ode():
-#     dy = vip.loop_node(3)
-#     # Robertson problem
-#     y = vip.integrate(dy, [1, 0, 0])
-#     dy1 = -0.04 * y[0] + 1e4 * y[1] * y[2]
-#     dy2 = 0.04 * y[0] - 1e4 * y[1] * y[2] - 3e7 * y[1] ** 2
-#     dy3 = 3e7 * y[1] ** 2
-#     dy.loop_into([dy1, dy2, dy3])
-#
-#     vip.solve(1e2, method="BDF")
-#     print(y.values)
+def test_stiff_ode():
+    t_eval = np.linspace(0, 1e3, 10001)
+    vip.new_system()
+    # Robertson problem
+    y = [vip.state(x) for x in [1, 0, 0]]
+    y[0].der = -0.04 * y[0] + 1e4 * y[1] * y[2]
+    y[1].der = 0.04 * y[0] - 1e4 * y[1] * y[2] - 3e7 * y[1] ** 2
+    y[2].der = 3e7 * y[1] ** 2
+
+    vip.solve(1e3, method="BDF", t_eval=t_eval)
+
+    # TODO: Add asser
