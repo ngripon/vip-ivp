@@ -49,9 +49,7 @@ class IVPSystemMutable:
             tuple(self.initial_conditions),
             tuple(self.bounds),
             tuple(self._crossings),
-            tuple(self._events),
-            on_crossing_detection=self._update_crossing_triggers,
-            on_solution_update=self._update_sol
+            tuple(self._events)
         )
 
         self.solution = system.solve(t_end, method, atol, rtol, verbose)
@@ -121,9 +119,3 @@ class IVPSystemMutable:
             self.bounds[eq_idx] = (variable, current_bounds[1])
         else:
             self.bounds[eq_idx] = (current_bounds[0], variable)
-
-    def _update_crossing_triggers(self, crossing_triggers: CrossingTriggers) -> None:
-        self.crossing_triggers = crossing_triggers
-
-    def _update_sol(self, sol: OdeSolution) -> None:
-        self.sol = sol

@@ -136,9 +136,7 @@ class IVPSystem:
             initial_conditions: tuple[float, ...],
             output_bounds: tuple[tuple[SystemFun | None, SystemFun | None], ...],
             crossings: tuple[Crossing, ...] = None,
-            events: tuple[Event, ...] = None,
-            on_crossing_detection: Callable[[CrossingTriggers], None] = None,
-            on_solution_update: Callable[[OdeSolution], None] = None,
+            events: tuple[Event, ...] = None
     ):
         assert len(derivative_expressions) == len(initial_conditions)
         self.derivatives = derivative_expressions
@@ -146,10 +144,6 @@ class IVPSystem:
         self.output_bounds = output_bounds
         self.crossings = crossings or []
         self.events = events or []
-
-        # Callbacks
-        self.on_crossing_detection = on_crossing_detection
-        self.on_solution_update = on_solution_update
 
     @property
     def n_equations(self) -> int:
@@ -199,11 +193,6 @@ class IVPSystem:
             y = solver.y
             sub_sol = self._bound_sol(solver.dense_output())
 
-            if self.on_solution_update:
-                self.on_solution_update(
-                    OdeSolution([*ts, t], [*interpolants, sub_sol],
-                                alt_segment=True if solver_method in [BDF, LSODA] else False)
-                )
             if verbose:
                 print(f"Computed major step to T = {t} s")
 
@@ -224,14 +213,6 @@ class IVPSystem:
                 if verbose:
                     print(f"Crossing detected: Roll back time to T = {t} s")
                 crossing_triggers[first_crossing_idx].append(t)
-                if self.on_crossing_detection:
-                    self.on_crossing_detection(crossing_triggers)
-                # Trigger the solution update to communicate the time rollback
-                if self.on_solution_update:
-                    self.on_solution_update(
-                        OdeSolution([*ts, t], [*interpolants, sub_sol],
-                                    alt_segment=True if solver_method in [BDF, LSODA] else False)
-                    )
 
             # EVENT HANDLING
             for event in self.events:
