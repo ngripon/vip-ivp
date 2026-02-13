@@ -260,6 +260,34 @@ class TemporalVar(Generic[T]):
 
         return TemporalVar(derivative_func, f"d/dt({self._get_expression_of(self)})", system=self.system)
 
+    def compute_delay(self, delay_s: float) -> "TemporalVar":
+        def delayed_func(t, _, sol):
+            sol = self.system.solution or sol
+            if np.isscalar(t):
+                if sol is None:
+                    return self(0, np.array(self.system.initial_conditions))
+                else:
+                    t_delayed = np.max([t - delay_s, 0])
+                    return self(t_delayed, sol(t_delayed), sol)
+            else:
+                t = np.asarray(t)
+
+                if sol is None:
+                    t0 = np.zeros_like(t)
+                    y0 = np.broadcast_to(
+                        np.array(self.system.initial_conditions),
+                        (t.size, len(self.system.initial_conditions))
+                    )
+                    return self(t0, y0)
+
+                else:
+                    t_delayed = np.maximum(t - delay_s, 0)
+                    return self(t_delayed, sol(t_delayed), sol)
+
+        return TemporalVar(delayed_func,
+                           f"delay({self._get_expression_of(self)}, {delay_s} s)",
+                           system=self.system)
+
     def _get_expression_of(self, x: Any) -> str:
         if isinstance(x, TemporalVar):
             x.expression_info.set_name()
@@ -603,35 +631,6 @@ class CrossTriggerVar(TemporalVar[float]):
 
     def guard(self, t, y=None, sol=None):
         return super().__call__(t, y, sol)
-
-
-def delay(value: TemporalVar, delay_s: float) -> TemporalVar:
-    def delayed_func(t, _, sol):
-        sol = value.system.solution or sol
-        if np.isscalar(t):
-            if sol is None:
-                return value(0, np.array(value.system.initial_conditions))
-            else:
-                t_delayed = np.max([t - delay_s, 0])
-                return value(t_delayed, sol(t_delayed), sol)
-        else:
-            t = np.asarray(t)
-
-            if sol is None:
-                t0 = np.zeros_like(t)
-                y0 = np.broadcast_to(
-                    np.array(value.system.initial_conditions),
-                    (t.size, len(value.system.initial_conditions))
-                )
-                return value(t0, y0)
-
-            else:
-                t_delayed = np.maximum(t - delay_s, 0)
-                return value(t_delayed, sol(t_delayed), sol)
-
-    return TemporalVar(delayed_func,
-                       f"delay({value._get_expression_of(value)}, {delay_s} s)",
-                       system=value.system)
 
 
 def temporal_var_where(
