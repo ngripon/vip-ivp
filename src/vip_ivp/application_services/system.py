@@ -2,11 +2,11 @@ import inspect
 from typing import TypeVar, Optional, Callable
 
 import numpy as np
-from scipy.integrate import OdeSolution
+
 from numpy.typing import NDArray
 
 from .variables import TemporalVar, IntegratedVar, CrossTriggerVar
-from ..domain.system import IVPSystem, Crossing, Direction, CrossingTriggers, Event, Action, ActionType, SystemSolution
+from ..domain.system import IVPSystem, Crossing, Direction, Event, Action, ActionType, SystemSolution
 
 T = TypeVar("T")
 
@@ -31,7 +31,7 @@ class IVPSystemMutable:
 
     @property
     def is_solved(self) -> bool:
-        return self.sol is not None
+        return self.solution is not None
 
     @property
     def n_equations(self) -> int:
@@ -58,11 +58,11 @@ class IVPSystemMutable:
         if t_eval is not None:
             # Add trigger instants to t_eval
             new_t_eval = np.array(t_eval)
-            new_t_eval = np.unique(np.concatenate((new_t_eval, *self.crossing_triggers)))
+            new_t_eval = np.unique(np.concatenate((new_t_eval, *self.solution.t_crossings)))
             self.t_eval = new_t_eval
         elif step_eval is not None:
             new_t_eval = np.arange(self.t_eval[0], self.t_eval[-1] + step_eval, step_eval)
-            new_t_eval = np.unique(np.concatenate((new_t_eval, *self.crossing_triggers)))
+            new_t_eval = np.unique(np.concatenate((new_t_eval, *self.solution.t_crossings)))
             self.t_eval = new_t_eval
         elif len(self.t_eval) < self.N_T_EVAL_DEFAULT:
             new_t_eval = np.linspace(self.t_eval[0], self.t_eval[-1], self.N_T_EVAL_DEFAULT)
@@ -99,9 +99,11 @@ class IVPSystemMutable:
         if not isinstance(action, Action):
             n_args = len(inspect.signature(action).parameters)
             if n_args == 0:
-                action_fun = lambda t, y: action()
+                action_fun = lambda t, y, sol: action()
             elif n_args == 1:
-                action_fun = lambda t, y: action(t)
+                action_fun = lambda t, y, sol: action(t)
+            elif n_args == 2:
+                action_fun = lambda t, y, sol: action(t, y)
             else:
                 action_fun = action
             new_action = Action(action_fun, ActionType.SIDE_EFFECT)

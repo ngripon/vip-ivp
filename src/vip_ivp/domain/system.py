@@ -7,6 +7,7 @@ solution y(t) is computed.
 
 """
 from enum import Enum
+from functools import partial
 from numbers import Real
 from typing import Callable, Literal, Optional, Sequence
 
@@ -171,7 +172,7 @@ class IVPSystem:
         solver_method = self.METHODS[method]
 
         def init_solver(t0, y0):
-            return solver_method(self._dy, t0, y0, t_end, vectorized=False, atol=atol, rtol=rtol)
+            return solver_method(partial(self._dy, solution=current_solution), t0, y0, t_end, vectorized=False, atol=atol, rtol=rtol)
 
         t0 = 0.0
         # Data to fill
@@ -306,10 +307,13 @@ class IVPSystem:
 
 
 def create_system_output_fun(idx: int) -> SystemFun:
-    def system_output(_, y: NDArray, __, i=idx) -> NDArray:
-        return y[i]
+    class SystemOutputFun:
+        def __init__(self, i:int):
+            self.idx = i
+        def __call__(self, t: float, y:NDArray, _)->NDArray:
+            return y[self.idx]
 
-    return system_output
+    return SystemOutputFun(idx)
 
 
 def create_set_system_output_fun(idx: int,

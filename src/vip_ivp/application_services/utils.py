@@ -93,10 +93,11 @@ def get_output_info(
     """
     # Get a scalar output but watch out for IndexError
     y = np.zeros(1)
+    sol=None
     found_output = False
     while not found_output:
         try:
-            output = fun(0, y)
+            output = fun(0, y, sol)
             found_output = True
         except IndexError:
             y = np.zeros(len(y) * 2)

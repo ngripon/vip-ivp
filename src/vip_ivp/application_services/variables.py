@@ -12,6 +12,7 @@ results of each variable are computed only when needed.
 import functools
 import inspect
 import operator
+from types import NoneType
 
 from typing import Callable, TypeVar, Generic, Optional, TYPE_CHECKING, Any
 
@@ -142,7 +143,7 @@ class TemporalVar(Generic[T]):
 
                 elif n_args == 3:
                     def state_func(t, y, sol):
-                        if not isinstance(sol, (None, SystemSolution)):
+                        if not isinstance(sol, (NoneType, SystemSolution)):
                             raise ValueError(
                                 "The third argument of the input function must be a SystemSolution. "
                                 "If you want to use another kind of third argument, decrease the number of argument of "
@@ -600,8 +601,8 @@ class CrossTriggerVar(TemporalVar[float]):
             return False
         return np.full(t.shape, False)
 
-    def guard(self, t, y=None):
-        return super().__call__(t, y)
+    def guard(self, t, y=None, sol=None):
+        return super().__call__(t, y, sol)
 
 
 def delay(value: TemporalVar, delay_s: float) -> TemporalVar:
