@@ -8,7 +8,7 @@ solution y(t) is computed.
 """
 from enum import Enum
 from numbers import Real
-from typing import Callable, Literal, Optional
+from typing import Callable, Literal, Optional, Iterable
 
 import numpy as np
 from numpy.typing import NDArray
@@ -110,6 +110,16 @@ class Event:
         return bool(self.condition(t, y))
 
 
+class SystemSolution:
+    def __init__(self, sol: OdeSolution, t_crossings: Iterable[Iterable[float]]) -> None:
+        self.continuous_solution = sol
+        self.t_crossings = t_crossings # For each crossing idx, the list of crossing times
+
+    @property
+    def timestamps(self)->list[float]:
+        return self.continuous_solution.ts
+
+
 class IVPSystem:
     METHODS: dict[str, type[OdeSolver]] = {'RK23': RK23,
                                            'RK45': RK45,
@@ -150,7 +160,7 @@ class IVPSystem:
         return len(self.events)
 
     def solve(self, t_end: float, method: str = "RK45", atol: float = 1e-6, rtol: float = 1e-3,
-              verbose: bool = False) -> tuple[NDArray, OdeSolution, CrossingTriggers]:
+              verbose: bool = False) -> SystemSolution:
 
         # Check
         for der_idx, der in enumerate(self.derivatives):
@@ -210,7 +220,7 @@ class IVPSystem:
             # If there is a crossing, roll back time
             if tc is not None and tc > t_old:
                 t = tc
-                solver=init_solver(t, sub_sol(t))
+                solver = init_solver(t, sub_sol(t))
                 if verbose:
                     print(f"Crossing detected: Roll back time to T = {t} s")
                 crossing_triggers[first_crossing_idx].append(t)
@@ -237,7 +247,7 @@ class IVPSystem:
                 elif action.action_type == ActionType.UPDATE_SYSTEM:
                     # Update state and restart the solver to handle the discontinuity
                     y = action(t, sub_sol(t))
-                    solver = init_solver(t,y)
+                    solver = init_solver(t, y)
                 elif action.action_type == ActionType.TERMINATE:
                     status = 0
                     break
@@ -258,7 +268,7 @@ class IVPSystem:
         ts = np.array(ts)
         sol = OdeSolution(ts, interpolants, alt_segment=True if solver_method in [BDF, LSODA] else False)
 
-        return ts, sol, crossing_triggers
+        return SystemSolution(sol, crossing_triggers)
 
     def _dy(self, t, y):
         try:

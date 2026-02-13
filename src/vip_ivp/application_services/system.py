@@ -6,7 +6,7 @@ from scipy.integrate import OdeSolution
 from numpy.typing import NDArray
 
 from .variables import TemporalVar, IntegratedVar, CrossTriggerVar
-from ..domain.system import IVPSystem, Crossing, Direction, CrossingTriggers, Event, Action, ActionType
+from ..domain.system import IVPSystem, Crossing, Direction, CrossingTriggers, Event, Action, ActionType, SystemSolution
 
 T = TypeVar("T")
 
@@ -17,10 +17,10 @@ class IVPSystemMutable:
     N_T_EVAL_DEFAULT = 500
 
     def __init__(self):
-        # Results
-        self.sol: OdeSolution | None = None  # Continuous results function
+        # State
         self.t_eval: Optional[NDArray] = None
-        self.crossing_triggers: CrossingTriggers = ()
+        self.solution:SystemSolution | None = None  # Continuous results function
+
 
         # System inputs
         self.derivatives: list[Optional[TemporalVar]] = []
@@ -54,7 +54,8 @@ class IVPSystemMutable:
             on_solution_update=self._update_sol
         )
 
-        self.t_eval, self.sol, self.crossing_triggers = system.solve(t_end, method, atol, rtol, verbose)
+        self.solution = system.solve(t_end, method, atol, rtol, verbose)
+        self.t_eval = self.solution.timestamps
 
         if t_eval is not None:
             # Add trigger instants to t_eval
