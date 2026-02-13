@@ -295,7 +295,7 @@ class TemporalVar(Generic[T]):
     def __mul__(self, other):
         return TemporalVar(
             (self, other),
-            f"{self._get_expression_of(self)} * {self._get_expression_of(other)}",
+            f"({self._get_expression_of(self)} * {self._get_expression_of(other)})",
             operator_on_source_tuple=operator.mul,
             system=self.system
         )
@@ -303,7 +303,7 @@ class TemporalVar(Generic[T]):
     def __rmul__(self, other):
         return TemporalVar(
             (other, self),
-            f"{self._get_expression_of(other)} * {self._get_expression_of(self)}",
+            f"({self._get_expression_of(other)} * {self._get_expression_of(self)})",
             operator_on_source_tuple=operator.mul,
             system=self.system
         )
@@ -312,7 +312,7 @@ class TemporalVar(Generic[T]):
     def __truediv__(self, other):
         return TemporalVar(
             (self, other),
-            f"{self._get_expression_of(self)} / {self._get_expression_of(other)}",
+            f"{self._get_expression_of(self)} / {self._get_expression_of(other)})",
             operator_on_source_tuple=operator.truediv,
             system=self.system
         )
@@ -320,7 +320,7 @@ class TemporalVar(Generic[T]):
     def __rtruediv__(self, other):
         return TemporalVar(
             (other, self),
-            f"{self._get_expression_of(other)} / {self._get_expression_of(self)}",
+            f"{self._get_expression_of(other)} / {self._get_expression_of(self)})",
             operator_on_source_tuple=operator.truediv,
             system=self.system
         )
@@ -329,7 +329,7 @@ class TemporalVar(Generic[T]):
     def __floordiv__(self, other):
         return TemporalVar(
             (self, other),
-            f"{self._get_expression_of(self)} // {self._get_expression_of(other)}",
+            f"{self._get_expression_of(self)} // {self._get_expression_of(other)})",
             operator_on_source_tuple=operator.floordiv,
             system=self.system
         )
@@ -337,7 +337,7 @@ class TemporalVar(Generic[T]):
     def __rfloordiv__(self, other):
         return TemporalVar(
             (other, self),
-            f"{self._get_expression_of(other)} // {self._get_expression_of(self)}",
+            f"{self._get_expression_of(other)} // {self._get_expression_of(self)})",
             operator_on_source_tuple=operator.floordiv,
             system=self.system
         )
@@ -346,7 +346,7 @@ class TemporalVar(Generic[T]):
     def __mod__(self, other):
         return TemporalVar(
             (self, other),
-            f"{self._get_expression_of(self)} % {self._get_expression_of(other)}",
+            f"{self._get_expression_of(self)} % {self._get_expression_of(other)})",
             operator_on_source_tuple=operator.mod,
             system=self.system
         )
@@ -354,7 +354,7 @@ class TemporalVar(Generic[T]):
     def __rmod__(self, other):
         return TemporalVar(
             (other, self),
-            f"{self._get_expression_of(other)} % {self._get_expression_of(self)}",
+            f"{self._get_expression_of(other)} % {self._get_expression_of(self)})",
             operator_on_source_tuple=operator.mod,
             system=self.system
         )
@@ -363,7 +363,7 @@ class TemporalVar(Generic[T]):
     def __pow__(self, other):
         return TemporalVar(
             (self, other),
-            f"{self._get_expression_of(self)} ** {self._get_expression_of(other)}",
+            f"({self._get_expression_of(self)}) ** {self._get_expression_of(other)}",
             operator_on_source_tuple=operator.pow,
             system=self.system
         )
@@ -371,7 +371,7 @@ class TemporalVar(Generic[T]):
     def __rpow__(self, other):
         return TemporalVar(
             (other, self),
-            f"{self._get_expression_of(other)} ** {self._get_expression_of(self)}",
+            f"({self._get_expression_of(other)}) ** {self._get_expression_of(self)}",
             operator_on_source_tuple=operator.pow,
             system=self.system
         )
@@ -387,7 +387,7 @@ class TemporalVar(Generic[T]):
     def __neg__(self):
         return TemporalVar(
             (self,),
-            f"-{self._get_expression_of(self)}",
+            f"-({self._get_expression_of(self)})",
             operator_on_source_tuple=operator.neg,
             system=self.system
         )
