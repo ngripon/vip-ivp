@@ -19,7 +19,6 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 from typing_extensions import ParamSpec
-from vip_ivp import TemporalVar
 
 from .variable_expressions import VariableExpression
 from ..domain.system import create_system_output_fun, Direction, Action, create_set_system_output_fun, ActionType
@@ -31,7 +30,7 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 P = ParamSpec("P")
 
-Source = Callable[[float | NDArray, NDArray], T] | Callable[[float | NDArray], T] | NDArray | dict | float | TemporalVar
+Source = Callable[[float | NDArray, NDArray], T] | Callable[[float | NDArray], T] | NDArray | dict | float | "TemporalVar"
 
 
 class TemporalVar(Generic[T]):
@@ -53,9 +52,10 @@ class TemporalVar(Generic[T]):
 
     def __init__(
             self,
-            source: Source | tuple = None,
-            operator_on_source_tuple=None,
+            source: Source | tuple,
             system: Optional["IVPSystemMutable"] = None,
+            operator_on_source_tuple=None,
+
     ):
         """
         Create a temporal variable.
@@ -74,7 +74,7 @@ class TemporalVar(Generic[T]):
         """
         # Object data
         self.system = system
-        self.expression_info = VariableExpression(id(self))
+        self.expression_info = VariableExpression(id(self),"")
 
         # Private
         self._func: Callable[[float | NDArray, NDArray], T]
@@ -360,22 +360,22 @@ class TemporalVar(Generic[T]):
         return result
 
     def __and__(self, other) -> "TemporalVar[bool]":
-        return TemporalVar((self._apply_logical, np.logical_and, self, other), operator_call, system=self.system)
+        return TemporalVar((self._apply_logical, np.logical_and, self, other), operator_on_source_tuple=operator_call, system=self.system)
 
     def __rand__(self, other) -> "TemporalVar[bool]":
-        return TemporalVar((self._apply_logical, np.logical_and, other, self), operator_call, system=self.system)
+        return TemporalVar((self._apply_logical, np.logical_and, other, self), operator_on_source_tuple=operator_call, system=self.system)
 
     def __or__(self, other) -> "TemporalVar[bool]":
-        return TemporalVar((self._apply_logical, np.logical_or, self, other), operator_call, system=self.system)
+        return TemporalVar((self._apply_logical, np.logical_or, self, other), operator_on_source_tuple=operator_call, system=self.system)
 
     def __ror__(self, other) -> "TemporalVar[bool]":
-        return TemporalVar((self._apply_logical, np.logical_or, other, self), operator_call, system=self.system)
+        return TemporalVar((self._apply_logical, np.logical_or, other, self), operator_on_source_tuple=operator_call, system=self.system)
 
     def __xor__(self, other) -> "TemporalVar[bool]":
-        return TemporalVar((self._apply_logical, np.logical_xor, self, other), operator_call, system=self.system)
+        return TemporalVar((self._apply_logical, np.logical_xor, self, other), operator_on_source_tuple=operator_call, system=self.system)
 
     def __rxor__(self, other) -> "TemporalVar[bool]":
-        return TemporalVar((self._apply_logical, np.logical_xor, other, self), operator_call, system=self.system)
+        return TemporalVar((self._apply_logical, np.logical_xor, other, self), operator_on_source_tuple=operator_call, system=self.system)
 
     @staticmethod
     def _logical_not(a):
@@ -385,7 +385,7 @@ class TemporalVar(Generic[T]):
         return result
 
     def __invert__(self) -> "TemporalVar[bool]":
-        return TemporalVar((self._logical_not, self), operator_call, system=self.system)
+        return TemporalVar((self._logical_not, self), operator_on_source_tuple=operator_call, system=self.system)
 
 
 class IntegratedVar(TemporalVar[float]):
@@ -453,7 +453,7 @@ class CrossTriggerVar(TemporalVar[float]):
 
 
 def delay(value: TemporalVar, delay_s: float) -> TemporalVar:
-    def delayed_func(t, y):
+    def delayed_func(t, _):
         if np.isscalar(t):
             if not value.system.is_solved:
                 return value(0, np.array(value.system.initial_conditions))
@@ -491,8 +491,8 @@ def temporal_var_where(
 
     return TemporalVar(
         (where, condition, a, b),
-        operator_call,
-        condition.system
+        condition.system,
+        operator_call
     )
 
 

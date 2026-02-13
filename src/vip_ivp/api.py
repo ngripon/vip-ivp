@@ -147,7 +147,7 @@ def where(condition, a, b) -> TemporalVar:
 
 def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> TemporalVar:
-        return TemporalVar((func, *args, kwargs), operator_call, _get_current_system())
+        return TemporalVar((func, *args, kwargs), _get_current_system(), operator_call)
 
     functools.update_wrapper(wrapper, func)
     return wrapper
