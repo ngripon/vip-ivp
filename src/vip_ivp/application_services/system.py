@@ -77,8 +77,8 @@ class IVPSystemMutable:
         # Add state
         self.derivatives.append(None)
         self.initial_conditions.append(x0)
-        self.bounds.append((TemporalVar(lower, system=self) if lower is not None else None,
-                            TemporalVar(upper, system=self) if upper is not None else None))
+        self.bounds.append((TemporalVar(lower,"Huh?", system=self) if lower is not None else None,
+                            TemporalVar(upper,"Huh?", system=self) if upper is not None else None))
         return IntegratedVar(self.n_equations - 1, self)
 
     def add_crossing_detection(self, variable: TemporalVar[float], direction: Direction) -> CrossTriggerVar:
