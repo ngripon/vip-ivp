@@ -8,7 +8,7 @@ solution y(t) is computed.
 """
 from enum import Enum
 from numbers import Real
-from typing import Callable, Literal, Optional, Iterable, overload
+from typing import Callable, Literal, Optional, Iterable
 
 import numpy as np
 from numpy.typing import NDArray
@@ -29,13 +29,7 @@ class SystemSolution:
     def timestamps(self) -> list[float]:
         return self.continuous_solution.ts
 
-    @overload
-    def __call__(self, t: np.ndarray) -> np.ndarray: ...
-
-    @overload
-    def __call__(self, t: float) -> float: ...
-
-    def __call__(self, t):
+    def __call__(self, t:float|np.ndarray) -> np.ndarray:
         return self.continuous_solution(t)
 
 
