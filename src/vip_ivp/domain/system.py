@@ -7,19 +7,35 @@ solution y(t) is computed.
 
 """
 from enum import Enum
+from functools import partial
 from numbers import Real
-from typing import Callable, Literal, Optional
+from typing import Callable, Literal, Optional, Sequence
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy.integrate import OdeSolution, RK23, RK45, DOP853, Radau, BDF, LSODA, OdeSolver
+from scipy.integrate import OdeSolution, RK23, RK45, DOP853, Radau, BDF, LSODA, OdeSolver, DenseOutput
 
 # Constants
 EPS = np.finfo(float).eps
 CROSSING_TOLERANCE = 1e-12
 
+
 # Types
-SystemFun = Callable[[NDArray, NDArray], NDArray] | Callable[[float, NDArray], float]
+class SystemSolution:
+    def __init__(self, sol: OdeSolution, t_crossings: Sequence[Sequence[float]]) -> None:
+        self.continuous_solution = sol
+        self.t_crossings = t_crossings  # For each crossing idx, the list of crossing times
+
+    @property
+    def timestamps(self) -> list[float]:
+        return self.continuous_solution.ts
+
+    def __call__(self, t:float|np.ndarray) -> np.ndarray:
+        return self.continuous_solution(t)
+
+
+SystemFun = Callable[[NDArray, NDArray, Optional[SystemSolution]], NDArray] | Callable[
+    [float, NDArray, Optional[SystemSolution]], float]
 Direction = Literal["both", "rising", "falling"]
 CrossingTriggers = tuple[list[float], ...]
 
@@ -33,13 +49,13 @@ class Crossing:
         self._current_t = None
         self._current_value = None
 
-    def compute_root(self, t, t_next, sol) -> float | None:
+    def compute_root(self, t: float, t_next: float, solution: SystemSolution) -> float | None:
         # Check zero crossing
         if self._current_value is None or t != self._current_t:
-            y0 = self.guard(t, sol(t))
+            y0 = self.guard(t, solution(t), solution)
         else:
             y0 = self._current_value
-        y1 = self.guard(t_next, sol(t_next))
+        y1 = self.guard(t_next, solution(t_next), solution)
         self._cache_current_value(t_next, y1)
 
         # Return if there is no crossing
@@ -51,13 +67,14 @@ class Crossing:
 
         discontinuous = not isinstance(y0, (float, int))
         if discontinuous:
-            return bisect(lambda t_: 1 if self.guard(t_, sol(t_)) else -1, t, t_next, xtol=4 * EPS, rtol=4 * EPS)
+            return bisect(lambda t_: 1 if self.guard(t_, solution(t_), solution) else -1, t, t_next, xtol=4 * EPS,
+                          rtol=4 * EPS)
         else:
-            if abs(self.guard(t, sol(t))) <= CROSSING_TOLERANCE:
+            if abs(self.guard(t, solution(t), solution)) <= CROSSING_TOLERANCE:
                 return t
-            elif abs(self.guard(t_next, sol(t_next))) <= CROSSING_TOLERANCE:
+            elif abs(self.guard(t_next, solution(t_next), solution)) <= CROSSING_TOLERANCE:
                 return t_next
-            return brentq(lambda t_: self.guard(t_, sol(t_)), t, t_next, xtol=4 * EPS, rtol=4 * EPS)
+            return brentq(lambda t_: self.guard(t_, solution(t_), solution), t, t_next, xtol=4 * EPS, rtol=4 * EPS)
 
     def _cache_current_value(self, t, value):
         self._current_t = t
@@ -126,9 +143,7 @@ class IVPSystem:
             initial_conditions: tuple[float, ...],
             output_bounds: tuple[tuple[SystemFun | None, SystemFun | None], ...],
             crossings: tuple[Crossing, ...] = None,
-            events: tuple[Event, ...] = None,
-            on_crossing_detection: Callable[[CrossingTriggers], None] = None,
-            on_solution_update: Callable[[OdeSolution], None] = None,
+            events: tuple[Event, ...] = None
     ):
         assert len(derivative_expressions) == len(initial_conditions)
         self.derivatives = derivative_expressions
@@ -136,10 +151,6 @@ class IVPSystem:
         self.output_bounds = output_bounds
         self.crossings = crossings or []
         self.events = events or []
-
-        # Callbacks
-        self.on_crossing_detection = on_crossing_detection
-        self.on_solution_update = on_solution_update
 
     @property
     def n_equations(self) -> int:
@@ -150,7 +161,7 @@ class IVPSystem:
         return len(self.events)
 
     def solve(self, t_end: float, method: str = "RK45", atol: float = 1e-6, rtol: float = 1e-3,
-              verbose: bool = False) -> tuple[NDArray, OdeSolution, CrossingTriggers]:
+              verbose: bool = False) -> SystemSolution:
 
         # Check
         for der_idx, der in enumerate(self.derivatives):
@@ -161,13 +172,14 @@ class IVPSystem:
         solver_method = self.METHODS[method]
 
         def init_solver(t0, y0):
-            return solver_method(self._dy, t0, y0, t_end, vectorized=False, atol=atol, rtol=rtol)
+            return solver_method(partial(self._dy, solution=current_solution), t0, y0, t_end, vectorized=False, atol=atol, rtol=rtol)
 
         t0 = 0.0
         # Data to fill
         interpolants = []
         ts = [t0]
         crossing_triggers = tuple([[] for _ in range(len(self.crossings))])
+        current_solution: SystemSolution | None = None
 
         # Init solver
         solver = init_solver(t0, self.initial_conditions)
@@ -187,13 +199,15 @@ class IVPSystem:
             t_old = solver.t_old
             t = solver.t
             y = solver.y
-            sub_sol = self._bound_sol(solver.dense_output())
+            sub_sol = self._bound_sol(solver.dense_output(), current_solution)
 
-            if self.on_solution_update:
-                self.on_solution_update(
-                    OdeSolution([*ts, t], [*interpolants, sub_sol],
-                                alt_segment=True if solver_method in [BDF, LSODA] else False)
-                )
+            # Compute pre-solution for signals used in event processing
+            current_solution = SystemSolution(
+                OdeSolution([*ts, t], [*interpolants, sub_sol],
+                            alt_segment=True if solver_method in [BDF, LSODA] else False),
+                crossing_triggers
+            )
+
             if verbose:
                 print(f"Computed major step to T = {t} s")
 
@@ -201,7 +215,7 @@ class IVPSystem:
             tc: float | None = None
             first_crossing_idx: int | None = None
             for c_idx, crossing in enumerate(self.crossings):
-                root = crossing.compute_root(t_old, t, sub_sol)
+                root = crossing.compute_root(t_old, t, current_solution)
                 if root is None:
                     continue
                 if tc is None or root < tc:
@@ -210,18 +224,10 @@ class IVPSystem:
             # If there is a crossing, roll back time
             if tc is not None and tc > t_old:
                 t = tc
-                solver=init_solver(t, sub_sol(t))
+                solver = init_solver(t, sub_sol(t))
                 if verbose:
                     print(f"Crossing detected: Roll back time to T = {t} s")
                 crossing_triggers[first_crossing_idx].append(t)
-                if self.on_crossing_detection:
-                    self.on_crossing_detection(crossing_triggers)
-                # Trigger the solution update to communicate the time rollback
-                if self.on_solution_update:
-                    self.on_solution_update(
-                        OdeSolution([*ts, t], [*interpolants, sub_sol],
-                                    alt_segment=True if solver_method in [BDF, LSODA] else False)
-                    )
 
             # EVENT HANDLING
             for event in self.events:
@@ -237,7 +243,7 @@ class IVPSystem:
                 elif action.action_type == ActionType.UPDATE_SYSTEM:
                     # Update state and restart the solver to handle the discontinuity
                     y = action(t, sub_sol(t))
-                    solver = init_solver(t,y)
+                    solver = init_solver(t, y)
                 elif action.action_type == ActionType.TERMINATE:
                     status = 0
                     break
@@ -249,30 +255,33 @@ class IVPSystem:
             # Update solution
             ts.append(t)
             interpolants.append(sub_sol)
+            current_solution = SystemSolution(
+                OdeSolution(ts, interpolants, alt_segment=True if solver_method in [BDF, LSODA] else False),
+                crossing_triggers
+            )
 
         # End loop
         message = self.MESSAGES[status]
         if verbose:
             print(message)
 
-        ts = np.array(ts)
         sol = OdeSolution(ts, interpolants, alt_segment=True if solver_method in [BDF, LSODA] else False)
 
-        return ts, sol, crossing_triggers
+        return SystemSolution(sol, crossing_triggers)
 
-    def _dy(self, t, y):
+    def _dy(self, t, y, solution: SystemSolution):
         try:
-            return np.array([f(t, y) for f in self.derivatives])
+            return np.array([f(t, y, solution) for f in self.derivatives])
         except RecursionError:
             raise RecursionError(
                 "An algebraic loop has been detected."
             )
 
-    def _bound_sol(self, sol):
+    def _bound_sol(self, sol: DenseOutput, solution: SystemSolution):
 
         def wrapper(t: float | NDArray):
             y = sol(t)
-            lower, upper = self._get_bounds(t, y)
+            lower, upper = self._get_bounds(t, y, solution)
             if upper:
                 y = np.where(y <= upper, y, upper)
             if lower:
@@ -281,12 +290,14 @@ class IVPSystem:
 
         return wrapper
 
-    def _get_bounds(self, t, y):
+    def _get_bounds(self, t, y, solution: SystemSolution):
         upper_bounds = []
         lower_bounds = []
         for der_idx, (lower, upper) in enumerate(self.output_bounds):
-            maximum = upper(t, y) if upper is not None else np.full(t.shape, np.inf) if not np.isscalar(t) else np.inf
-            minimum = lower(t, y) if lower is not None else np.full(t.shape, -np.inf) if not np.isscalar(t) else -np.inf
+            maximum = upper(t, y, solution) if upper is not None else np.full(t.shape, np.inf) if not np.isscalar(
+                t) else np.inf
+            minimum = lower(t, y, solution) if lower is not None else np.full(t.shape, -np.inf) if not np.isscalar(
+                t) else -np.inf
             if np.any(minimum > maximum):
                 raise ValueError(
                     f"Lower bound {minimum} is greater than upper bound {maximum} a time {t} s for equation {der_idx}")
@@ -296,16 +307,20 @@ class IVPSystem:
 
 
 def create_system_output_fun(idx: int) -> SystemFun:
-    def system_output(_, y: NDArray, i=idx) -> NDArray:
-        return y[i]
+    class SystemOutputFun:
+        def __init__(self, i:int):
+            self.idx = i
+        def __call__(self, t: float, y:NDArray, _)->NDArray:
+            return y[self.idx]
 
-    return system_output
+    return SystemOutputFun(idx)
 
 
-def create_set_system_output_fun(idx: int, value_fun: Callable[[float, NDArray], float]) -> SystemFun:
-    def set_system_output(t: float | NDArray, y: NDArray, i=idx) -> NDArray:
+def create_set_system_output_fun(idx: int,
+                                 value_fun: Callable[[float, NDArray, Optional[SystemSolution]], float]) -> SystemFun:
+    def set_system_output(t: float | NDArray, y: NDArray, solution: SystemSolution, i=idx) -> NDArray:
         y_new = np.copy(y)
-        y_new[i] = value_fun(t, y)
+        y_new[i] = value_fun(t, y, solution)
         return y_new
 
     return set_system_output

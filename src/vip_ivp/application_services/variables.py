@@ -12,6 +12,7 @@ results of each variable are computed only when needed.
 import functools
 import inspect
 import operator
+from types import NoneType
 
 from typing import Callable, TypeVar, Generic, Optional, TYPE_CHECKING, Any
 
@@ -20,8 +21,9 @@ import pandas as pd
 from numpy.typing import NDArray
 from typing_extensions import ParamSpec
 
-from .variable_expressions import VariableExpression, get_first_frame_outside_package
-from ..domain.system import create_system_output_fun, Direction, Action, create_set_system_output_fun, ActionType
+from .variable_expressions import VariableExpression
+from ..domain.system import create_system_output_fun, Direction, Action, create_set_system_output_fun, ActionType, \
+    SystemFun, SystemSolution
 from .utils import operator_call, vectorize_source, get_output_info
 
 if TYPE_CHECKING:
@@ -30,7 +32,7 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 P = ParamSpec("P")
 
-Source = Callable[[float | NDArray, NDArray], T] | Callable[
+Source = Callable[[float | NDArray, NDArray, SystemSolution], T] | Callable[[float | NDArray, NDArray], T] | Callable[
     [float | NDArray], T] | NDArray | dict | float | "TemporalVar"
 
 
@@ -79,7 +81,7 @@ class TemporalVar(Generic[T]):
         self.expression_info = VariableExpression(id(self), expression)
 
         # Private
-        self._func: Callable[[float | NDArray, NDArray], T]
+        self._func: SystemFun
         self._source = source
         self._operator = operator_on_source_tuple
         # Output info
@@ -92,29 +94,29 @@ class TemporalVar(Generic[T]):
             # Create function for tuple and operator case
             assert type(self._source) is tuple
 
-            def operator_func(t, y):
+            def operator_func(t, y, sol: SystemSolution):
 
-                def resolve_operator(t_inner, y_inner):
+                def resolve_operator(t_inner, y_inner, sol_inner: SystemSolution):
                     """
                     Compute args and kwargs value and call the operator
                     """
-                    args = [x(t_inner, y_inner) if isinstance(x, TemporalVar) else x for x in
+                    args = [x(t_inner, y_inner, sol_inner) if isinstance(x, TemporalVar) else x for x in
                             self._source if
                             not isinstance(x, dict)]
                     kwargs = {k: v for d in [x for x in self._source if isinstance(x, dict)] for k, v in d.items()}
-                    kwargs = {k: (x(t_inner, y_inner) if isinstance(x, TemporalVar) else x) for k, x in
+                    kwargs = {k: (x(t_inner, y_inner, sol_inner) if isinstance(x, TemporalVar) else x) for k, x in
                               kwargs.items()}
                     return self._operator(*args, **kwargs)
 
                 try:
                     # Assume that the function is vectorized
-                    output = resolve_operator(t, y)
+                    output = resolve_operator(t, y, sol)
                 except Exception as e:
                     # If it fails with a scalar t, the function failed for another reason
                     if np.isscalar(t):
                         raise e
                     # If it fails, call it for each t value
-                    output = np.array([resolve_operator(t[i], y[:, i]) for i in range(len(t))])
+                    output = np.array([resolve_operator(t[i], y[:, i], sol) for i in range(len(t))])
 
                 return output
 
@@ -129,18 +131,35 @@ class TemporalVar(Generic[T]):
 
                 if n_args == 1:
                     # Function is a temporal function
-                    def temporal_func(t, _):
+                    def temporal_func(t, _, __):
                         return vectorize_source(self._source)(t)
 
                     self._func = temporal_func
+                elif n_args == 2:
+                    def current_state_func(t, y, _):
+                        return self._source(t, y)
+
+                    self._func = current_state_func
+
+                elif n_args == 3:
+                    def state_func(t, y, sol):
+                        if not isinstance(sol, (NoneType, SystemSolution)):
+                            raise ValueError(
+                                "The third argument of the input function must be a SystemSolution. "
+                                "If you want to use another kind of third argument, decrease the number of argument of "
+                                "your function using a partial."
+                            )
+                        return self._source(t,y, sol)
+                    self._func = state_func
                 else:
-                    # Function is already a f(t, y) function
-                    self._func = self._source
+                    raise NotImplementedError(
+                        "Too many arguments in the function. Only f(t), f(t, y) and f(t, y, sol) functions are supported. "
+                        "If needed, create partial functions.")
             elif np.isscalar(self._source) or self._source is None:
                 # Source is a scalar number
                 self.output_type = type(self._source)
 
-                def scalar_func(t, _):
+                def scalar_func(t, _, __):
                     if np.isscalar(t):
                         return self._source
                     else:
@@ -152,20 +171,20 @@ class TemporalVar(Generic[T]):
                 # Source is a numpy array
                 self.output_type = np.ndarray
                 self._source = np.array(
-                    [TemporalVar(x, self._get_expression_of(x), system=system) for x in self._source])
+                    [TemporalVar(x, get_expression_of(x), system=system) for x in self._source])
 
-                def array_func(t, y):
-                    return np.array([x(t, y) for x in self._source])
+                def array_func(t, y, sol):
+                    return np.array([x(t, y, sol) for x in self._source])
 
                 self._func = array_func
 
             elif isinstance(self._source, dict):
                 self.output_type = dict
-                self._source = {key: TemporalVar(val, self._get_expression_of(val), system=system) for key, val in
+                self._source = {key: TemporalVar(val, get_expression_of(val), system=system) for key, val in
                                 self._source.items()}
 
-                def dict_func(t, y):
-                    return {key: x(t, y) for key, x in self._source.items()}
+                def dict_func(t, y, sol):
+                    return {key: x(t, y, sol) for key, x in self._source.items()}
 
                 self._func = dict_func
             else:
@@ -174,11 +193,11 @@ class TemporalVar(Generic[T]):
         # Get output type by calling the func
         self.output_type, self._keys, self._shape = get_output_info(self._func)
 
-    def __call__(self, t: float | NDArray, y: Optional[NDArray] = None) -> T:
+    def __call__(self, t: float | NDArray, y: Optional[NDArray] = None, sol: Optional[SystemSolution] = None) -> T:
         if y is not None:
-            return self._func(t, y)
-        if self.system.sol is not None:
-            return self._func(t, self.system.sol(t))
+            return self._func(t, y, sol)
+        if self.system.solution is not None:
+            return self._func(t, self.system.solution(t), self.system.solution)
         else:
             raise RuntimeError(
                 "The system has not been solved.\n"
@@ -228,29 +247,52 @@ class TemporalVar(Generic[T]):
     def crosses(self, value: "float|TemporalVar[float]", direction: Direction = "both") -> "CrossTriggerVar":
         return self.system.add_crossing_detection(self - value, direction)
 
-    def compute_derivative(self, dt: float) -> "TemporalVar":
+    def compute_derivative(self, dt: float=1e-3) -> "TemporalVar":
 
-        def derivative_func(t, y):
-            if self.system.sol is None:
+        def derivative_func(t, y, sol):
+            if self.system.solution is None and sol is None:
                 return 0
+            sol=self.system.solution or sol
             y_current = self(t, y)
-            y_previous = self(t - dt, self.system.sol(t - dt))
+            y_previous = self(t - dt, sol(t - dt))
             dy = (y_current - y_previous) / dt
             return dy
 
-        return TemporalVar(derivative_func, f"d/dt({self._get_expression_of(self)})", system=self.system)
+        return TemporalVar(derivative_func, f"d/dt({get_expression_of(self)})", system=self.system)
 
-    def _get_expression_of(self, x: Any) -> str:
-        if isinstance(x, TemporalVar):
-            x.expression_info.set_name()
-            return x.expression_info.get_name()
-        return str(x)
+    def compute_delay(self, delay_s: float) -> "TemporalVar":
+        def delayed_func(t, _, sol):
+            sol = self.system.solution or sol
+            if np.isscalar(t):
+                if sol is None:
+                    return self(0, np.array(self.system.initial_conditions))
+                else:
+                    t_delayed = np.max([t - delay_s, 0])
+                    return self(t_delayed, sol(t_delayed), sol)
+            else:
+                t = np.asarray(t)
+
+                if sol is None:
+                    t0 = np.zeros_like(t)
+                    y0 = np.broadcast_to(
+                        np.array(self.system.initial_conditions),
+                        (t.size, len(self.system.initial_conditions))
+                    )
+                    return self(t0, y0)
+
+                else:
+                    t_delayed = np.maximum(t - delay_s, 0)
+                    return self(t_delayed, sol(t_delayed), sol)
+
+        return TemporalVar(delayed_func,
+                           f"delay({get_expression_of(self)}, {delay_s} s)",
+                           system=self.system)
 
     # Magic methods
     def __getitem__(self, item):
         return TemporalVar(
             (self, item),
-            f"{self._get_expression_of(self)}[{item}]",
+            f"{get_expression_of(self)}[{item}]",
             operator_on_source_tuple=operator.getitem,
             system=self.system
         )
@@ -259,7 +301,7 @@ class TemporalVar(Generic[T]):
         if method == "__call__":
             return TemporalVar(
                 (ufunc, *inputs, kwargs),
-                f"{ufunc.__name__}[{self._get_expression_of(self)}]",
+                f"{ufunc.__name__}[{get_expression_of(self)}]",
                 operator_on_source_tuple=operator_call,
                 system=self.system
             )
@@ -272,30 +314,30 @@ class TemporalVar(Generic[T]):
     # Addition
     def __add__(self, other):
         return TemporalVar((self, other),
-                           f"{self._get_expression_of(self)} + {self._get_expression_of(other)}",
+                           f"{get_expression_of(self)} + {get_expression_of(other)}",
                            operator_on_source_tuple=operator.add, system=self.system)
 
     def __radd__(self, other):
         return TemporalVar((other, self),
-                           f"{self._get_expression_of(other)} + {self._get_expression_of(self)}",
+                           f"{get_expression_of(other)} + {get_expression_of(self)}",
                            operator_on_source_tuple=operator.add, system=self.system)
 
     # Subtraction
     def __sub__(self, other):
         return TemporalVar((self, other),
-                           f"{self._get_expression_of(self)} - {self._get_expression_of(other)}",
+                           f"{get_expression_of(self)} - {get_expression_of(other)}",
                            operator_on_source_tuple=operator.sub, system=self.system)
 
     def __rsub__(self, other):
         return TemporalVar((other, self),
-                           f"{self._get_expression_of(other)} - {self._get_expression_of(self)}",
+                           f"{get_expression_of(other)} - {get_expression_of(self)}",
                            operator_on_source_tuple=operator.sub, system=self.system)
 
     # Multiplication
     def __mul__(self, other):
         return TemporalVar(
             (self, other),
-            f"({self._get_expression_of(self)} * {self._get_expression_of(other)})",
+            f"({get_expression_of(self)} * {get_expression_of(other)})",
             operator_on_source_tuple=operator.mul,
             system=self.system
         )
@@ -303,7 +345,7 @@ class TemporalVar(Generic[T]):
     def __rmul__(self, other):
         return TemporalVar(
             (other, self),
-            f"({self._get_expression_of(other)} * {self._get_expression_of(self)})",
+            f"({get_expression_of(other)} * {get_expression_of(self)})",
             operator_on_source_tuple=operator.mul,
             system=self.system
         )
@@ -312,7 +354,7 @@ class TemporalVar(Generic[T]):
     def __truediv__(self, other):
         return TemporalVar(
             (self, other),
-            f"{self._get_expression_of(self)} / {self._get_expression_of(other)})",
+            f"{get_expression_of(self)} / {get_expression_of(other)})",
             operator_on_source_tuple=operator.truediv,
             system=self.system
         )
@@ -320,7 +362,7 @@ class TemporalVar(Generic[T]):
     def __rtruediv__(self, other):
         return TemporalVar(
             (other, self),
-            f"{self._get_expression_of(other)} / {self._get_expression_of(self)})",
+            f"{get_expression_of(other)} / {get_expression_of(self)})",
             operator_on_source_tuple=operator.truediv,
             system=self.system
         )
@@ -329,7 +371,7 @@ class TemporalVar(Generic[T]):
     def __floordiv__(self, other):
         return TemporalVar(
             (self, other),
-            f"{self._get_expression_of(self)} // {self._get_expression_of(other)})",
+            f"{get_expression_of(self)} // {get_expression_of(other)})",
             operator_on_source_tuple=operator.floordiv,
             system=self.system
         )
@@ -337,7 +379,7 @@ class TemporalVar(Generic[T]):
     def __rfloordiv__(self, other):
         return TemporalVar(
             (other, self),
-            f"{self._get_expression_of(other)} // {self._get_expression_of(self)})",
+            f"{get_expression_of(other)} // {get_expression_of(self)})",
             operator_on_source_tuple=operator.floordiv,
             system=self.system
         )
@@ -346,7 +388,7 @@ class TemporalVar(Generic[T]):
     def __mod__(self, other):
         return TemporalVar(
             (self, other),
-            f"{self._get_expression_of(self)} % {self._get_expression_of(other)})",
+            f"{get_expression_of(self)} % {get_expression_of(other)})",
             operator_on_source_tuple=operator.mod,
             system=self.system
         )
@@ -354,7 +396,7 @@ class TemporalVar(Generic[T]):
     def __rmod__(self, other):
         return TemporalVar(
             (other, self),
-            f"{self._get_expression_of(other)} % {self._get_expression_of(self)})",
+            f"{get_expression_of(other)} % {get_expression_of(self)})",
             operator_on_source_tuple=operator.mod,
             system=self.system
         )
@@ -363,7 +405,7 @@ class TemporalVar(Generic[T]):
     def __pow__(self, other):
         return TemporalVar(
             (self, other),
-            f"({self._get_expression_of(self)}) ** {self._get_expression_of(other)}",
+            f"({get_expression_of(self)}) ** {get_expression_of(other)}",
             operator_on_source_tuple=operator.pow,
             system=self.system
         )
@@ -371,7 +413,7 @@ class TemporalVar(Generic[T]):
     def __rpow__(self, other):
         return TemporalVar(
             (other, self),
-            f"({self._get_expression_of(other)}) ** {self._get_expression_of(self)}",
+            f"({get_expression_of(other)}) ** {get_expression_of(self)}",
             operator_on_source_tuple=operator.pow,
             system=self.system
         )
@@ -379,7 +421,7 @@ class TemporalVar(Generic[T]):
     def __pos__(self):
         return TemporalVar(
             (self,),
-            f"+{self._get_expression_of(self)}",
+            f"+{get_expression_of(self)}",
             operator_on_source_tuple=operator.pos,
             system=self.system
         )
@@ -387,7 +429,7 @@ class TemporalVar(Generic[T]):
     def __neg__(self):
         return TemporalVar(
             (self,),
-            f"-({self._get_expression_of(self)})",
+            f"-({get_expression_of(self)})",
             operator_on_source_tuple=operator.neg,
             system=self.system
         )
@@ -395,7 +437,7 @@ class TemporalVar(Generic[T]):
     def __abs__(self):
         return TemporalVar(
             (self,),
-            f"|{self._get_expression_of(self)}|",
+            f"|{get_expression_of(self)}|",
             operator_on_source_tuple=operator.abs,
             system=self.system
         )
@@ -403,7 +445,7 @@ class TemporalVar(Generic[T]):
     def __eq__(self, other):
         return TemporalVar(
             (self, other),
-            f"{self._get_expression_of(self)} == {self._get_expression_of(other)}",
+            f"{get_expression_of(self)} == {get_expression_of(other)}",
             operator_on_source_tuple=operator.eq,
             system=self.system
         )
@@ -411,7 +453,7 @@ class TemporalVar(Generic[T]):
     def __ne__(self, other):
         return TemporalVar(
             (self, other),
-            f"{self._get_expression_of(self)} != {self._get_expression_of(other)}",
+            f"{get_expression_of(self)} != {get_expression_of(other)}",
             operator_on_source_tuple=operator.ne,
             system=self.system
         )
@@ -419,7 +461,7 @@ class TemporalVar(Generic[T]):
     def __lt__(self, other):
         return TemporalVar(
             (self, other),
-            f"{self._get_expression_of(self)} < {self._get_expression_of(other)}",
+            f"{get_expression_of(self)} < {get_expression_of(other)}",
             operator_on_source_tuple=operator.lt,
             system=self.system
         )
@@ -427,7 +469,7 @@ class TemporalVar(Generic[T]):
     def __le__(self, other):
         return TemporalVar(
             (self, other),
-            f"{self._get_expression_of(self)} <= {self._get_expression_of(other)}",
+            f"{get_expression_of(self)} <= {get_expression_of(other)}",
             operator_on_source_tuple=operator.le,
             system=self.system
         )
@@ -435,7 +477,7 @@ class TemporalVar(Generic[T]):
     def __gt__(self, other):
         return TemporalVar(
             (self, other),
-            f"{self._get_expression_of(self)} > {self._get_expression_of(other)}",
+            f"{get_expression_of(self)} > {get_expression_of(other)}",
             operator_on_source_tuple=operator.gt,
             system=self.system
         )
@@ -443,7 +485,7 @@ class TemporalVar(Generic[T]):
     def __ge__(self, other):
         return TemporalVar(
             (self, other),
-            f"{self._get_expression_of(self)} >= {self._get_expression_of(other)}",
+            f"{get_expression_of(self)} >= {get_expression_of(other)}",
             operator_on_source_tuple=operator.ge,
             system=self.system
         )
@@ -458,7 +500,7 @@ class TemporalVar(Generic[T]):
     def __and__(self, other) -> "TemporalVar[bool]":
         return TemporalVar(
             (self._apply_logical, np.logical_and, self, other),
-            f"{self._get_expression_of(self)} & {self._get_expression_of(other)}",
+            f"{get_expression_of(self)} & {get_expression_of(other)}",
             operator_on_source_tuple=operator_call,
             system=self.system
         )
@@ -466,7 +508,7 @@ class TemporalVar(Generic[T]):
     def __rand__(self, other) -> "TemporalVar[bool]":
         return TemporalVar(
             (self._apply_logical, np.logical_and, other, self),
-            f"{self._get_expression_of(other)} & {self._get_expression_of(self)}",
+            f"{get_expression_of(other)} & {get_expression_of(self)}",
             operator_on_source_tuple=operator_call,
             system=self.system
         )
@@ -474,7 +516,7 @@ class TemporalVar(Generic[T]):
     def __or__(self, other) -> "TemporalVar[bool]":
         return TemporalVar(
             (self._apply_logical, np.logical_or, self, other),
-            f"{self._get_expression_of(self)} | {self._get_expression_of(other)}",
+            f"{get_expression_of(self)} | {get_expression_of(other)}",
             operator_on_source_tuple=operator_call,
             system=self.system
         )
@@ -482,7 +524,7 @@ class TemporalVar(Generic[T]):
     def __ror__(self, other) -> "TemporalVar[bool]":
         return TemporalVar(
             (self._apply_logical, np.logical_or, other, self),
-            f"{self._get_expression_of(other)} | {self._get_expression_of(self)}",
+            f"{get_expression_of(other)} | {get_expression_of(self)}",
             operator_on_source_tuple=operator_call,
             system=self.system
         )
@@ -490,7 +532,7 @@ class TemporalVar(Generic[T]):
     def __xor__(self, other) -> "TemporalVar[bool]":
         return TemporalVar(
             (self._apply_logical, np.logical_xor, self, other),
-            f"{self._get_expression_of(self)} ^ {self._get_expression_of(other)}",
+            f"{get_expression_of(self)} ^ {get_expression_of(other)}",
             operator_on_source_tuple=operator_call,
             system=self.system
         )
@@ -498,7 +540,7 @@ class TemporalVar(Generic[T]):
     def __rxor__(self, other) -> "TemporalVar[bool]":
         return TemporalVar(
             (self._apply_logical, np.logical_xor, other, self),
-            f"{self._get_expression_of(other)} ^ {self._get_expression_of(self)}",
+            f"{get_expression_of(other)} ^ {get_expression_of(self)}",
             operator_on_source_tuple=operator_call,
             system=self.system
         )
@@ -506,7 +548,7 @@ class TemporalVar(Generic[T]):
     def __invert__(self) -> "TemporalVar[bool]":
         return TemporalVar(
             (self._logical_not, self),
-            f"~{self._get_expression_of(self)}",
+            f"~{get_expression_of(self)}",
             operator_on_source_tuple=operator_call,
             system=self.system
         )
@@ -565,52 +607,24 @@ class CrossTriggerVar(TemporalVar[float]):
     def __init__(self, func: TemporalVar[float], direction: Direction, crossing_idx: int, system: "IVPSystemMutable"):
         self.direction = direction
         super().__init__(func,
-                         f"{func._get_expression_of(func)} crosses 0",
+                         f"{get_expression_of(func)} crosses 0",
                          system=system)
         self.crossing_idx = crossing_idx
 
-    def __call__(self, t, y=None):
-        crossing_triggers = None
-        if self.system.is_solved:
-            crossing_triggers = self.system.crossing_triggers
+    def __call__(self, t, y=None, sol=None):
+        if self.system.solution is not None or sol is not None:
+            sol= self.system.solution or sol
+            crossing_triggers = sol.t_crossings
 
-        if crossing_triggers is not None and self.crossing_idx < len(crossing_triggers):
-            return np.isin(t, crossing_triggers[self.crossing_idx])
+            if crossing_triggers is not None and self.crossing_idx < len(crossing_triggers):
+                return np.isin(t, crossing_triggers[self.crossing_idx])
 
         if np.isscalar(t):
             return False
         return np.full(t.shape, False)
 
-    def guard(self, t, y=None):
-        return super().__call__(t, y)
-
-
-def delay(value: TemporalVar, delay_s: float) -> TemporalVar:
-    def delayed_func(t, _):
-        if np.isscalar(t):
-            if not value.system.is_solved:
-                return value(0, np.array(value.system.initial_conditions))
-            else:
-                t_delayed = np.max([t - delay_s, 0])
-                return value(t_delayed, value.system.sol(t_delayed))
-        else:
-            t = np.asarray(t)
-
-            if not value.system.is_solved:
-                t0 = np.zeros_like(t)
-                y0 = np.broadcast_to(
-                    np.array(value.system.initial_conditions),
-                    (t.size, len(value.system.initial_conditions))
-                )
-                return value(t0, y0)
-
-            else:
-                t_delayed = np.maximum(t - delay_s, 0)
-                return value(t_delayed, value.system.sol(t_delayed))
-
-    return TemporalVar(delayed_func,
-                       f"delay({value._get_expression_of(value)}, {delay_s} s)",
-                       system=value.system)
+    def guard(self, t, y=None, sol=None):
+        return super().__call__(t, y, sol)
 
 
 def temporal_var_where(
@@ -626,12 +640,19 @@ def temporal_var_where(
 
     return TemporalVar(
         (where, condition, a, b),
-        f"IF {condition._get_expression_of(condition)} THEN {condition._get_expression_of(a)} "
-        f"ELSE {condition._get_expression_of(b)}",
+        f"IF {get_expression_of(condition)} THEN {get_expression_of(a)} "
+        f"ELSE {get_expression_of(b)}",
         condition.system,
         operator_call
     )
 
+# Utils
+
+def get_expression_of(x: Any) -> str:
+    if isinstance(x, TemporalVar):
+        x.expression_info.set_name()
+        return x.expression_info.get_name()
+    return str(x)
 
 def assert_system_sameness(*values) -> None:
     """
