@@ -34,31 +34,31 @@ class VariableExpression:
 
         frame = inspect.currentframe().f_back.f_back
         self.creation_expression: str = expression
-        self.creation_frame = get_first_frame_outside_package(frame)
+        self.creation_frame = _get_first_frame_outside_package(frame)
 
-        self.name_frames = {}
+        self.name_frames:dict[FrameType,str] = {}
 
     def get_name(self):
         frame = inspect.currentframe().f_back.f_back
         while frame is not None:
-            if not is_inside_package(frame):
+            if not _is_inside_package(frame):
                 for name, variable in frame.f_locals.items():
                     if id(variable) == self.variable_id:
-                        self.name_frames[name] = frame
+                        self.name_frames[frame] = name
                         break
             frame = frame.f_back
 
 
-def is_inside_package(frame: FrameType) -> bool:
+def _is_inside_package(frame: FrameType) -> bool:
     filename = frame.f_code.co_filename
     if not filename:
         return False
     return Path(frame.f_code.co_filename).is_relative_to(PACKAGE_ROOT)
 
 
-def get_first_frame_outside_package(frame: FrameType) -> FrameType|None:
+def _get_first_frame_outside_package(frame: FrameType) -> FrameType|None:
     while frame is not None:
-        if not is_inside_package(frame):
+        if not _is_inside_package(frame):
             return frame
         frame = frame.f_back
     return None

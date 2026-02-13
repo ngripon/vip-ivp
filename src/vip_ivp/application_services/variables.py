@@ -13,12 +13,13 @@ import functools
 import inspect
 import operator
 
-from typing import Callable, TypeVar, Generic, Optional, TYPE_CHECKING
+from typing import Callable, TypeVar, Generic, Optional, TYPE_CHECKING, Any
 
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 from typing_extensions import ParamSpec
+from vip_ivp import TemporalVar
 
 from .variable_expressions import VariableExpression
 from ..domain.system import create_system_output_fun, Direction, Action, create_set_system_output_fun, ActionType
@@ -30,7 +31,7 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 P = ParamSpec("P")
 
-Source = Callable[[float | NDArray, NDArray], T] | Callable[[float | NDArray], T] | NDArray | dict | float
+Source = Callable[[float | NDArray, NDArray], T] | Callable[[float | NDArray], T] | NDArray | dict | float | TemporalVar
 
 
 class TemporalVar(Generic[T]):
@@ -73,7 +74,7 @@ class TemporalVar(Generic[T]):
         """
         # Object data
         self.system = system
-        self.expression=VariableExpression(id(self),"")
+        self.expression_info = VariableExpression(id(self))
 
         # Private
         self._func: Callable[[float | NDArray, NDArray], T]
@@ -86,11 +87,11 @@ class TemporalVar(Generic[T]):
 
         # Get names in sources
         if isinstance(self._source, TemporalVar):
-            self._source.expression.get_name()
+            self._source.expression_info.get_name()
         elif isinstance(self._source, (tuple, list, np.ndarray)):
             for source in self._source:
                 if isinstance(source, TemporalVar):
-                    source.expression.get_name()
+                    source.expression_info.get_name()
 
         # Create the function and make sources recursive when needed
         if self._operator is not None:
@@ -202,7 +203,7 @@ class TemporalVar(Generic[T]):
             scenario_table: pd.DataFrame,
             time_key: str,
             system: Optional["IVPSystemMutable"] = None,
-            interpolation_kind = "linear",
+            interpolation_kind="linear",
     ) -> "TemporalVar[dict]":
         from scipy.interpolate import interp1d
 
@@ -233,16 +234,23 @@ class TemporalVar(Generic[T]):
 
     def compute_derivative(self, dt: float) -> "TemporalVar":
 
-        def derivative_func(t,y):
+        def derivative_func(t, y):
             if self.system.sol is None:
                 return 0
             y_current = self(t, y)
             y_previous = self(t - dt, self.system.sol(t - dt))
-            dy=(y_current - y_previous)/dt
+            dy = (y_current - y_previous) / dt
             return dy
 
         return TemporalVar(derivative_func, system=self.system)
 
+    def _get_expression_of(self, x: Any) -> str:
+        if isinstance(x, TemporalVar):
+            current_frame = self.expression_info.creation_frame
+            if current_frame in x.expression_info.name_frames:
+                return x.expression_info.name_frames[current_frame]
+            return x.expression_info.creation_expression
+        return str(x)
 
     # Magic methods
     def __getitem__(self, item):
@@ -488,7 +496,6 @@ def temporal_var_where(
     )
 
 
-# Utils
 def assert_system_sameness(*values) -> None:
     """
     Raise an error if values contains TemporalVar instances from different systems.
