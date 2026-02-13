@@ -27,7 +27,7 @@ from vip_ivp import *
     ]
 )
 def test_output_dimension_with_scalar_time(test_input, expected, timestamp=0, y=np.array([1, 2])):
-    sut = TemporalVar(test_input)
+    sut = temporal(test_input)
 
     output = sut(timestamp, y)
 
@@ -52,7 +52,7 @@ def test_output_dimension_with_scalar_time(test_input, expected, timestamp=0, y=
 def test_output_dimension_with_vector_time(
         test_input, expected, time_vector=np.array([0, 1, 2]), y=np.array([[1, 2, 3], [4, 5, 6]])
 ):
-    sut = TemporalVar(test_input)
+    sut = temporal(test_input)
 
     output = sut(time_vector, y)
 
@@ -60,9 +60,9 @@ def test_output_dimension_with_vector_time(
 
 
 def test_arithmetic_operation():
-    a = TemporalVar(1)
+    a = temporal(1)
     sut1 = a + 2
-    sut2 = a + TemporalVar(2)
+    sut2 = a + temporal(2)
 
     output1 = sut1(0, [])
     output2 = sut2(0, [])
@@ -72,9 +72,9 @@ def test_arithmetic_operation():
 
 
 def test_logical_operation():
-    a = TemporalVar(1)
+    a = temporal(1)
     sut1 = a > 2
-    sut2 = a < TemporalVar(2)
+    sut2 = a < temporal(2)
 
     output1 = sut1(0, [])
     output2 = sut2(0, [])
@@ -84,7 +84,7 @@ def test_logical_operation():
 
 
 def test_getitem():
-    sut = TemporalVar({"a": 1, "b": lambda t: 1 + 2 * t})
+    sut = temporal({"a": 1, "b": lambda t: 1 + 2 * t})
 
     output = sut(1, [])
 

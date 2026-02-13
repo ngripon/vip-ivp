@@ -48,7 +48,7 @@ def temporal(value: Callable[[float], T]) -> TemporalVar[T]:
     :param value: A function f(t), a scalar value, a dict, a list or a NumPy array.
     :return: The created TemporalVar.
     """
-    return TemporalVar(value, system=_get_current_system())
+    return TemporalVar(value,str(value), system=_get_current_system())
 
 
 def state(x0: float, lower_bound: float | TemporalVar = None, upper_bound: float | TemporalVar = None,
@@ -147,7 +147,7 @@ def where(condition, a, b) -> TemporalVar:
 
 def f(func: Callable[P, T]) -> Callable[P, TemporalVar[T]]:
     def wrapper(*args: P.args, **kwargs: P.kwargs) -> TemporalVar:
-        return TemporalVar((func, *args, kwargs), _get_current_system(), operator_call)
+        return TemporalVar((func, *args, kwargs),"TODO", _get_current_system(), operator_call)
 
     functools.update_wrapper(wrapper, func)
     return wrapper
