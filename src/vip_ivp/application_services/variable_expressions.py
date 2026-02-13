@@ -20,7 +20,6 @@ The ultimate goal is to reconstruct the system graph. To build the system graph:
             current variable goes into an input of the function that was on the current level.
 """
 
-
 import inspect
 from pathlib import Path
 from types import FrameType
@@ -34,11 +33,11 @@ class VariableExpression:
 
         frame = inspect.currentframe().f_back.f_back
         self.creation_expression: str = expression
-        self.creation_frame = _get_first_frame_outside_package(frame)
+        self.creation_frame = get_first_frame_outside_package(frame)
 
-        self.name_frames:dict[FrameType,str] = {}
+        self.name_frames: dict[FrameType, str] = {}
 
-    def get_name(self):
+    def set_name(self):
         frame = inspect.currentframe().f_back.f_back
         while frame is not None:
             if not _is_inside_package(frame):
@@ -48,6 +47,23 @@ class VariableExpression:
                         break
             frame = frame.f_back
 
+    def get_name(self):
+        frame = get_first_frame_outside_package(inspect.currentframe().f_back)
+        if frame in self.name_frames:
+            return self.name_frames[frame]
+        elif frame is self.creation_frame:
+            return self.creation_expression
+        else:
+            # In this case, the variable has been created in a deeper frame, so we get the function name
+            current = self.creation_frame
+            while True:
+                parent_fun = current.f_back
+                if parent_fun is None:
+                    return "NOT_FOUND"
+                if parent_fun is frame:
+                    return f"{current.f_code.co_name}()"
+                current = current.f_back
+
 
 def _is_inside_package(frame: FrameType) -> bool:
     filename = frame.f_code.co_filename
@@ -56,7 +72,7 @@ def _is_inside_package(frame: FrameType) -> bool:
     return Path(frame.f_code.co_filename).is_relative_to(PACKAGE_ROOT)
 
 
-def _get_first_frame_outside_package(frame: FrameType) -> FrameType|None:
+def get_first_frame_outside_package(frame: FrameType) -> FrameType | None:
     while frame is not None:
         if not _is_inside_package(frame):
             return frame

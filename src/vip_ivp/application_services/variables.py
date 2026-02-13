@@ -20,7 +20,7 @@ import pandas as pd
 from numpy.typing import NDArray
 from typing_extensions import ParamSpec
 
-from .variable_expressions import VariableExpression
+from .variable_expressions import VariableExpression, get_first_frame_outside_package
 from ..domain.system import create_system_output_fun, Direction, Action, create_set_system_output_fun, ActionType
 from .utils import operator_call, vectorize_source, get_output_info
 
@@ -242,12 +242,8 @@ class TemporalVar(Generic[T]):
 
     def _get_expression_of(self, x: Any) -> str:
         if isinstance(x, TemporalVar):
-            x.expression_info.get_name()
-
-            current_frame = self.expression_info.creation_frame
-            if current_frame in x.expression_info.name_frames:
-                return x.expression_info.name_frames[current_frame]
-            return x.expression_info.creation_expression
+            x.expression_info.set_name()
+            return x.expression_info.get_name()
         return str(x)
 
     # Magic methods
