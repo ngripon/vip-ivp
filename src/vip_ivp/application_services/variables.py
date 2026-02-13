@@ -20,8 +20,9 @@ import pandas as pd
 from numpy.typing import NDArray
 from typing_extensions import ParamSpec
 
-from .variable_expressions import VariableExpression, get_first_frame_outside_package
-from ..domain.system import create_system_output_fun, Direction, Action, create_set_system_output_fun, ActionType
+from .variable_expressions import VariableExpression
+from ..domain.system import create_system_output_fun, Direction, Action, create_set_system_output_fun, ActionType, \
+    SystemFun, SystemSolution
 from .utils import operator_call, vectorize_source, get_output_info
 
 if TYPE_CHECKING:
@@ -30,7 +31,7 @@ if TYPE_CHECKING:
 T = TypeVar("T")
 P = ParamSpec("P")
 
-Source = Callable[[float | NDArray, NDArray], T] | Callable[
+Source = Callable[[float | NDArray, NDArray, SystemSolution], T] | Callable[[float | NDArray, NDArray], T] | Callable[
     [float | NDArray], T] | NDArray | dict | float | "TemporalVar"
 
 
@@ -79,7 +80,7 @@ class TemporalVar(Generic[T]):
         self.expression_info = VariableExpression(id(self), expression)
 
         # Private
-        self._func: Callable[[float | NDArray, NDArray], T]
+        self._func: SystemFun
         self._source = source
         self._operator = operator_on_source_tuple
         # Output info
@@ -92,29 +93,29 @@ class TemporalVar(Generic[T]):
             # Create function for tuple and operator case
             assert type(self._source) is tuple
 
-            def operator_func(t, y):
+            def operator_func(t, y, sol: SystemSolution):
 
-                def resolve_operator(t_inner, y_inner):
+                def resolve_operator(t_inner, y_inner, sol_inner: SystemSolution):
                     """
                     Compute args and kwargs value and call the operator
                     """
-                    args = [x(t_inner, y_inner) if isinstance(x, TemporalVar) else x for x in
+                    args = [x(t_inner, y_inner, sol_inner) if isinstance(x, TemporalVar) else x for x in
                             self._source if
                             not isinstance(x, dict)]
                     kwargs = {k: v for d in [x for x in self._source if isinstance(x, dict)] for k, v in d.items()}
-                    kwargs = {k: (x(t_inner, y_inner) if isinstance(x, TemporalVar) else x) for k, x in
+                    kwargs = {k: (x(t_inner, y_inner, sol_inner) if isinstance(x, TemporalVar) else x) for k, x in
                               kwargs.items()}
                     return self._operator(*args, **kwargs)
 
                 try:
                     # Assume that the function is vectorized
-                    output = resolve_operator(t, y)
+                    output = resolve_operator(t, y, sol)
                 except Exception as e:
                     # If it fails with a scalar t, the function failed for another reason
                     if np.isscalar(t):
                         raise e
                     # If it fails, call it for each t value
-                    output = np.array([resolve_operator(t[i], y[:, i]) for i in range(len(t))])
+                    output = np.array([resolve_operator(t[i], y[:, i], sol) for i in range(len(t))])
 
                 return output
 
@@ -129,18 +130,35 @@ class TemporalVar(Generic[T]):
 
                 if n_args == 1:
                     # Function is a temporal function
-                    def temporal_func(t, _):
+                    def temporal_func(t, _, __):
                         return vectorize_source(self._source)(t)
 
                     self._func = temporal_func
+                elif n_args == 2:
+                    def current_state_func(t, y, _):
+                        return self._source(t, y)
+
+                    self._func = current_state_func
+
+                elif n_args == 3:
+                    def state_func(t, y, sol):
+                        if not isinstance(sol, (None, SystemSolution)):
+                            raise ValueError(
+                                "The third argument of the input function must be a SystemSolution. "
+                                "If you want to use another kind of third argument, decrease the number of argument of "
+                                "your function using a partial."
+                            )
+                        return self._source(t,y, sol)
+                    self._func = state_func
                 else:
-                    # Function is already a f(t, y) function
-                    self._func = self._source
+                    raise NotImplementedError(
+                        "Too many arguments in the function. Only f(t), f(t, y) and f(t, y, sol) functions are supported. "
+                        "If needed, create partial functions.")
             elif np.isscalar(self._source) or self._source is None:
                 # Source is a scalar number
                 self.output_type = type(self._source)
 
-                def scalar_func(t, _):
+                def scalar_func(t, _, __):
                     if np.isscalar(t):
                         return self._source
                     else:
@@ -154,8 +172,8 @@ class TemporalVar(Generic[T]):
                 self._source = np.array(
                     [TemporalVar(x, self._get_expression_of(x), system=system) for x in self._source])
 
-                def array_func(t, y):
-                    return np.array([x(t, y) for x in self._source])
+                def array_func(t, y, sol):
+                    return np.array([x(t, y, sol) for x in self._source])
 
                 self._func = array_func
 
@@ -164,8 +182,8 @@ class TemporalVar(Generic[T]):
                 self._source = {key: TemporalVar(val, self._get_expression_of(val), system=system) for key, val in
                                 self._source.items()}
 
-                def dict_func(t, y):
-                    return {key: x(t, y) for key, x in self._source.items()}
+                def dict_func(t, y, sol):
+                    return {key: x(t, y, sol) for key, x in self._source.items()}
 
                 self._func = dict_func
             else:
@@ -174,11 +192,11 @@ class TemporalVar(Generic[T]):
         # Get output type by calling the func
         self.output_type, self._keys, self._shape = get_output_info(self._func)
 
-    def __call__(self, t: float | NDArray, y: Optional[NDArray] = None) -> T:
+    def __call__(self, t: float | NDArray, y: Optional[NDArray] = None, sol: Optional[SystemSolution] = None) -> T:
         if y is not None:
-            return self._func(t, y)
-        if self.system.sol is not None:
-            return self._func(t, self.system.sol(t))
+            return self._func(t, y, sol)
+        if self.system.solution is not None:
+            return self._func(t, self.system.solution(t), self.system.solution)
         else:
             raise RuntimeError(
                 "The system has not been solved.\n"
@@ -228,13 +246,14 @@ class TemporalVar(Generic[T]):
     def crosses(self, value: "float|TemporalVar[float]", direction: Direction = "both") -> "CrossTriggerVar":
         return self.system.add_crossing_detection(self - value, direction)
 
-    def compute_derivative(self, dt: float) -> "TemporalVar":
+    def compute_derivative(self, dt: float=1e-3) -> "TemporalVar":
 
-        def derivative_func(t, y):
-            if self.system.sol is None:
+        def derivative_func(t, y, sol):
+            if self.system.solution is None and sol is None:
                 return 0
+            sol=self.system.solution or sol
             y_current = self(t, y)
-            y_previous = self(t - dt, self.system.sol(t - dt))
+            y_previous = self(t - dt, sol(t - dt))
             dy = (y_current - y_previous) / dt
             return dy
 
@@ -569,13 +588,13 @@ class CrossTriggerVar(TemporalVar[float]):
                          system=system)
         self.crossing_idx = crossing_idx
 
-    def __call__(self, t, y=None):
-        crossing_triggers = None
-        if self.system.is_solved:
-            crossing_triggers = self.system.crossing_triggers
+    def __call__(self, t, y=None, sol=None):
+        if self.system.solution is not None or sol is not None:
+            sol= self.system.solution or sol
+            crossing_triggers = sol.t_crossings
 
-        if crossing_triggers is not None and self.crossing_idx < len(crossing_triggers):
-            return np.isin(t, crossing_triggers[self.crossing_idx])
+            if crossing_triggers is not None and self.crossing_idx < len(crossing_triggers):
+                return np.isin(t, crossing_triggers[self.crossing_idx])
 
         if np.isscalar(t):
             return False
@@ -586,17 +605,18 @@ class CrossTriggerVar(TemporalVar[float]):
 
 
 def delay(value: TemporalVar, delay_s: float) -> TemporalVar:
-    def delayed_func(t, _):
+    def delayed_func(t, _, sol):
+        sol = value.system.solution or sol
         if np.isscalar(t):
-            if not value.system.is_solved:
+            if sol is None:
                 return value(0, np.array(value.system.initial_conditions))
             else:
                 t_delayed = np.max([t - delay_s, 0])
-                return value(t_delayed, value.system.sol(t_delayed))
+                return value(t_delayed, sol(t_delayed), sol)
         else:
             t = np.asarray(t)
 
-            if not value.system.is_solved:
+            if sol is None:
                 t0 = np.zeros_like(t)
                 y0 = np.broadcast_to(
                     np.array(value.system.initial_conditions),
@@ -606,7 +626,7 @@ def delay(value: TemporalVar, delay_s: float) -> TemporalVar:
 
             else:
                 t_delayed = np.maximum(t - delay_s, 0)
-                return value(t_delayed, value.system.sol(t_delayed))
+                return value(t_delayed, sol(t_delayed), sol)
 
     return TemporalVar(delayed_func,
                        f"delay({value._get_expression_of(value)}, {delay_s} s)",

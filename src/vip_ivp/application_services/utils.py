@@ -2,6 +2,7 @@ from typing import Callable, Any
 
 import numpy as np
 from numpy.typing import NDArray
+from ..domain.system import SystemFun
 
 
 def operator_call(obj, /, *args, **kwargs):
@@ -83,7 +84,7 @@ def check_if_vectorized(fun) -> tuple[bool, bool, bool]:
 
 
 def get_output_info(
-        fun: Callable[[float | NDArray, NDArray], NDArray]
+        fun: SystemFun
 ) -> tuple[type, list[str] | None, list[int] | None]:
     """
     Get the output information of a system function.

@@ -8,7 +8,7 @@ solution y(t) is computed.
 """
 from enum import Enum
 from numbers import Real
-from typing import Callable, Literal, Optional, Iterable
+from typing import Callable, Literal, Optional, Sequence
 
 import numpy as np
 from numpy.typing import NDArray
@@ -21,7 +21,7 @@ CROSSING_TOLERANCE = 1e-12
 
 # Types
 class SystemSolution:
-    def __init__(self, sol: OdeSolution, t_crossings: Iterable[Iterable[float]]) -> None:
+    def __init__(self, sol: OdeSolution, t_crossings: Sequence[Sequence[float]]) -> None:
         self.continuous_solution = sol
         self.t_crossings = t_crossings  # For each crossing idx, the list of crossing times
 
