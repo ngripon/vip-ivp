@@ -24,7 +24,7 @@ import inspect
 from pathlib import Path
 from types import FrameType
 
-from src.vip_ivp.config import PACKAGE_ROOT
+from ..config import PACKAGE_ROOT
 
 
 class VariableExpression:
